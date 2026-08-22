@@ -159,17 +159,25 @@ WITH CHECK (
 CREATE OR REPLACE FUNCTION post_ledger_transaction(p_transaction_id uuid)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_debits numeric(20,6);
   v_credits numeric(20,6);
   v_entry_count integer;
+  v_tenant uuid;
 BEGIN
-  SELECT COALESCE(sum(debit),0), COALESCE(sum(credit),0), count(*)
+  v_tenant := app_current_tenant_id();
+  IF v_tenant IS NULL THEN
+    RAISE EXCEPTION 'tenant context is required' USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  SELECT COALESCE(sum(e.debit),0), COALESCE(sum(e.credit),0), count(*)
     INTO v_debits, v_credits, v_entry_count
-  FROM ledger_entries
-  WHERE transaction_id = p_transaction_id;
+  FROM public.ledger_entries e
+  WHERE e.transaction_id = p_transaction_id
+    AND e.tenant_id = v_tenant;
 
   IF v_entry_count < 2 THEN
     RAISE EXCEPTION 'ledger transaction requires at least two entries' USING ERRCODE = 'check_violation';
@@ -178,14 +186,18 @@ BEGIN
     RAISE EXCEPTION 'ledger transaction is not balanced' USING ERRCODE = 'check_violation';
   END IF;
 
-  UPDATE ledger_transactions
+  UPDATE public.ledger_transactions
   SET status = 'posted', posted_at = now()
-  WHERE id = p_transaction_id AND status = 'draft';
+  WHERE id = p_transaction_id
+    AND tenant_id = v_tenant
+    AND status = 'draft';
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ledger transaction is unavailable or already finalized' USING ERRCODE = 'object_not_in_prerequisite_state';
   END IF;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION post_ledger_transaction(uuid) FROM PUBLIC;
 
 COMMIT;
