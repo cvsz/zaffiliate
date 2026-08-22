@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/cvsz/zaffiliate/security
+    about: Please use private security reporting for vulnerabilities when available.
