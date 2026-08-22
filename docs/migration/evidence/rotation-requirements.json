@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-08-22T02:14:54.558Z",
+  "policy": "key names only; values never exported; rotate/revoke every listed credential and anything reused from it (EP-01)",
+  "requirements": [
+    {
+      "repo": "cvsz/ztsaff",
+      "source_path": "tiktok-review-saas/.env",
+      "blob_sha": "ce1ab730230107fe78742a27ea487d5e128cfc25",
+      "present_in_pinned_tree": true,
+      "key_names_only": [
+        "JWT_SECRET",
+        "DATABASE_URL",
+        "ADMIN_BOOTSTRAP_KEY"
+      ]
+    },
+    {
+      "repo": "cvsz/ztsaff",
+      "source_path": "zgitea-v8/secrets/artifact_key",
+      "blob_sha": "b8daff480ad3a6341d44572050e73a09613bf093",
+      "present_in_pinned_tree": true,
+      "key_names_only": []
+    },
+    {
+      "repo": "cvsz/ztsaff",
+      "source_path": "zgitea-v8/secrets/minio_root_password",
+      "blob_sha": "960cb2b95c1ef5ac88e73921420efc9f379838e5",
+      "present_in_pinned_tree": true,
+      "key_names_only": []
+    },
+    {
+      "repo": "cvsz/ztsaff",
+      "source_path": "zgitea-v8/secrets/minio_root_user",
+      "blob_sha": "20ae872ab98266a02baf4631f8e5168c3b46be93",
+      "present_in_pinned_tree": true,
+      "key_names_only": []
+    },
+    {
+      "repo": "cvsz/ztsaff",
+      "source_path": "zgitea-v8/secrets/webhook_hmac_key",
+      "blob_sha": "91d84487b6f4232bb95e1efbe5a9a1a871e72bbd",
+      "present_in_pinned_tree": true,
+      "key_names_only": []
+    },
+    {
+      "repo": "cvsz/zlttbots",
+      "source_path": "configs/env/production.env",
+      "blob_sha": "bcf73179bfa6fe4a3fa2ed90cbc1649f733c58f9",
+      "present_in_pinned_tree": true,
+      "key_names_only": [
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "API_HOST",
+        "ENV"
+      ]
+    },
+    {
+      "repo": "cvsz/zlttbots",
+      "source_path": "infrastructure/k8s/enterprise/secrets/external-secrets.yaml",
+      "blob_sha": "30807fa07952f34a102c510cfecc6aa9698ea1cc",
+      "present_in_pinned_tree": true,
+      "key_names_only": []
+    },
+    {
+      "repo": "cvsz/zlttbots",
+      "source_path": "tests/security_platform/test_pr_bot_extension.py",
+      "blob_sha": "8b7908e12e25a7c351237832d1d2964750bdaaaa",
+      "present_in_pinned_tree": true,
+      "key_names_only": [
+        "PR_BOT_ROOT",
+        "result",
+        "bandit",
+        "snapshot",
+        "payload",
+        "secret",
+        "digest",
+        "signature",
+        "store"
+      ]
+    },
+    {
+      "repo": "cvsz/zlttbots",
+      "source_path": "configs/env/production.env",
+      "blob_sha": "3d5280ef23b6a8dbebe4bb9b468a52f9e1fa2e91",
+      "present_in_pinned_tree": false,
+      "key_names_only": [
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "API_HOST",
+        "ENV"
+      ]
+    },
+    {
+      "repo": "cvsz/zttlbots",
+      "source_path": "zlinebot-lean/.env",
+      "blob_sha": "a633fe522f149dc8ac8dbacaaec16d52269b4fae",
+      "present_in_pinned_tree": false,
+      "key_names_only": [
+        "NODE_ENV",
+        "PORT",
+        "HOST",
+        "LINE_CHANNEL_SECRET",
+        "LINE_CHANNEL_ACCESS_TOKEN",
+        "TIKTOK_VERIFY_TOKEN",
+        "REDIS_URL"
+      ]
+    }
+  ]
+}

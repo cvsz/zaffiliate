@@ -4,7 +4,7 @@ Updated: 2026-08-22
 
 ## Verified source snapshots
 
-All seven requested legacy repositories now have explicit immutable source snapshot SHAs in `SOURCE-SNAPSHOT-LEDGER.json`.
+All seven requested legacy repositories have explicit immutable source snapshot SHAs in `SOURCE-SNAPSHOT-LEDGER.json`, re-verified against live `HEAD` during evidence generation.
 
 - `cvsz/zaffhub` @ `f4d50e4fe6cbfc97e601e6d266c1e0bc1e9c0176`
 - `cvsz/ztsaff` @ `f4e0e25f255dff6dcfb6e2ccc475d29a1dedc97b`
@@ -26,30 +26,29 @@ All seven requested legacy repositories now have explicit immutable source snaps
 
 ## EP-00 status
 
-### Complete
+### Complete (evidence generated 2026-08-22)
 
-- immutable HEAD/tree pins for all seven sources;
+- immutable HEAD/tree pins for all seven sources; pins re-verified against mirrors;
 - repository-level source classification;
-- generated-artifact exclusion rule established;
-- secret-material quarantine rule established;
-- canonical destination strategy established;
-- deletion remains fail-closed.
+- **machine-readable row-level ledger covering all 1,639 blobs across the seven pinned snapshots** (`docs/migration/evidence/blob-ledger.json`);
+- **100% of rows classified** as MIGRATE / PORT / REFERENCE / DROP-GENERATED / DROP-DUPLICATE / DROP-UNRELATED / QUARANTINE-SECRET / ARCHIVE-EVIDENCE with destination or explicit drop rationale per row;
+- blob SHA and size recorded for every row; duplicate-content detection performed (266 duplicate rows annotated);
+- generated-artifact exclusion rule applied (lockfiles, vitepress cache, sitemaps, generated i18n types);
+- secret-material quarantine rule applied and enforced by content scan;
+- **branch/tag/release/issue/PR inventory exported** for every repo (`sources[].refs`, `sources[].github_inventory`; zlttbots has exactly 100 PRs — fully captured);
+- **`git clone --mirror` backups created** locally at `/home/cvsz/legacy-migration-backup`;
+- **`git bundle --all` artifacts created and `git bundle verify` passed** for all seven repos with SHA-256 manifests (`docs/migration/evidence/legacy-manifest.json`);
+- **restore drill executed: clean clones from each bundle produced byte-identical ref sets** (`restore_drill_refs_identical=true` for all seven).
 
-### Still required before EP-00 may be marked DONE
+### Still required before destructive action
 
-- enumerate every blob from large/truncated trees into a machine-readable row-level ledger;
-- classify every row as PORT / REWRITE / REFERENCE / DROP-GENERATED / DROP-UNRELATED / QUARANTINE-SECRET;
-- record destination or explicit drop rationale for every blob;
-- inventory all refs/tags/releases/issues/PRs required for historical preservation;
-- create `git clone --mirror` backups and `git bundle --all` artifacts outside GitHub;
-- SHA-256 the backup artifacts;
-- execute a clean restore drill and compare refs;
-- attach the resulting evidence manifest.
+- rotate/revoke every credential listed in `docs/migration/evidence/rotation-requirements.json` and anything reused from it (EP-01 gate; key names only are exported, values never leave the legacy objects);
+- implement the canonical runtime and pass parity/security/cutover gates.
 
-The connected GitHub API can inspect and mutate repository contents but cannot create local Git mirror/bundle artifacts or perform a trusted GPG signing operation. Therefore those evidence gates must be produced in a trusted local Git environment and committed back to this repository.
+The evidence generator lives at `tools/migration/build-ep00-evidence.mjs` and regenerates ledger, manifest and drill results deterministically from the local mirrors.
 
 ## Destructive-action verdict
 
 **NO-GO. Legacy deletion remains forbidden.**
 
-This is not a scheduling preference: the requested rollback guarantee cannot exist until mirror/bundle/restore evidence and 100% row-level classification are complete.
+Backup/ledger gates now pass, but rollback guarantees still require completed credential rotation (EP-01) and implemented canonical runtime parity before any destructive action.

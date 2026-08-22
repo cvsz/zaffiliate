@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-08-22T02:14:54.558Z",
+  "backup_root": "/home/cvsz/legacy-migration-backup",
+  "mirrors": "git clone --mirror",
+  "repositories": [
+    {
+      "repo": "cvsz/zaffhub",
+      "snapshot_sha": "f4d50e4fe6cbfc97e601e6d266c1e0bc1e9c0176",
+      "head_matches_pin": true,
+      "default_branch": "main",
+      "branches": 1,
+      "tags": 0,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/zaffhub.bundle",
+      "bundle_sha256": "70b0358a8963d6daa85a0e1873e783d95bca46b18ba29ad125d93f4c3ba2ee40",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    },
+    {
+      "repo": "cvsz/ztsaff",
+      "snapshot_sha": "f4e0e25f255dff6dcfb6e2ccc475d29a1dedc97b",
+      "head_matches_pin": true,
+      "default_branch": "main",
+      "branches": 12,
+      "tags": 1,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/ztsaff.bundle",
+      "bundle_sha256": "70418fa229735420f8775b1d96890dfb1d0c59983c3f8c8d72760ca79ecfe452",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    },
+    {
+      "repo": "cvsz/tiktok-shop-bot",
+      "snapshot_sha": "0e6128856c867172021e12d3fb570610443dcb7d",
+      "head_matches_pin": true,
+      "default_branch": "main",
+      "branches": 2,
+      "tags": 0,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/tiktok-shop-bot.bundle",
+      "bundle_sha256": "8fa2ad7de9fe84d1137dc73edcff333fb8dbe65f4a2372d8c8822eff6eb1b066",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    },
+    {
+      "repo": "cvsz/tiktok-shop-sdk",
+      "snapshot_sha": "0c53da6cbba91728401f79cda7156cc56a2cc7dd",
+      "head_matches_pin": true,
+      "default_branch": "main",
+      "branches": 2,
+      "tags": 0,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/tiktok-shop-sdk.bundle",
+      "bundle_sha256": "62876f7cdcfb07f4746acadcc98024b65999d20a5c9f6cc3cf79b15975565667",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    },
+    {
+      "repo": "cvsz/tiktokshop-php",
+      "snapshot_sha": "dbbec213d9d118c443576d613571993090a843a5",
+      "head_matches_pin": true,
+      "default_branch": "master",
+      "branches": 1,
+      "tags": 0,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/tiktokshop-php.bundle",
+      "bundle_sha256": "9aa736b46b5711b044be1875269c0717d9e26e48fab056935ed9d1f2319aeb17",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    },
+    {
+      "repo": "cvsz/zlttbots",
+      "snapshot_sha": "139bde44dfa3bb3fd420a091988dafece8c70d0e",
+      "head_matches_pin": true,
+      "default_branch": "main",
+      "branches": 97,
+      "tags": 0,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/zlttbots.bundle",
+      "bundle_sha256": "f4049782fc98168f24c86edfc20c41608e9614ebb10cb92395c0257600f03449",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    },
+    {
+      "repo": "cvsz/zttlbots",
+      "snapshot_sha": "18b5f572d5fe5926ab3286ee98b12bd3f7669474",
+      "head_matches_pin": true,
+      "default_branch": "main",
+      "branches": 8,
+      "tags": 0,
+      "bundle_path": "/home/cvsz/legacy-migration-backup/bundles/zttlbots.bundle",
+      "bundle_sha256": "18eb4aaa8375cd4f72ce2c6f78565737c4f30bbd5870fcff1b7c404f614af476",
+      "bundle_verified": true,
+      "restore_drill_refs_identical": true
+    }
+  ]
+}

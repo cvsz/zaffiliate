@@ -36,12 +36,12 @@ At the time this status was updated, the latest CI commit did not yet expose a c
 
 The following are mandatory hard gates, not optional cleanup:
 
-1. Machine-readable 100% blob migration ledger for every pinned legacy snapshot.
-2. Mirror backups for all seven repos.
-3. Verified `git bundle` backups for all refs.
-4. SHA-256 manifest for backups and source refs.
-5. Successful restore drill from those backups.
-6. Rotation/revocation and historical secret scan for `ztsaff` exposed secret-like values.
+1. ~~Machine-readable 100% blob migration ledger for every pinned legacy snapshot.~~ **DONE 2026-08-22** — `docs/migration/evidence/blob-ledger.json`, 1,639/1,639 blobs classified.
+2. ~~Mirror backups for all seven repos.~~ **DONE 2026-08-22** — `/home/cvsz/legacy-migration-backup/*.git`.
+3. ~~Verified `git bundle` backups for all refs.~~ **DONE 2026-08-22** — `docs/migration/evidence/legacy-manifest.json`, all bundles verified.
+4. ~~SHA-256 manifest for backups and source refs.~~ **DONE 2026-08-22** — same manifest.
+5. ~~Successful restore drill from those backups.~~ **DONE 2026-08-22** — ref sets byte-identical for all seven repos.
+6. Rotation/revocation and historical secret scan for `ztsaff` exposed secret-like values. **Scan complete across all seven repos including full history** (`secret-history-scan.json`, `rotation-requirements.json`); rotation still outstanding — including `LINE_CHANNEL_SECRET`, `LINE_CHANNEL_ACCESS_TOKEN`, `TIKTOK_VERIFY_TOKEN` from zttlbots history and `JWT_SECRET`, `DATABASE_URL`, `ADMIN_BOOTSTRAP_KEY`, MinIO/Gitea secrets from ztsaff.
 7. Full canonical runtime/data migrations and required marketplace/channel adapters.
 8. Green contract/parity/security/CI/load/soak and production-readiness evidence.
 9. Reversible production cutover and reconciliation.
@@ -75,7 +75,7 @@ The connector has no signed-push primitive. A signed Git commit/tag is the porta
 
 ### Mirror/bundle/restore evidence
 
-The connector cannot execute local `git clone --mirror`, `git bundle`, SHA-256 filesystem manifests, or an isolated restore drill. Those artifacts must be generated in a trusted Git environment and their evidence committed back to `zaffiliate`.
+~~The connector cannot execute local `git clone --mirror`, `git bundle`, SHA-256 filesystem manifests, or an isolated restore drill.~~ **Resolved 2026-08-22:** those artifacts were generated in a trusted local Git environment and their evidence is committed under `docs/migration/evidence/` (`blob-ledger.json`, `legacy-manifest.json`, `secret-history-scan.json`, `rotation-requirements.json`). Regenerate with `node tools/migration/build-ep00-evidence.mjs`.
 
 ### Repository deletion
 
@@ -98,14 +98,16 @@ Only after all gates pass:
 
 **CANONICAL RUNTIME BOOTSTRAP: IMPLEMENTED; CI GREEN EVIDENCE PENDING.**
 
-**EP-00: PARTIAL — source pins complete, 100% row-level blob ledger + backup/restore evidence pending.**
+**EP-00 EVIDENCE GATES (LEDGER/BACKUP/RESTORE): COMPLETE 2026-08-22.**
 
-**EP-01: PARTIAL — canonical secret boundary/CI guard implemented; legacy credential rotation/history scan pending.**
+**EP-01: PARTIAL — canonical secret boundary/CI guard implemented; full-history scan complete; legacy credential rotation still pending.**
 
 **EP-02: STARTED — runnable API/contracts/tests/CI baseline exists; production dependencies/adapters/data layer pending.**
 
 **PRODUCTION IMPLEMENTATION/CUTOVER: NOT COMPLETE.**
 
+**SECRET ROTATION: REQUIRED — see docs/migration/evidence/rotation-requirements.json.**
+
 **GPG ATTESTATION: BLOCKED IN CONNECTOR; requires trusted local Git/GPG environment.**
 
-**LEGACY REPOSITORY DELETION: BLOCKED BY BOTH UNSATISFIED SAFETY GATES AND MISSING CONNECTOR CAPABILITY.**
+**LEGACY REPOSITORY DELETION: BLOCKED BY UNSATISFIED SAFETY GATES (rotation, runtime parity, cutover).**
