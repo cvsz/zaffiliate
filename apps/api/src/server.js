@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { createLogger, MetricsRegistry, traceContext } from '../../../packages/observability/src/index.js';
 
 const port = Number(process.env.PORT || 8080);
 const requiredForReady = ['DATABASE_URL', 'REDIS_URL'];
@@ -8,31 +9,61 @@ export function readiness(env = process.env) {
   return { ready: missing.length === 0, missing };
 }
 
-export function buildServer() {
+export function buildServer({ env = process.env, logger = createLogger(), metrics = new MetricsRegistry() } = {}) {
   return http.createServer((req, res) => {
-    res.setHeader('content-type', 'application/json; charset=utf-8');
+    const startedAt = process.hrtime.bigint();
+    const context = traceContext(req.headers);
+    const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+    res.setHeader('x-request-id', context.requestId);
+    res.setHeader('x-trace-id', context.traceId);
     res.setHeader('x-content-type-options', 'nosniff');
     res.setHeader('x-frame-options', 'DENY');
     res.setHeader('referrer-policy', 'no-referrer');
 
-    if (req.method === 'GET' && req.url === '/healthz') {
+    const finish = (status, route) => {
+      const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+      metrics.inc('zaffiliate_http_requests_total', { method: req.method || 'UNKNOWN', route, status });
+      metrics.set('zaffiliate_http_last_request_duration_ms', { route }, elapsedMs);
+      logger.info('http_request_completed', {
+        requestId: context.requestId,
+        traceId: context.traceId,
+        method: req.method,
+        route,
+        status,
+        durationMs: Math.round(elapsedMs * 1000) / 1000
+      });
+    };
+
+    const json = (status, route, body) => {
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.writeHead(status);
+      res.end(JSON.stringify(body));
+      finish(status, route);
+    };
+
+    if (req.method === 'GET' && pathname === '/healthz') {
+      return json(200, '/healthz', { ok: true, service: 'zaffiliate-api' });
+    }
+
+    if (req.method === 'GET' && pathname === '/readyz') {
+      const result = readiness(env);
+      return json(result.ready ? 200 : 503, '/readyz', result);
+    }
+
+    if (req.method === 'GET' && pathname === '/metrics') {
+      res.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
       res.writeHead(200);
-      return res.end(JSON.stringify({ ok: true, service: 'zaffiliate-api' }));
+      res.end(metrics.render());
+      return finish(200, '/metrics');
     }
 
-    if (req.method === 'GET' && req.url === '/readyz') {
-      const result = readiness();
-      res.writeHead(result.ready ? 200 : 503);
-      return res.end(JSON.stringify(result));
-    }
-
-    res.writeHead(404);
-    res.end(JSON.stringify({ error: 'not_found' }));
+    return json(404, 'not_found', { error: 'not_found' });
   });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  buildServer().listen(port, '0.0.0.0', () => {
-    console.log(JSON.stringify({ event: 'server_started', port }));
+  const logger = createLogger();
+  buildServer({ logger }).listen(port, '0.0.0.0', () => {
+    logger.info('server_started', { port });
   });
 }
