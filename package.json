@@ -6,7 +6,8 @@
   "engines": {"node": ">=22"},
   "scripts": {
     "start": "node apps/api/src/server.js",
+    "start:web": "node apps/web/server.js",
     "test": "node --test",
-    "check": "node --check apps/api/src/server.js && node --check packages/contracts/src/index.js"
+    "check": "node --check apps/api/src/server.js && node --check apps/web/server.js && node --check packages/contracts/src/index.js && node --check packages/tiktok-shop/src/signing.js && node --check packages/tiktok-shop/src/auth.js && node --check packages/tiktok-shop/src/webhook.js && node --check packages/tiktok-shop/src/client.js && node --check packages/affiliate-core/src/domain.js && node --check packages/outreach/src/domain.js && node --check packages/workflow/src/domain.js && node --check packages/identity-billing/src/domain.js && node --check packages/ai-content/src/domain.js && node --check packages/control-plane/src/navigation.js"
   }
 }
