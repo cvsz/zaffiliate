@@ -8,6 +8,7 @@ BEGIN
 END $$;
 
 GRANT USAGE ON SCHEMA public TO zaffiliate_app_test;
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   tenant_memberships,
   products,
@@ -16,8 +17,19 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   creator_contacts,
   outreach_outbox,
   jobs,
-  approvals,
   idempotency_records
 TO zaffiliate_app_test;
-GRANT SELECT, INSERT ON audit_events TO zaffiliate_app_test;
+
+GRANT SELECT, INSERT ON
+  approvals,
+  audit_events,
+  ledger_transactions,
+  ledger_entries,
+  ai_requests,
+  ai_usage,
+  analytics_events,
+  conversions
+TO zaffiliate_app_test;
+
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO zaffiliate_app_test;
+GRANT EXECUTE ON FUNCTION post_ledger_transaction(uuid) TO zaffiliate_app_test;
