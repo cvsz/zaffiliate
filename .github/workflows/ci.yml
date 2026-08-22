@@ -96,12 +96,15 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
       - name: Create non-superuser application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Execute core cross-tenant RLS assertions
         run: psql -v ON_ERROR_STOP=1 -f db/tests/rls.sql
       - name: Execute durable workflow and outbox assertions
         run: psql -v ON_ERROR_STOP=1 -f db/tests/durable-workflow.sql
+      - name: Execute billing AI analytics assertions
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/billing-ai-analytics.sql
 
   container:
     runs-on: ubuntu-latest
