@@ -216,3 +216,73 @@ export function createObservability({ serviceName = 'zaffiliate', now = null } =
     defineSlo
   });
 }
+
+const secretKeyPattern = /(secret|token|password|authorization|cookie|api[_-]?key|private[_-]?key)/i;
+
+export function redact(value, key = '') {
+  if (secretKeyPattern.test(key)) return '[REDACTED]';
+  if (Array.isArray(value)) return value.map((item) => redact(item));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([childKey, childValue]) => [childKey, redact(childValue, childKey)]));
+  }
+  return value;
+}
+
+export function createLogRecord(level, event, fields = {}, now = new Date()) {
+  return Object.freeze({
+    timestamp: now.toISOString(),
+    level: String(level || 'info').toLowerCase(),
+    event: String(event || 'event'),
+    ...redact(fields)
+  });
+}
+
+export function createLogger(write = (record) => console.log(JSON.stringify(record))) {
+  const obs = createObservability({ serviceName: 'zaffiliate' });
+  return Object.freeze({
+    info(event, fields) { write(obs.log('info', event, fields)); },
+    warn(event, fields) { write(obs.log('warn', event, fields)); },
+    error(event, fields) { write(obs.log('error', event, fields)); }
+  });
+}
+
+export function traceContext(headers = {}) {
+  const requestId = String(headers['x-request-id'] || headers['X-Request-Id'] || randomUUID()).slice(0, 128);
+  const traceId = String(headers['x-trace-id'] || headers['X-Trace-Id'] || randomUUID().replaceAll('-', '')).slice(0, 128);
+  return Object.freeze({ requestId, traceId });
+}
+
+export class MetricsRegistry {
+  #obs;
+  #legacyStore = new Map();
+
+  constructor(serviceName = 'zaffiliate') {
+    this.#obs = createObservability({ serviceName });
+  }
+
+  inc(name, labels = {}, amount = 1) {
+    const key = `${name}|${Object.entries(labels).sort().map(([k, v]) => `${k}="${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`).join(',')}`;
+    const entry = this.#legacyStore.get(key) || { type: 'counter', name, labels: Object.fromEntries(Object.entries(labels).sort()), count: 0 };
+    entry.count += Number(amount);
+    this.#legacyStore.set(key, entry);
+    this.#obs.metrics.incrementCounter(name, Object.fromEntries(Object.entries(labels).sort()));
+  }
+
+  set(name, labels = {}, value = 0) {
+    const key = `${name}|${Object.entries(labels).sort().map(([k, v]) => `${k}="${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`).join(',')}`;
+    const entry = this.#legacyStore.get(key) || { type: 'gauge', name, labels: Object.fromEntries(Object.entries(labels).sort()), value: 0 };
+    entry.value = Number(value);
+    this.#legacyStore.set(key, entry);
+    this.#obs.metrics.setGauge(name, Number(value), Object.fromEntries(Object.entries(labels).sort()));
+  }
+
+  render() {
+    const rows = [];
+    for (const entry of this.#legacyStore.values()) {
+      const labels = Object.entries(entry.labels).map(([k, v]) => `${k}="${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`).join(',');
+      if (entry.type === 'counter') rows.push(`${entry.name}{${labels}} ${entry.count}`);
+      else if (entry.type === 'gauge') rows.push(`${entry.name}{${labels}} ${entry.value}`);
+    }
+    return rows.join('\n') + (rows.length ? '\n' : '');
+  }
+}
