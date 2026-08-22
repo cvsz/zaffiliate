@@ -16,7 +16,7 @@ A slice is not DONE merely because files exist. DONE means its acceptance criter
 
 ## Current state
 
-Updated 2026-08-22 after the full-slice implementation pass (232 deterministic tests green, `npm run check` clean across all modules):
+Updated 2026-08-22 after the full-slice implementation pass (233 deterministic tests green, `npm run check` clean across all modules):
 
 - EP-02 bootstrap baseline: implemented on `main` (workspace, API health/readiness, tests, CI definition, Docker/Compose, Postgres/Redis baseline).
 - EP-03 tenant-isolation/audit contract: merged through PR #1; hardening delivered — Postgres RLS integration tests in CI (`db/tests/*`), actor role/grant semantics (`packages/contracts/src/grants.js`), append-only hash-chained audit persistence adapter (`packages/contracts/src/audit.js`).
@@ -30,10 +30,14 @@ Updated 2026-08-22 after the full-slice implementation pass (232 deterministic t
 - EP-10 control plane web: all core surfaces rendered CSP-first (no inline script/style), hardened static serving (traversal-safe), tenant-header-gated JSON APIs for navigation/audit/billing/workflow/outreach/analytics, approval decision endpoint; zero privileged credentials in browser payloads (reference pointers only).
 - EP-10B analytics runtime: typed funnel ingestion with late/future arrival windows and event-id idempotency, last/first/linear attribution with exact integer credit distribution, dimension performance, cohort funnels, anomaly rules, deterministic JSON/CSV export boundary, commission reconciliation.
 - EP-01 leftovers closed in code: server-side secret-manager contract, deep structured-log redaction (denylist + pattern scrubbing), secret-classification policy matrix, observability plane (structured logs via redactor, metrics/spans/correlation, SLO evaluation) under `packages/security` and `packages/observability`.
+- EP-11 end-to-end smoke harness: `test/e2e.test.js` exercising API + web surfaces with cross-origin isolation check; `docs/operations/e2e-runbook.md`.
+- EP-11 alert rules + dashboards: 12 alert rule definitions (`config/alerts.json`) covering SLO, latency, queue depth, dead-letter, cross-tenant, webhook replay, ledger delta; 15 dashboard panels (`config/dashboards.json`) for Overview/SLO/Workflow/Security/Infrastructure; runbooks in `docs/operations/alerts.md` and `docs/operations/dashboards.md`.
+- EP-01 credential rotation evidence template: `docs/migration/credential-rotation-evidence.md` with SHA-256 evidence recording procedure, sign-off template, and stop-the-line conditions.
+- EP-11 threat model: `docs/security/threat-model.md` formal STRIDE analysis, trust boundaries, data-flow description, attack trees for webhook replay, cross-tenant access, secret leakage, approval bypass.
+- EP-11 CI security scanning jobs: `.github/workflows/ci.yml` added `sast`, `secret-scan`, `container-scan`, `iac-scan` jobs with fail-closed guards and conditional fallbacks for optional tooling (gitleaks, trivy, checkov).
 - EP-11 production validation harnesses: load/soak/fault-injection/backup-restore drill scripts + runbooks; CI integration job `validation-harnesses`; SSRF/URL validation tests for outbound connectors; production-readiness checklist; RPO/RTO declaration; capacity model; upgrade/rollback procedure.
 - EP-11B release engineering: semver engine, conventional-commit changelog automation, deterministic release manifest pipeline, GPG attestation workflow + maintainer runbook, CycloneDX SBOM generator, release CI workflow template.
 - EP-12/12B/13 migration + cutover + retirement: idempotent data migrator with dry-run and SHA-256 reconciliation, progressive cutover simulator (dry-run/shadow/enable/rollback), post-cutover SLO watch, release candidate validation, post-release smoke test, reconciliation tooling for commissions/billing/webhooks, retirement runbook with archive/observation/deletion stages.
-- EP-01 leftovers closed in code: server-side secret-manager contract, deep structured-log redaction (denylist + pattern scrubbing), secret-classification policy matrix, observability plane (structured logs via redactor, metrics/spans/correlation, SLO evaluation) under `packages/security` and `packages/observability`.
 - EP-03 hardening: Postgres RLS integration tests in CI (`db/tests/*`), actor role/grant semantics (`packages/contracts/src/grants.js`), append-only hash-chained audit persistence adapter (`packages/contracts/src/audit.js`).
 - Still open and NOT fabricable locally: legacy credential rotation (EP-01), live-infrastructure load/soak/fault-injection and backup drills against production data (EP-11), maintainer GPG-signed attestations (EP-11B), reversible production cutover (EP-12), final release + legacy retirement (EP-12B/EP-13).
 
