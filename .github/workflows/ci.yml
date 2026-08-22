@@ -51,6 +51,21 @@ jobs:
           test -s OPERATIONS.md
           test -s docs/migration/SOURCE-SNAPSHOT-LEDGER.json
           node -e "JSON.parse(require('fs').readFileSync('docs/migration/SOURCE-SNAPSHOT-LEDGER.json','utf8'))"
+      - name: Generate deterministic release evidence
+        env:
+          RELEASE_CREATED_AT: '2026-08-22T00:00:00Z'
+        run: npm run release:manifest
+      - name: Verify release manifest digest
+        working-directory: dist
+        run: sha256sum -c release-manifest.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.sha }}
+          path: |
+            dist/release-manifest.json
+            dist/release-manifest.sha256
+          if-no-files-found: error
+          retention-days: 30
 
   container:
     runs-on: ubuntu-latest
