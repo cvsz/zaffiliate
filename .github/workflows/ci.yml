@@ -8,28 +8,70 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - run: npm install --ignore-scripts --no-audit --no-fund
-      - run: npm run check
-      - run: npm test
+      - name: Deterministic install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax checks
+        run: npm run check
+      - name: Unit and contract tests
+        run: npm test
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Reject tracked runtime secrets
         shell: bash
         run: |
           set -euo pipefail
-          if git ls-files | grep -E '(^|/)(\.env|secrets/|.*\.(pem|key))$'; then
+          if git ls-files | grep -E '(^|/)(\.env|secrets/|.*\.(pem|key|p12|pfx))$'; then
             echo 'Tracked runtime secret material detected' >&2
             exit 1
           fi
-          if grep -RInE '(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,})' --exclude-dir=.git --exclude='*.md' .; then
+          if grep -RInE '(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9_]{20,})' --exclude-dir=.git --exclude='*.md' .; then
             echo 'Potential secret material detected' >&2
             exit 1
           fi
+      - name: Validate migration evidence files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s EXEC-PLANNING.md
+          test -s SECURITY.md
+          test -s OPERATIONS.md
+          test -s docs/migration/SOURCE-SNAPSHOT-LEDGER.json
+          node -e "JSON.parse(require('fs').readFileSync('docs/migration/SOURCE-SNAPSHOT-LEDGER.json','utf8'))"
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production container
+        run: docker build --pull -t zaffiliate:${{ github.sha }} .
+      - name: Assert non-root runtime user
+        shell: bash
+        run: |
+          set -euo pipefail
+          user="$(docker inspect zaffiliate:${{ github.sha }} --format '{{.Config.User}}')"
+          test -n "$user"
+          test "$user" != "0"
+          test "$user" != "root"
+
+  compose-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
