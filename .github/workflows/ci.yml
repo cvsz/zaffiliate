@@ -67,6 +67,56 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  validation-harnesses:
+    needs: [validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Deterministic install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax checks
+        run: npm run check
+      - name: Unit tests
+        run: npm test
+      - name: Start local server
+        run: node apps/api/src/server.js &
+        env:
+          NODE_ENV: test
+          PORT: 8080
+      - name: Wait for health
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/healthz; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not become healthy" >&2
+          exit 1
+      - name: Load test
+        run: node scripts/load-test.mjs --concurrency=2 --durationMs=1000 --target=http://127.0.0.1:8080
+      - name: Soak test
+        run: node scripts/soak-test.mjs --durationMs=2000 --sampleIntervalMs=500 --target=http://127.0.0.1:8080
+      - name: Fault injection
+        run: node scripts/fault-inject.mjs --scenario=all --durationMs=500
+      - name: Backup restore drill
+        run: node scripts/backup-restore-drill.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: harness-evidence-${{ github.sha }}
+          path: |
+            dist/*-evidence.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   postgres-rls:
     runs-on: ubuntu-latest
     timeout-minutes: 10
