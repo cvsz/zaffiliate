@@ -67,6 +67,38 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  postgres-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: zaffiliate_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d zaffiliate_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: zaffiliate_test
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply tenant schema and RLS migration
+        run: psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
+      - name: Create non-superuser application test role
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
+      - name: Execute cross-tenant RLS assertions
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/rls.sql
+
   container:
     runs-on: ubuntu-latest
     timeout-minutes: 15
