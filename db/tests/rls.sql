@@ -6,6 +6,7 @@ INSERT INTO tenants (id, slug, name) VALUES
   ('00000000-0000-0000-0000-000000000001', 'tenant-a', 'Tenant A'),
   ('00000000-0000-0000-0000-000000000002', 'tenant-b', 'Tenant B');
 
+SET LOCAL ROLE zaffiliate_app_test;
 SET LOCAL app.tenant_id = '00000000-0000-0000-0000-000000000001';
 
 INSERT INTO products (tenant_id, id, platform, external_product_id, title, currency)
@@ -44,4 +45,5 @@ BEGIN
   END IF;
 END $$;
 
+RESET ROLE;
 ROLLBACK;
