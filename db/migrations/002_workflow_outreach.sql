@@ -113,7 +113,8 @@ WITH CHECK (
   tenant_id = app_current_tenant_id()
   AND EXISTS (
     SELECT 1 FROM creator_contacts c
-    WHERE c.id = creator_contact_id AND c.tenant_id = app_current_tenant_id()
+    WHERE c.id = outreach_outbox.creator_contact_id
+      AND c.tenant_id = app_current_tenant_id()
   )
 );
 
@@ -129,12 +130,12 @@ WITH CHECK (
   tenant_id = app_current_tenant_id()
   AND EXISTS (
     SELECT 1 FROM jobs j
-    WHERE j.id = job_id
+    WHERE j.id = approvals.job_id
       AND j.tenant_id = app_current_tenant_id()
-      AND j.actor_id = actor_id
-      AND j.action = action
-      AND j.resource_id = resource_id
-      AND j.idempotency_key = idempotency_key
+      AND j.actor_id = approvals.actor_id
+      AND j.action = approvals.action
+      AND j.resource_id = approvals.resource_id
+      AND j.idempotency_key = approvals.idempotency_key
   )
 );
 
