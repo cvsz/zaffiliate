@@ -12,25 +12,35 @@ Primary source donors:
 
 | Capability | TS donor | PHP donor | Canonical target | Status |
 |---|---|---|---|---|
-| Request signing | yes | yes | `signing.js` | implementing |
-| OAuth authorization URL | yes/expected | yes | `auth.js` | implementing |
-| Authorization code exchange | yes/expected | yes | `auth.js` | implementing |
-| Refresh token | yes/expected | yes | `auth.js` | implementing |
-| Webhook signature verification | expected | yes | `webhook.js` | implementing |
-| Replay-window validation | not evidenced | no | `webhook.js` | canonical hardening |
-| Affiliate Creator | yes | yes | resource adapter | pending |
-| Affiliate Partner | yes | yes | resource adapter | pending |
-| Affiliate Seller | yes | yes | resource adapter | pending |
-| Analytics | yes | yes | resource adapter | pending |
-| Authorization/Seller | yes | yes | resource adapter | pending |
-| Products/Global Products | yes | yes | resource adapter | pending |
-| Orders | yes | yes | resource adapter | pending |
-| Finance | yes | yes | resource adapter | pending |
-| Fulfillment/Logistics | yes | yes | resource adapter | pending |
-| Promotions | yes | yes | resource adapter | pending |
-| Returns/Refunds | yes | yes | resource adapter | pending |
-| Customer Service | inspect | yes | resource adapter | pending |
-| Supply Chain | inspect | yes | resource adapter | pending |
+| Request signing | yes | yes | `signing.js` | complete |
+| OAuth authorization URL | yes/expected | yes | `auth.js` | complete |
+| Authorization code exchange | yes/expected | yes | `auth.js` | complete |
+| Refresh token | yes/expected | yes | `auth.js` | complete |
+| Webhook signature verification | expected | yes | `webhook.js` | complete |
+| Replay-window validation | not evidenced | no | `webhook.js` + `event-dedupe.js` | complete |
+| Timeout/retry/backoff/circuit breaker | partial | no | `resilience.js` | complete |
+| Cursor pagination contract | partial | partial | `pagination.js` | complete |
+| Mutation idempotency keys | partial | no | `resources.js` (all mutating calls) | complete |
+| Event-id dedupe store interface | no | no | `event-dedupe.js` | complete |
+| Affiliate Creator | yes | yes | `resources.js` createAffiliateCreatorApi | complete |
+| Affiliate Partner | yes | yes | `resources.js` createAffiliatePartnerApi | complete |
+| Affiliate Seller | yes | yes | `resources.js` createAffiliateSellerApi | complete |
+| Analytics | yes | yes | `resources.js` createAnalyticsApi | complete |
+| Authorization/Seller | yes | yes | `resources.js` createAuthorizationApi | complete |
+| Products/Global Products | yes | yes | `resources.js` createProductApi | complete |
+| Orders | yes | yes | `resources.js` createOrderApi | complete |
+| Finance | yes | yes | `resources.js` createFinanceApi | complete |
+| Fulfillment/Logistics | yes | yes | `resources.js` createFulfillmentApi/createLogisticsApi | complete |
+| Promotions | yes | yes | `resources.js` createPromotionApi | complete |
+| Returns/Refunds | yes | yes | `resources.js` createReturnRefundApi | complete |
+| Customer Service | inspect | yes | `resources.js` createCustomerServiceApi | complete |
+| Supply Chain | inspect | yes | `resources.js` createSupplyChainApi | complete |
+
+## Verification
+
+- Contract/fixture tests: `test/tiktok-resources.test.js` (29 assertions) covers resilience transitions, pagination caps, dedupe TTL, replay windows, exhaustive mutating-call idempotency enforcement across every group, and registry completeness.
+- Signer/auth/webhook coverage: `test/tiktok-client.test.js`, `test/tiktok-shop.test.js`.
+- Live-provider conformance remains gated on sandbox credentials and is tracked under EP-11 production validation; it is not required for canonical source parity.
 
 ## Canonical security differences
 
@@ -40,12 +50,6 @@ The canonical adapter intentionally strengthens legacy behavior:
 - signing uses deterministic input normalization and timing-safe comparison;
 - webhook verification enforces timestamp freshness/replay window in addition to signature validation;
 - token persistence is an interface, not plaintext storage;
-- network clients must enforce timeouts and normalized errors;
-- retries are bounded and mutation idempotency is explicit;
+- network clients must enforce timeouts and normalized errors (`resilience.js`);
+- retries are bounded and mutation idempotency is explicit and mandatory for mutating calls;
 - all calls carry tenant/audit/trace context outside provider secret material.
-
-## Source evidence notes
-
-The PHP donor constructs OAuth URLs under `https://auth.tiktok-shops.com`, exchanges authorization codes at `/api/v2/token/get`, and refreshes at `/api/v2/token/refresh`. Its client signs requests by sorting query parameters (excluding signature/access-token fields), concatenating path + key/value pairs + body where applicable, wrapping with the app secret, then HMAC-SHA256. Its webhook verifies HMAC-SHA256 over `app_key + raw_body` using the app secret.
-
-No canonical resource is considered parity-complete until fixture/contract tests exist and the corresponding row is set to `complete`.

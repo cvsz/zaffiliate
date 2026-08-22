@@ -1,54 +1,71 @@
-const sections = [
-  ['overview','Overview','Operational summary and system readiness'],
-  ['connections','Connections','TikTok, Shopee, Lazada, social and messaging integrations'],
-  ['products','Products & Offers','Catalog, pricing, commissions and true-margin analysis'],
-  ['campaigns','Campaigns','Affiliate campaigns, budgets and lifecycle state'],
-  ['creators','Creators & CRM','Creator discovery, consent, suppression and outreach'],
-  ['links','Affiliate Links','Deep links, sub-ID attribution and link health'],
-  ['content','Content Studio','AI scripts, images, video briefs and provenance'],
-  ['publishing','Publishing','Calendar, approvals and multi-channel delivery'],
-  ['outreach','Outreach','Consent-safe email and DM workflows'],
-  ['workflows','Jobs & Approvals','Durable jobs, mutation approvals and replay protection'],
-  ['analytics','Analytics','Attribution, conversions, commissions and margin'],
-  ['billing','Billing & Usage','Plans, quotas, usage and ledger reconciliation'],
-  ['audit','Audit Log','Tenant/actor/action/resource event history'],
-  ['security','Security & Incidents','Secrets, alerts, incidents and policy status'],
-  ['admin','Admin','Tenant, entitlement and operator controls']
-];
+import { el, sections, views } from './views.js';
 
 const nav = document.querySelector('#nav');
+const hero = document.querySelector('#hero');
 const cards = document.querySelector('#cards');
-for (const [id,label,description] of sections) {
-  const link = document.createElement('a');
-  link.href = `#${id}`;
-  link.textContent = label;
-  if (id === 'overview') link.setAttribute('aria-current','page');
-  nav.append(link);
+const viewRoot = document.querySelector('#view');
+const titleEl = document.querySelector('#title');
+const statusEl = document.querySelector('#status');
+const tenantSelect = document.querySelector('#tenant');
 
-  const card = document.createElement('article');
-  card.className = 'card';
-  const h = document.createElement('h3');
-  h.textContent = label;
-  const p = document.createElement('p');
-  p.textContent = description;
-  const badge = document.createElement('span');
-  badge.className = 'badge';
-  badge.textContent = 'canonical';
-  card.append(h,p,badge);
+for (const [id, label, description] of sections) {
+  const card = el('article', { class: 'card' });
+  card.append(
+    el('h3', { text: label }),
+    el('p', { text: description }),
+    el('span', { class: 'badge', text: views[id] ? 'live surface' : 'canonical' })
+  );
   cards.append(card);
 }
 
-window.addEventListener('hashchange', () => {
+function currentTenant() {
+  return (tenantSelect && tenantSelect.value) || 'tenant-acme';
+}
+
+let renderToken = 0;
+
+async function route() {
   const id = location.hash.slice(1) || 'overview';
-  const selected = sections.find(([sectionId]) => sectionId === id) || sections[0];
-  document.querySelector('#title').textContent = selected[1];
+  const section = sections.find(([candidate]) => candidate === id) || sections[0];
+  titleEl.textContent = section[1];
   for (const link of nav.querySelectorAll('a')) {
-    if (link.getAttribute('href') === `#${selected[0]}`) link.setAttribute('aria-current','page');
+    if (link.getAttribute('href') === `#${section[0]}`) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
-});
+  const token = ++renderToken;
+  const view = views[section[0]];
+  if (!view) {
+    hero.hidden = false;
+    cards.hidden = false;
+    viewRoot.hidden = true;
+    viewRoot.replaceChildren();
+    return;
+  }
+  hero.hidden = true;
+  cards.hidden = true;
+  viewRoot.hidden = false;
+  viewRoot.replaceChildren(el('p', { class: 'note', text: 'Loading…' }));
+  const ctx = {
+    tenant: currentTenant,
+    refresh: () => {
+      if (token === renderToken) void route();
+    }
+  };
+  const body = el('div', { class: 'view-body' });
+  try {
+    await view.render(body, ctx);
+  } catch {
+    body.replaceChildren(el('p', { class: 'error', text: 'This surface failed to load. Retry shortly.' }));
+  }
+  if (token !== renderToken) return;
+  viewRoot.replaceChildren(body);
+}
+
+window.addEventListener('hashchange', route);
+if (tenantSelect) tenantSelect.addEventListener('change', route);
+route();
 
 fetch('/healthz', { credentials: 'same-origin' })
-  .then((response) => response.json().then((body) => ({ ok: response.ok, body })))
-  .then(({ ok }) => { document.querySelector('#status').textContent = `API status: ${ok ? 'healthy' : 'unavailable'}`; })
-  .catch(() => { document.querySelector('#status').textContent = 'API status: unavailable'; });
+  .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+  .then(({ ok }) => { statusEl.textContent = `API status: ${ok ? 'healthy' : 'unavailable'}`; })
+  .catch(() => { statusEl.textContent = 'API status: unavailable'; });

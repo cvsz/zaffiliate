@@ -11,7 +11,24 @@
   <div class="shell">
     <aside class="sidebar" aria-label="Primary navigation">
       <div class="brand">zaffiliate</div>
-      <nav id="nav"></nav>
+      <nav id="nav">
+        <a href="#overview" aria-current="page">Overview</a>
+        <a href="#connections">Connections</a>
+        <a href="#products">Products &amp; Offers</a>
+        <a href="#campaigns">Campaigns</a>
+        <a href="#creators">Creators &amp; CRM</a>
+        <a href="#links">Affiliate Links</a>
+        <a href="#content">Content Studio</a>
+        <a href="#publishing">Publishing</a>
+        <a href="#outreach">Outreach Center</a>
+        <a href="#workflows">Approval Center</a>
+        <a href="#analytics">Attribution Funnel</a>
+        <a href="#commissions">Commissions &amp; Margin</a>
+        <a href="#billing">Billing &amp; Usage</a>
+        <a href="#audit">Audit Log</a>
+        <a href="#security">Security &amp; Incidents</a>
+        <a href="#admin">Operator Console</a>
+      </nav>
     </aside>
     <main class="main">
       <header class="topbar">
@@ -19,15 +36,24 @@
           <p class="eyebrow">Affiliate Commerce Control Plane</p>
           <h1 id="title">Overview</h1>
         </div>
-        <div class="status" id="status">API status: checking</div>
+        <div class="status-group">
+          <label class="tenant-picker" for="tenant">Tenant
+            <select id="tenant">
+              <option value="tenant-acme" selected>tenant-acme</option>
+              <option value="tenant-northwind">tenant-northwind</option>
+            </select>
+          </label>
+          <div class="status" id="status">API status: checking</div>
+        </div>
       </header>
-      <section class="hero">
+      <section class="hero" id="hero">
         <div>
           <h2>One control plane for affiliate operations</h2>
           <p>Marketplace connections, products, campaigns, creators, links, content, publishing, outreach, approvals, analytics, billing, audit and security.</p>
         </div>
       </section>
       <section class="grid" id="cards" aria-live="polite"></section>
+      <section id="view" class="view" hidden></section>
     </main>
   </div>
   <script type="module" src="/app.js"></script>

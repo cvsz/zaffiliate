@@ -19,4 +19,30 @@ h1,h2,p { margin-top:0; }
 .card h3 { margin:0 0 10px; font-size:16px; }
 .card p { color:#9daebb; line-height:1.5; font-size:14px; }
 .badge { display:inline-flex; margin-top:10px; padding:5px 8px; border-radius:999px; background:#172533; color:#bdd0df; font-size:12px; }
+[hidden] { display:none !important; }
+.status-group { display:flex; align-items:center; gap:12px; }
+.tenant-picker { display:flex; align-items:center; gap:8px; font-size:13px; color:#b9c7d4; }
+select { background:#101820; color:#eef3f8; border:1px solid #334455; border-radius:8px; padding:8px 10px; font:inherit; }
+.view, .view-body { display:grid; gap:16px; }
+.panel { padding:18px; border:1px solid #263746; border-radius:16px; background:#101820; }
+.panel h3 { margin:0 0 10px; font-size:16px; }
+dl.kv { display:grid; grid-template-columns:max-content 1fr; gap:6px 18px; margin:0; font-size:14px; }
+dl.kv dt { color:#8fa3b8; }
+dl.kv dd { margin:0; overflow-wrap:anywhere; }
+table.data { width:100%; border-collapse:collapse; background:#101820; border:1px solid #263746; border-radius:12px; overflow:hidden; }
+table.data th, table.data td { text-align:left; padding:10px 12px; border-bottom:1px solid #1c2937; font-size:14px; vertical-align:top; }
+table.data th { color:#8fa3b8; text-transform:uppercase; letter-spacing:.08em; font-size:12px; }
+table.data tr:last-child td { border-bottom:0; }
+.btn { cursor:pointer; border:1px solid #334455; background:#172533; color:#eef3f8; border-radius:8px; padding:6px 12px; font-size:13px; }
+.btn:hover { background:#1f3346; }
+.btn.approve { border-color:#24523c; background:#14261d; }
+.btn.reject { border-color:#5b2733; background:#2a1520; }
+.btn:disabled { opacity:.5; cursor:progress; }
+.badge.ok, .badge.delivered, .badge.approved { background:#14261d; color:#7fe0ae; }
+.badge.denied, .badge.bounced, .badge.rejected, .badge.suppressed { background:#2a1520; color:#ff9aa8; }
+.error { color:#ff9aa8; margin:0; }
+.ok { color:#7fe0ae; margin:0; }
+.note { color:#8fa3b8; font-size:13px; margin:0; }
+.empty { color:#8fa3b8; margin:0; }
+.feed:empty { display:none; }
 @media (max-width:800px) { .shell{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid #24303d}.topbar{align-items:flex-start;flex-direction:column}.main{padding:20px} }

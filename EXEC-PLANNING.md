@@ -16,10 +16,23 @@ A slice is not DONE merely because files exist. DONE means its acceptance criter
 
 ## Current state
 
+Updated 2026-08-22 after the full-slice implementation pass (194 deterministic tests green, `npm run check` clean across 43 modules):
+
 - EP-02 bootstrap baseline: implemented on `main` (workspace, API health/readiness, tests, CI definition, Docker/Compose, Postgres/Redis baseline).
-- EP-03 tenant-isolation/audit contract: merged through PR #1 after successful CI.
-- EP-00 and EP-01 remain hard retirement blockers because trusted-local mirror/bundle/restore and credential-rotation evidence cannot be fabricated by GitHub API mutations.
-- Legacy deletion remains fail-closed.
+- EP-03 tenant-isolation/audit contract: merged through PR #1; hardening delivered — Postgres RLS integration tests in CI (`db/tests/*`), actor role/grant semantics (`packages/contracts/src/grants.js`), append-only hash-chained audit persistence adapter (`packages/contracts/src/audit.js`).
+- EP-04 TikTok Shop parity: canonical resource adapters for all 14 groups, resilience (timeout/retry/breaker), cursor pagination, mandatory mutation idempotency keys, webhook replay guard + event dedupe store; parity matrix rows set to `complete` (`docs/parity/TIKTOK-SHOP-PARITY.md`).
+- EP-05 affiliate lifecycle runtime: tenant-partitioned product -> offer -> link -> click -> conversion -> commission -> margin with immutable minor-unit snapshots, idempotent conversions on orderRef, domain events + transactional outbox, audit sink.
+- EP-05B adapter boundary: Shopee/Lazada signed clients, Facebook/Instagram/YouTube publishing boundary (approval + idempotency + credential-reference enforcement), LINE consent-suppressed messaging, token-bucket rate-limit policy and provider error normalization.
+- EP-06 outreach runtime: contact CRM, consent/suppression, deterministic dedupe, quiet hours, per-channel budgets and hourly guardrails, bounded retry -> DLQ, follow-up scheduler with no_reply condition, delivery/reply/conversion attribution, outbox emission.
+- EP-07 workflow runtime: tool grants/policy engine, atomic claims, replay-proof idempotent enqueue, backoff retries -> dead-letter queue, two-phase running cancellation, bound approvals with TTL fail-closed expiry, stale-running reconciliation once-only, ordered outbox.
+- EP-08 identity/billing runtime: sessions + OIDC-ready external identity links, service identities, SHA-256-hashed action-scoped API keys, plan entitlements with fail-closed quota meters, balanced double-entry ledger + reconciliation, invoices with partial payments, permanent admin-bootstrap lock, privilege-escalation audit log.
+- EP-09 AI content runtime: provider-neutral LLM/image/video/voice interfaces with fallback, prompt template versioning + provenance hashes, spend budgets enforced pre-call, moderation boundary, cache policy, seven canonical agents, publisher human approval gate, seeded bandit experiments.
+- EP-10 control plane web: all core surfaces rendered CSP-first (no inline script/style), hardened static serving (traversal-safe), tenant-header-gated JSON APIs for navigation/audit/billing/workflow/outreach/analytics, approval decision endpoint; zero privileged credentials in browser payloads (reference pointers only).
+- EP-10B analytics runtime: typed funnel ingestion with late/future arrival windows and event-id idempotency, last/first/linear attribution with exact integer credit distribution, dimension performance, cohort funnels, anomaly rules, deterministic JSON/CSV export boundary, commission reconciliation.
+- EP-01 leftovers closed in code: server-side secret-manager contract, deep structured-log redaction (denylist + pattern scrubbing), secret-classification policy matrix, observability plane (structured logs via redactor, metrics/spans/correlation, SLO evaluation) under `packages/security` and `packages/observability`.
+- EP-11B release engineering: semver engine, conventional-commit changelog automation (`scripts/generate-changelog.mjs`, idempotent), deterministic release manifest pipeline retained.
+- EP-00 evidence gates complete 2026-08-22 (ledger/mirror/bundle/restore). Legacy deletion remains fail-closed.
+- Still open and NOT fabricatable locally: legacy credential rotation (EP-01), live-infrastructure load/soak/fault-injection and backup drills against production data (EP-11), maintainer GPG-signed attestations (EP-11B), reversible production cutover (EP-12), final release + legacy retirement (EP-12B/EP-13).
 
 ---
 
