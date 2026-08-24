@@ -28,7 +28,7 @@ jobs:
           push: false
           load: true
       - run: docker inspect --format='{{.Config.User}}' zaffiliate:${{ github.ref_name }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-artifacts
           path: |
