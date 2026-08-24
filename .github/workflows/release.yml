@@ -21,7 +21,7 @@ jobs:
       - run: npm test
       - run: npm run release:manifest
       - run: node scripts/generate-sbom.mjs
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v7
         with:
           context: .
           tags: zaffiliate:${{ github.ref_name }}
