@@ -108,6 +108,14 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### MM-003-lite — Durable analytics_events persistence (live end-to-end) — Status: COMPLETE
+Scope: `packages/db/src/analytics-repo.js` (awaited multi-row parameterized inserts of canonical envelopes w/ lineage+payload folded into dimensions jsonb; app-level dedupe pre-insert; async listRecent mapping); migration `004_canonical_analytics_types.sql` (replaced legacy 6-value CHECK with the canonical 17-type set — real schema drift resolved via the migrator itself).
+LIVE EVIDENCE (Supabase node.b pooler): tenant seeded -> canonical affiliate_click envelope persisted -> readback matched eventId+type. Full chain now durable: ingest -> dedupe -> feature pipeline -> Postgres.
+Tests: `test/analytics-repo.test.js` 4 cases RED->GREEN (parameterized multi-row insert shape, empty-batch no-op, pre-database dedupe, async readback mapping).
+Evidence: full suite 459 tests - 458 pass, 0 fail, 1 gated skip across two consecutive runs; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### MM-006 completion — SigV4 S3 driver + canonical envelope completion + redis streams — Status: COMPLETE
 Scope: `packages/storage/src/s3.js` (zero-dep AWS SigV4: four-stage HMAC schedule, sha256 payload integrity, shared immutable-key validation before network); business-layer error bodies migrated to canonical envelope across all sites; `packages/events/redis-streams.js` XADD publisher w/ memory fallback.
 LIVE EVIDENCE: Supabase Postgres migrations applied idempotently via IPv4 pooler (18 RLS tables); integration suite 7/7 zero-skip. Supabase S3 smoke: signature accepted to resource resolution, write returned 403 provider-permission denial -> recorded fail-closed, no bypass.

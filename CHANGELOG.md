@@ -243,3 +243,13 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 - Supabase Postgres (IPv4 pooler): migrations 001..003 applied idempotently, 18 RLS-enabled tables, integration suite 7/7 zero-skip.
 - Supabase S3 endpoint: SigV4 signature accepted to resource resolution; writes return 403 provider-permission denial — recorded as a credential/policy blocker (fail-closed, no bypass).
+
+### Added (Durable event persistence — MM-003-lite, 2026-08-24)
+
+- `packages/db/src/analytics-repo.js`: awaited multi-row parameterized persistence of canonical event envelopes into live `analytics_events` (lineage+payload preserved in dimensions jsonb), application-level dedupe before any database round-trip, and async readback mapping.
+- Migration `004_canonical_analytics_types.sql`: replaced the legacy 6-value event_type CHECK with the canonical 17-type taxonomy — applied live via the migrator, resolving real schema drift through the intended mechanism.
+
+### Live evidence
+
+- Tenant seeded -> canonical `affiliate_click_recorded` envelope persisted to Supabase Postgres -> readback matched eventId and type.
+- Migrator applied 004 live then proved idempotency (skipped:4 on re-run).

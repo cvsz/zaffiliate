@@ -18,7 +18,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 6 | Provider adapters TikTok/Shopee/Lazada/Meta/YouTube/LINE (§3) | PARTIAL | TikTok full SDK (`packages/tiktok-shop`); Shopee/Lazada signed clients; Meta/YT = publishing boundary only; no catalog/order reads for Meta/YT |
 | 7 | Provider capability states manual/approval-required/unsupported (§1) | COMPLETE (this slice) | `packages/adapters/src/provider-registry.js` + `test/provider-capability.test.js` (10 tests) |
 | 8 | Normalized domain model w/ validation (§3) | COMPLETE (this slice) | `packages/contracts/src/schema.js` + `test/domain-schema.test.js` (14 tests) |
-| 9 | Webhook ingress: signature, replay guard, dedupe (§30) | COMPLETE | ingress live + canonical envelopes; durable webhook_events persistence now unblocked by live-PG migrator evidence |
+| 9 | Webhook ingress + durable events (§30) | COMPLETE | ingress live + canonical envelopes; canonical envelopes durably persisted to live analytics_events (MM-003-lite evidence) |
 
 | 10 | Workflow engine: grants, DLQ, approvals, reconciliation (§18) | COMPLETE | `packages/workflow/*` |
 | 11 | Outreach engine (consent, quiet hours, budgets) (§11) | COMPLETE | `packages/outreach/*` |
@@ -40,7 +40,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 33 | Automation policy plane (AUTO-001/002/003/007) | PARTIAL | packages/automation: policy model, typed decisions, evaluator chain, 6-scope kill switches, dry-run, audited denials — durable workflow state + shadow mode pending (AUTO-005/008) |
 | 17b | Content Factory foundation (AFF-130/140/141/142/154) | COMPLETE | factory.js: persona library, evidence-gated briefs, scored hook engine w/ fail-closed claim rejection, versioned prompt registry, quality gate w/ hard compliance stops — evidence in exec-planning.md |
 | 18 | Experimentation beyond seeded bandits (§17) | PARTIAL | bandit variant selection exists; min-sample winner gating added to contracts schema this slice |
-| 19 | Postgres persistence of runtimes (§21) | PARTIAL | client+migrator PROVEN on live Supabase Postgres (3 migrations applied, idempotent, 18 RLS tables); runtime store wiring remains (MM-003/AFF-013) |
+| 19 | Postgres persistence of runtimes (§21) | PARTIAL | analytics_events durability PROVEN live end-to-end incl. migration 004 schema-drift resolution; remaining: offer/campaign store wiring (AFF-013 remainder) |
 | 20 | Redis durable events (§20) | PARTIAL | in-memory outbox everywhere; compose provides Redis; streams bus not ported |
 | 21 | Object storage / media assets (§9) | MISSING | no storage adapter package |
 | 22 | Control-plane web SPA (§22–23) | PARTIAL | CSP-first surfaces for nav/audit/billing/workflow/outreach/analytics + approval endpoint; creator-studio/AI-studio views absent |
