@@ -3,7 +3,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ -f .env ] && [ -z "${DATABASE_URL:-}" ]; then
+if [ -f .env.pooler ]; then
+  export DATABASE_URL="$(grep -E '^DATABASE_URL=' .env.pooler | cut -d= -f2-)"
+elif [ -f .env ] ; then
   export DATABASE_URL="$(grep -E '^DATABASE_URL=' .env | cut -d= -f2-)"
 fi
 
