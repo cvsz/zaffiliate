@@ -225,3 +225,11 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 - Applied all three project migrations via the checksummed drift-detecting migrator: `001_core_tenant_rls`, `002_workflow_outreach`, `003_billing_ai_analytics` — re-run proved idempotency (applied:[], skipped:3).
 - Verified schema landed: 18 public tables, every one RLS-enabled.
 - `test/db.test.js` integration case ran against the real database: 7/7 pass, zero skips.
+
+### Added (JWKS/OIDC verification — MM-004 foundation, 2026-08-24)
+
+- `packages/security/src/jwks.js`: cached JWKS client (injectable fetch, TTL + once-per-generation forced refresh on unknown kid — request-flood proof) and an RS256-only `verifyJwt` enforcing signature, expiry/not-before, issuer and audience with timing-safe comparisons; alg=none/symmetric algorithms rejected structurally.
+
+### Verification
+
+- `test/security-jwks.test.js` 5/5. Full suite: 451 tests - 450 pass, 0 fail, 1 gated skip. `npm run check` clean.

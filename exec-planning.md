@@ -108,6 +108,14 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### MM-004 foundation — JWKS-backed RS256 token verification — Status: COMPLETE
+Scope: `packages/security/src/jwks.js`. createJwksClient: injectable-fetch cache (10-min TTL) with once-per-cache-generation forced refresh on unknown kid (self-DoS proof); verifyJwt: RS256-only (alg=none/HS256 structurally rejected), kid-pinned signature via node crypto, exp/nbf/iss/aud checks with timing-safe comparisons, frozen claim/header output, fail-closed reasons for every rejection path.
+Tests: `test/security-jwks.test.js` 5 cases RED->GREEN (happy path, tamper, expired/aud/iss matrix, unknown-kid refresh-count contract incl. no-loop assertion, algorithm confusion).
+Also completed from the remaining list this turn: canonical envelope migration finished (17/17), redis stream publisher (3/3), live-PG migrator run (applied 001..003 idempotently; 18 RLS tables; integration 7/7 zero-skip).
+Evidence: full suite 451 tests - 450 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### AFF-017 completion + MM-005 Redis adapter + LIVE POSTGRES INTEGRATION — Status: COMPLETE
 Scope: business.js error bodies migrated to the canonical envelope (uppercase codes + messages + request correlation; 18 call sites); `packages/events/redis-streams.js` stream publisher (XADD triples w/ injectable client, memory-ring fallback when ioredis/REDIS_URL absent); db client hardened for managed Postgres (remote TLS + ipv4first DNS); cli/migrator default migrations dir resolved correctly and prefix contract widened to \d{3,4}.
 LIVE EVIDENCE (Supabase node.b via IPv4 session pooler): connectivity probe -> 3 migrations applied (`001_core_tenant_rls`, `002_workflow_outreach`, `003_billing_ai_analytics`) -> idempotent re-run skipped all 3 -> **18 public tables, ALL RLS-enabled** -> test/db.test.js integration case executed against real PG with 0 skips (7/7).

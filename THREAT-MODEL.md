@@ -37,5 +37,6 @@ provider credentials/tokens, tenant data (contacts, orders, revenue), affiliate 
 2. Runtimes default in-memory → durability gap until MM-003; `packages/db` client+migrator now exist (drift fails closed, credentials never logged) but runtimes are not yet re-pointed.
 3. No storage adapter → no upload path-traversal surface today, but media features stay blocked.
 5. Live provider credentials absent → all live-integration threats currently unexercisable; sandbox mocks only.
-6. Cross-tenant attempts on `/go/:slug` are indistinguishable from unknown slugs by design (anti-enumeration), so they are not separately recorded as security events — residual observability gap accepted deliberately.
+6. JWT/OIDC token verification is now enforced through JWKS (RS256-only, kid-pinned, cached w/ once-per-generation forced refresh — self-DoS proof); alg=none/HS256 rejected structurally.
+7. Cross-tenant attempts on `/go/:slug` are indistinguishable from unknown slugs by design (anti-enumeration), so they are not separately recorded as security events — residual observability gap accepted deliberately.
 7. Rate limiting is in-process; multi-replica deployments will need a shared store (Redis) before horizontal scaling.

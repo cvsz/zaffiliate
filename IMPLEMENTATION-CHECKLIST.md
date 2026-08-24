@@ -29,6 +29,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 16 | Analytics: metrics, SLO, anomaly (§15) | PARTIAL | `packages/analytics` + `/metrics` + SLO eval; warehouse/OLAP separation absent |
 | 17 | Trend & opportunity scoring engine (§4–5) | MISSING | no trend ingestion or opportunity scoring module |
 | 40 | Event bus + storage foundation (MM-005-lite/MM-006/SEC-008-lite) | PARTIAL | tenant-partitioned bus w/ retry+DLQ; media validation + local driver + signed URLs live; Redis streams adapter and S3 driver await running services |
+| 41 | JWKS/OIDC verification (MM-004 foundation) | PARTIAL | RS256/JWKS client + verifier live and tested; browser authorize flow + PKCE endpoints remain |
 | 39 | Intelligence foundation (ML-001..005/020..024/MLOPS-001..007/OPT-001..004) | COMPLETE for INTEL-0..2 scope | full loop live: features -> baseline ranker -> recommendations/predictions -> evaluation/explanation -> decision gate (policy+capability+commercial truth) -> audited outcomes. INTEL-3+ (shadow w/ real paired data, trained models) awaits production data |
 | 38 | CSRF gate on web mutations (SEC-005b/§8) | COMPLETE | x-zaff-csrf + JSON content-type + Origin/host match on /api/workflow/approve, fail-closed 403s w/ regression suite |
 | 37 | Ingress protection (SEC-021/022) | PARTIAL | keyed rate limiter + typed SecurityEvent recorder live on public routes; distributed store (Redis) + remaining event emitters pending |
