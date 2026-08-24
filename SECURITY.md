@@ -65,3 +65,26 @@ GitHub connector file mutations use GitHub API commits and do not expose a commi
 ## Security release gate
 
 Cutover is blocked unless secret incident actions are closed, threat model is reviewed, high/critical findings are zero or explicitly risk-accepted, authorization/tenant isolation tests pass, webhook replay tests pass, SBOM/provenance artifacts exist and rollback credentials/backups are verified.
+
+## Automation safety controls
+
+- Cross-tenant automation is structurally denied: policies are bound to one organization and mismatched tenant context yields DENY with an audited reason.
+- Kill switches operate at global/organization/provider/account/campaign/workflow scope, require a reason, take effect without deployment, and their activation/denials remain fully audited for observability.
+- Hard gates cannot be bypassed by autonomy level: compliance/quality floors, platform allowlists, budget ceilings and risk routing apply identically in autonomous mode; critical-risk actions are never automated.
+- Dry-run mode produces identical decision artifacts flagged as side-effect-free so rollout evidence can be gathered before any real publishing.
+
+## Ingress protection
+
+- Public routes (`GET /go/:slug`, `POST /webhooks/:platform`) pass a keyed token-bucket limiter (`packages/security/src/rate-limit-api.js`) — keys isolate tenants, routes and client addresses so one tenant cannot exhaust another's budget.
+- Throttled responses use the canonical error envelope with HTTP 429 + `Retry-After`.
+- Signature failures and throttling events emit typed SecurityEvents (`packages/security/src/security-events.js`) for the security dashboard/alerting layer.
+
+## CSRF defense
+
+The only browser-mutating surface (`POST /api/workflow/approve`) enforces a layered fail-closed gate:
+
+1. custom `x-zaff-csrf: 1` header required (cross-site forms/images cannot set custom headers; no CORS is configured, so forged cross-origin fetches cannot preflight);
+2. `content-type` must be `application/json`;
+3. when an `Origin` header is present it must match the request host exactly.
+
+Read routes are unaffected. Rejections return 403 `{error:'csrf_check_failed'}` without mutating state. Regression coverage: `test/web-csrf.test.js` (missing header + state-unchanged proof, wrong content-type, cross-origin rejection, same-origin happy path, non-browser API clients without Origin, read-route neutrality).

@@ -188,6 +188,18 @@ export function createAffiliateRuntime({ clock = () => Date.now(), auditSink = n
       throw new Error('destinationUrl must be a valid URL');
     }
     if (parsed.protocol !== HTTPS_PROTOCOL) throw new Error('affiliate link must use HTTPS');
+    let slug = null;
+    if (input.slug != null) {
+      slug = text(input.slug, 'slug').toLowerCase();
+      if (!/^[a-z0-9][a-z0-9-]{0,127}$/.test(slug)) throw new Error('slug must match [a-z0-9][a-z0-9-]{0,127}');
+      for (const existing of scope.links.values()) {
+        if (existing.slug === slug) throw new Error(`slug ${slug} already exists`);
+      }
+    }
+    let expiresAt = null;
+    if (input.expiresAt != null) {
+      expiresAt = requiredTimestamp(input.expiresAt, 'expiresAt');
+    }
     const requested = input.subIds ?? ['subid'];
     let names;
     let provided;
@@ -222,12 +234,50 @@ export function createAffiliateRuntime({ clock = () => Date.now(), auditSink = n
       destinationUrl: parsed.toString(),
       deepLinkUrl: deepLink.toString(),
       subIds: Object.freeze(subIds),
+      slug,
+      expiresAt,
       createdAt: occurredAt
     });
     scope.links.set(linkId, record);
     appendEvent(scope, id, 'link.generated', { linkId, offerId: offer.offerId }, occurredAt);
     audit('link.generated', id, linkId);
     return record;
+  }
+
+  function resolveLinkBySlug(tenantId, slug) {
+    const id = text(tenantId, 'tenantId');
+    const normalized = String(slug ?? '').trim().toLowerCase();
+    if (!normalized) return null;
+    for (const link of partition(id).links.values()) {
+      if (link.slug === normalized) return link;
+    }
+    return null;
+  }
+
+  function resolveLinkById(tenantId, linkId) {
+    const id = text(tenantId, 'tenantId');
+    const normalized = String(linkId ?? '').trim();
+    if (!normalized) return null;
+    const found = partition(id).links.get(normalized);
+    if (found) return found;
+    for (const candidateScope of partitions.values()) {
+      if (candidateScope !== partition(id) && candidateScope.links.has(normalized)) {
+        throw new Error('cross_tenant_access');
+      }
+    }
+    return null;
+  }
+
+  function findLinkBySubId(tenantId, subId) {
+    const id = text(tenantId, 'tenantId');
+    const normalized = String(subId ?? '').trim();
+    if (!normalized) return null;
+    for (const link of partition(id).links.values()) {
+      for (const value of Object.values(link.subIds)) {
+        if (value === normalized) return link;
+      }
+    }
+    return null;
   }
 
   function recordClick(tenantId, input) {
@@ -240,7 +290,14 @@ export function createAffiliateRuntime({ clock = () => Date.now(), auditSink = n
     const touchpoint = Object.freeze({
       source: text(touchpointInput.source, 'source'),
       medium: text(touchpointInput.medium, 'medium'),
-      occurredAt: requiredTimestamp(touchpointInput.occurredAt, 'occurredAt')
+      occurredAt: requiredTimestamp(touchpointInput.occurredAt, 'occurredAt'),
+      ...(touchpointInput.visitorHash == null
+        ? {}
+        : { visitorHash: ((value) => {
+            const normalized = String(value).trim();
+            if (!/^[0-9a-f]{16,128}$/.test(normalized)) throw new Error('visitorHash must be 16-128 hex characters');
+            return normalized;
+          })(touchpointInput.visitorHash) })
     });
     const clickId = mint('clk');
     const occurredAt = nowIso();
@@ -351,6 +408,9 @@ export function createAffiliateRuntime({ clock = () => Date.now(), auditSink = n
     registerProduct,
     publishOffer,
     generateLink,
+    resolveLinkBySlug,
+    resolveLinkById,
+    findLinkBySubId,
     recordClick,
     recordConversion,
     computeMargin,

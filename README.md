@@ -8,16 +8,27 @@ Canonical affiliate-commerce platform consolidating the legacy `cvsz/zaffhub`, `
 
 The current API intentionally exposes only platform health/readiness while the marketplace adapters, persistence layer, durable workflow engine, attribution, billing, content AI, and operator UI are migrated behind evidence-gated slices.
 
-## Quick start
+## Local development (golden path)
 
-Requirements: Node.js 22+ and npm 10+.
+Requirements: Node.js 22+, npm 10+, Docker Engine + compose plugin. Windows: PowerShell 7+ (`pwsh`).
 
 ```bash
-npm ci
-npm run check
-npm test
-DATABASE_URL=postgresql://localhost/db REDIS_URL=redis://localhost:6379 npm start
+cp .env.example .env          # bootstrap.ps1 on Windows; secrets auto-generated if empty
+./scripts/bootstrap.sh        # checks tools, creates env, starts postgres+redis, migrates, prints endpoints
+docker compose up -d          # full stack (API + dependencies)
+./scripts/healthcheck.sh      # liveness/readiness/version evidence
+./scripts/verify.sh           # syntax gate + tests + audit + secret scan (pre-PR gate)
 ```
+
+Other commands:
+
+```bash
+./scripts/migrate.sh          # apply pending migrations (safe to rerun; drift fails closed)
+./scripts/security-check.sh   # audit + secret scan + container-user check
+docker compose down           # stop stack
+```
+
+The API serves `/healthz`, `/readyz`, `/metrics`, and `/api/v1/version` on `$PORT` (default 8080).
 
 Health endpoints:
 

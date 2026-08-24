@@ -1,9 +1,19 @@
 import http from 'node:http';
+import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createLogger, MetricsRegistry, traceContext } from '../../../packages/observability/src/index.js';
 import { getSupabaseStatus, createSupabaseClient } from '../../../packages/supabase/src/index.js';
+import { createAffiliateRuntime } from '../../../packages/affiliate-core/src/runtime.js';
+import { createEventDedupeStore, createWebhookReplayGuard } from '../../../packages/tiktok-shop/src/event-dedupe.js';
+import { createInMemorySecretBackend, createSecretManager } from '../../../packages/security/src/secrets.js';
+import { loadConfig } from '../../../packages/config/src/index.js';
+import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
+import { createSecurityEventRecorder } from '../../../packages/security/src/security-events.js';
+import { resolveRedirect, ingestWebhook } from './business.js';
 
 const port = Number(process.env.PORT || 8080);
 const requiredForReady = ['DATABASE_URL', 'REDIS_URL'];
+const packageManifest = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
 
 export function readiness(env = process.env) {
   const missing = requiredForReady.filter((key) => !String(env[key] || '').trim());
@@ -15,7 +25,23 @@ export function readiness(env = process.env) {
   });
 }
 
-export function buildServer({ env = process.env, logger = createLogger(), metrics = new MetricsRegistry() } = {}) {
+function defaultWebhookSecrets() {
+  return createSecretManager({ backend: createInMemorySecretBackend() });
+}
+
+export function buildServer({
+  env = process.env,
+  logger = createLogger(),
+  metrics = new MetricsRegistry(),
+  runtime = createAffiliateRuntime(),
+  webhookGuard = createWebhookReplayGuard({ dedupeStore: createEventDedupeStore() }),
+  webhookSecrets = defaultWebhookSecrets(),
+  rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
+  securityEvents = null
+} = {}) {
+  const config = loadConfig(env);
+  const visitorSalt = config.visitorSalt || randomBytes(16).toString('hex');
+  const events = securityEvents ?? createSecurityEventRecorder({});
   return http.createServer((req, res) => {
     const startedAt = process.hrtime.bigint();
     const context = traceContext(req.headers);
@@ -40,11 +66,20 @@ export function buildServer({ env = process.env, logger = createLogger(), metric
       });
     };
 
-    const json = (status, route, body) => {
+    const json = (status, route, body, _unused, extraHeaders = {}) => {
       res.setHeader('content-type', 'application/json; charset=utf-8');
+      for (const [key, value] of Object.entries(extraHeaders)) res.setHeader(key, value);
       res.writeHead(status);
       res.end(JSON.stringify(body));
       finish(status, route);
+    };
+
+    const errorEnvelope = (status, route, code, message) => {
+      return json(status, route, { error: { code, message, request_id: context.requestId } });
+    };
+
+    const throttled = (route) => {
+      return json(429, route, { error: { code: 'RATE_LIMITED', message: 'too many requests', request_id: context.requestId } }, undefined, { 'retry-after': '1' });
     };
 
     if (req.method === 'GET' && pathname === '/healthz') {
@@ -68,7 +103,83 @@ export function buildServer({ env = process.env, logger = createLogger(), metric
       return finish(200, '/metrics');
     }
 
-    return json(404, 'not_found', { error: 'not_found' });
+    if (req.method === 'GET' && pathname === '/api/v1/version') {
+      return json(200, '/api/v1/version', {
+        service: 'zaffiliate-api',
+        version: packageManifest.version,
+        appEnv: config.appEnv
+      });
+    }
+
+    const goMatch = req.method === 'GET' ? pathname.match(/^\/go\/([A-Za-z0-9-]{1,128})$/) : null;
+    if (goMatch) {
+      const tenantId = String(req.headers['x-tenant-id'] || '').trim();
+      if (!tenantId) return json(404, '/go/:slug', { error: 'not_found' });
+      const visitorHash = createHash('sha256')
+        .update(`${visitorSalt}:${req.socket.remoteAddress || ''}:${req.headers['user-agent'] || ''}`)
+        .digest('hex')
+        .slice(0, 32);
+      const limitKey = `go:${tenantId}:${req.socket.remoteAddress ?? ''}`;
+      const limit = rateLimiter.tryAcquire(limitKey);
+      if (!limit.allowed) {
+        events.record({ type: 'RATE_LIMITED', severity: 'LOW', resource: limitKey, reason: `redirect burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
+        return throttled('/go/:slug');
+      }
+      const decision = resolveRedirect({ runtime, tenantId, slug: decodeURIComponent(goMatch[1]), now: Date.now(), visitorHash });
+      if (decision.status === 302) {
+        res.setHeader('location', decision.location);
+        res.setHeader('cache-control', 'no-store');
+      }
+      return json(decision.status, '/go/:slug', decision.body ?? { ok: true, clickId: decision.clickId });
+    }
+
+    const webhookMatch = req.method === 'POST' ? pathname.match(/^\/webhooks\/([a-z]+)$/) : null;
+    if (webhookMatch) {
+      const chunks = [];
+      let size = 0;
+      let aborted = false;
+      req.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > 1024 * 1024) {
+          aborted = true;
+          json(413, '/webhooks/:platform', { error: 'payload_too_large' });
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => {
+        if (aborted) return;
+        const rawBody = Buffer.concat(chunks).toString('utf8');
+        const tenantId = String(req.headers['x-tenant-id'] || '').trim();
+        if (!tenantId) return json(404, '/webhooks/:platform', { error: 'not_found' });
+        const limitKey = `webhook:${tenantId}:${webhookMatch[1]}`;
+        const limit = rateLimiter.tryAcquire(limitKey);
+        if (!limit.allowed) {
+          events.record({ type: 'RATE_LIMITED', severity: 'MEDIUM', resource: limitKey, reason: `webhook burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
+          return json(429, '/webhooks/:platform', { error: { code: 'RATE_LIMITED', message: 'too many requests', request_id: context.requestId } }, false, { 'retry-after': String(Math.ceil(limit.retryAfterMs / 1000) || 1) });
+        }
+        const result = ingestWebhook({
+          runtime,
+          guard: webhookGuard,
+          secrets: webhookSecrets,
+          platform: webhookMatch[1],
+          tenantId,
+          rawBody,
+          signature: req.headers['x-zaff-signature'],
+          timestamp: req.headers['x-zaff-timestamp'],
+          eventId: req.headers['x-zaff-event-id'],
+          now: Date.now()
+        });
+        if (result.status === 401) {
+          events.record({ type: 'WEBHOOK_SIGNATURE_FAILURE', severity: 'MEDIUM', resource: `/webhooks/${webhookMatch[1]}`, reason: result.body?.reason ?? 'invalid signature', tenantId });
+        }
+        return json(result.status, '/webhooks/:platform', result.body ?? { error: 'webhook_failed' });
+      });
+      return undefined;
+    }
+
+    return errorEnvelope(404, 'not_found', 'NOT_FOUND', 'not_found');
   });
 }
 

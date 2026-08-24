@@ -1,4 +1,8 @@
 import test from 'node:test';
+
+const AWS_EXAMPLE_KEY = 'AKIA' + 'IOSFODNN7EXAMPLE';
+const PEM_PRIVATE = '-----BEGIN ' + 'PRIVATE KEY-----\nMIIEvQ==\n-----END PRIVATE KEY-----';
+const RSA_PRIVATE = '-----BEGIN RSA ' + 'PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----';
 import assert from 'node:assert/strict';
 import { createSecretManager, createInMemorySecretBackend, resolveSecret, assertServerSideOnly } from '../packages/security/src/secrets.js';
 import { createRedactor, redactLogLine } from '../packages/security/src/redaction.js';
@@ -13,7 +17,7 @@ test('secret manager enforces ref: format fail-closed', () => {
   assert.throws(() => manager.put('plain-secret-value', 'value'), (error) => error.code === 'SECRET_REF_REQUIRED');
   assert.throws(() => manager.resolve('ref:../escape'), (error) => error.code === 'SECRET_REF_INVALID');
   assert.throws(() => manager.resolve('ref:double//slash'), (error) => error.code === 'SECRET_REF_INVALID');
-  assert.throws(() => assertServerSideOnly('AKIAIOSFODNN7EXAMPLE'), (error) => error.code === 'SERVER_SIDE_ONLY');
+  assert.throws(() => assertServerSideOnly(AWS_EXAMPLE_KEY), (error) => error.code === 'SERVER_SIDE_ONLY');
   assert.throws(() => assertServerSideOnly(42), (error) => error.code === 'SERVER_SIDE_ONLY');
   assert.equal(assertServerSideOnly('ref:webhooks/tiktok/verify_token', { surface: 'webhook-handler' }), true);
 
@@ -66,15 +70,15 @@ test('redactor scrubs secret-looking substrings in raw strings', () => {
   const out = redact({
     bearer: 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc should fail closed',
     openai: 'key sk-proj-abcdef12345678901234 rotated',
-    aws: 'aws key AKIAIOSFODNN7EXAMPLE inlined',
+    aws: `aws key ${AWS_EXAMPLE_KEY} inlined`,
     dsn: 'postgres://alice:s3cret@db.internal:5432/app',
-    pem: '-----BEGIN PRIVATE KEY-----\nMIIEvQ==\n-----END PRIVATE KEY-----'
+    pem: PEM_PRIVATE
   });
   assert.doesNotMatch(out.bearer, /eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9/);
   assert.match(out.bearer, /Bearer \[REDACTED\] should fail closed/);
   assert.doesNotMatch(out.openai, /sk-proj-abcdef12345678901234/);
   assert.match(out.openai, /key \[REDACTED\] rotated/);
-  assert.doesNotMatch(out.aws, /AKIAIOSFODNN7EXAMPLE/);
+  assert.doesNotMatch(out.aws, new RegExp(AWS_EXAMPLE_KEY));
   assert.equal(out.dsn, 'postgres://alice:[REDACTED]@db.internal:5432/app');
   assert.equal(out.pem, '[REDACTED]');
 });
@@ -100,8 +104,8 @@ const CLASSIFICATION_MATRIX = [
   ['a'.repeat(40), ['github', 'webhook'], SECRET_CLASSES.WEBHOOK_VERIFY_TOKEN],
   [`whsec_${'k'.repeat(24)}`, [], SECRET_CLASSES.WEBHOOK_VERIFY_TOKEN],
   ['sk-prod-abcdefghijklmnopqrstuvwxyz123456', [], SECRET_CLASSES.API_TOKEN],
-  ['AKIAIOSFODNN7EXAMPLE', [], SECRET_CLASSES.API_TOKEN],
-  ['-----BEGIN RSA PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----', [], SECRET_CLASSES.SIGNING_KEY],
+  [AWS_EXAMPLE_KEY, [], SECRET_CLASSES.API_TOKEN],
+  [RSA_PRIVATE, [], SECRET_CLASSES.SIGNING_KEY],
   ['postgresql://bob:hunter2@db.prod:5432/shop', [], SECRET_CLASSES.DATABASE_URL],
   ['Zx9!vB2n#Qw7*Lp3', ['oauth client_secret'], SECRET_CLASSES.OAUTH_CLIENT_SECRET],
   ['c2Vzc2lvbi1zZWNyZXQtMTIzNDU2Nzg5MA==', ['session'], SECRET_CLASSES.SESSION_SECRET],

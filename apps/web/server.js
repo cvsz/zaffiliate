@@ -11,8 +11,111 @@ const files = new Map([
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/views.js', ['views.js', 'text/javascript; charset=utf-8']],
-  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']]
+  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
+  ['/tokens.css', ['tokens.css', 'text/css; charset=utf-8']]
 ]);
+
+export function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+async function countPublished(dataProviders) {
+  try {
+    if (!dataProviders.publishedContentCount) return 0;
+    const value = Number(await dataProviders.publishedContentCount());
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function buildOverviewPayload({ tenant, dataProviders = {}, approvals = [], now = new Date().toISOString() }) {
+  let summary = null;
+  let degraded = false;
+  try {
+    summary = dataProviders.analyticsSummary ? await dataProviders.analyticsSummary(tenant) : null;
+  } catch {
+    degraded = true;
+  }
+  const safe = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+  let activeSwitches = [];
+  try {
+    activeSwitches = dataProviders.killSwitches ? (await dataProviders.killSwitches(tenant)).filter((entry) => entry.active) : [];
+  } catch {
+    degraded = true;
+  }
+  let expiring = [];
+  try {
+    expiring = dataProviders.expiringPromotions ? await dataProviders.expiringPromotions(tenant) : [];
+  } catch {
+    degraded = true;
+  }
+
+  const pendingApprovals = approvals.filter((record) => record.status === 'pending').length;
+  const criticalFailures = activeSwitches.length + (degraded ? 1 : 0);
+
+  const primary = Object.freeze([
+    { id: 'net_commission', label: 'Net Commission', valueMinorUnits: safe(summary?.netCommissionMinorUnits), currency: summary?.currency ?? 'USD' },
+    { id: 'conversions', label: 'Conversions', value: safe(summary?.conversions) },
+    { id: 'affiliate_clicks', label: 'Affiliate Clicks', value: safe(summary?.clicks) },
+    { id: 'published_content', label: 'Published Content', value: await countPublished(dataProviders) },
+    { id: 'pending_approvals', label: 'Pending Approvals', value: pendingApprovals },
+    { id: 'critical_failures', label: 'Critical Failures', value: criticalFailures }
+  ]);
+
+  const secondary = Object.freeze([
+    { id: 'ctr', label: 'CTR', value: summary ? safe(summary.ctr) : null, format: 'ratio' },
+    { id: 'cvr', label: 'CVR', value: summary ? safe(summary.cvr) : null, format: 'ratio' },
+    { id: 'epc', label: 'EPC', valueMinorUnits: summary ? safe(summary.epcMinorUnits) : null },
+    { id: 'pending_commission', label: 'Pending Commission', valueMinorUnits: safe(summary?.pendingCommissionMinorUnits), currency: summary?.currency ?? 'USD' }
+  ]);
+
+  const actionCenter = [];
+  for (const entry of activeSwitches) {
+    actionCenter.push({
+      id: `kill:${entry.scope}:${entry.id ?? 'global'}`,
+      severity: 'DANGER',
+      impact: `New ${entry.scope}-scoped automation is blocked`,
+      resource: `${entry.scope}:${escapeHtml(entry.id ?? 'global')}`,
+      reason: escapeHtml(entry.reason),
+      recommendedAction: 'Mitigate the incident, then deactivate the switch from Automation > Kill Switches',
+      detectedAt: entry.setAt ?? now
+    });
+  }
+  for (const promotion of expiring) {
+    actionCenter.push({
+      id: `promo:${promotion.promotionId}`,
+      severity: 'WARNING',
+      impact: 'Scheduled content may outlive its promotion window',
+      resource: `promotion:${escapeHtml(promotion.promotionId)}`,
+      reason: `${escapeHtml(promotion.type)} ends at ${promotion.endsAt}`,
+      recommendedAction: 'Refresh creative claims or reschedule inside the validity window',
+      detectedAt: now
+    });
+  }
+  if (degraded) {
+    actionCenter.push({
+      id: 'analytics_source_unavailable',
+      severity: 'CRITICAL',
+      impact: 'Mission Control KPIs are incomplete',
+      resource: 'analytics-store',
+      reason: 'analytics summary provider failed',
+      recommendedAction: 'Check database health; KPI values shown as zero are not confirmed zeros',
+      detectedAt: now
+    });
+  }
+
+  return Object.freeze({
+    tenant,
+    freshness: Object.freeze({ generatedAt: now, degraded }),
+    kpis: Object.freeze({ primary, secondary }),
+    actionCenter: Object.freeze(actionCenter.map((item) => Object.freeze(item)))
+  });
+}
 
 const fixtureStamp = '2026-08-21T06:00:00Z';
 
@@ -111,6 +214,23 @@ function isValidTenant(value) {
 }
 
 async function approveWorkflow(req, res, tenant) {
+  if (req.headers['x-zaff-csrf'] !== '1') {
+    return sendJson(res, 403, { error: 'csrf_check_failed' });
+  }
+  const contentType = String(req.headers['content-type'] ?? '');
+  if (!contentType.toLowerCase().startsWith('application/json')) {
+    return sendJson(res, 403, { error: 'csrf_check_failed' });
+  }
+  const origin = req.headers.origin;
+  if (origin != null) {
+    try {
+      if (new URL(origin).host !== req.headers.host) {
+        return sendJson(res, 403, { error: 'csrf_check_failed' });
+      }
+    } catch {
+      return sendJson(res, 403, { error: 'csrf_check_failed' });
+    }
+  }
   let raw;
   try {
     raw = await readJsonBody(req);
@@ -144,7 +264,7 @@ async function approveWorkflow(req, res, tenant) {
   return sendJson(res, 200, { ok: true, approval: clone(record) });
 }
 
-async function handleApi(req, res, pathname) {
+async function handleApi(req, res, pathname, state = {}) {
   const headOnly = req.method === 'HEAD';
   const tenantHeader = req.headers['x-tenant-id'];
   if (!isValidTenant(tenantHeader)) {
@@ -153,6 +273,8 @@ async function handleApi(req, res, pathname) {
   const tenant = String(tenantHeader).trim();
   if (req.method === 'GET' || headOnly) {
     switch (pathname) {
+      case '/api/ui/overview':
+        return sendJson(res, 200, await buildOverviewPayload({ tenant, dataProviders: state.dataProviders, approvals: approvalRecords }), headOnly);
       case '/api/navigation':
         return sendJson(res, 200, { ...controlPlaneManifest(), tenant }, headOnly);
       case '/api/audit':
@@ -207,7 +329,8 @@ async function handleStatic(req, res, pathname) {
   }
 }
 
-export function buildWebServer() {
+export function buildWebServer({ dataProviders = {} } = {}) {
+  const state = { dataProviders };
   return http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     let pathname;
@@ -221,7 +344,7 @@ export function buildWebServer() {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
         return res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ok: true, service: 'zaffiliate-web' }));
       }
-      if (pathname.startsWith('/api/')) return await handleApi(req, res, pathname);
+      if (pathname.startsWith('/api/')) return await handleApi(req, res, pathname, state);
       return await handleStatic(req, res, pathname);
     } catch {
       return sendJson(res, 500, { error: 'internal_error' });

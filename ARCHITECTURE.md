@@ -82,3 +82,34 @@ Start with a modular monolith plus independent workers unless load/evidence requ
 ## Compatibility
 
 Public contracts are versioned. TikTok SDK behavior is validated against both TypeScript and PHP legacy expectations. Deprecated endpoints require a migration window and telemetry proving clients have moved before removal.
+
+## Automation control plane (AUTO-001..003/007, 2026-08-24)
+
+`packages/automation` is the policy layer every autonomous action must pass through before execution:
+
+```text
+Proposed action
+  → tenant match (cross-tenant = DENY)
+  → kill switches (global/org/provider/account/campaign/workflow)
+  → risk routing (critical=DENY, high=specialist approval)
+  → platform allowlist
+  → quality/compliance score floors
+  → frequency caps (DEFER to next window)
+  → AI budgets (daily=DENY, campaign=approval)
+  → automation mode (manual/draft_only/approval_required/auto_safe/autonomous)
+  → typed AutomationDecision {ALLOW|APPROVAL_REQUIRED|MANUAL_REQUIRED|DENY|DEFER, reason, checks[], policyVersion}
+```
+
+Every evaluation appends a hash-chain-compatible audit event (`automation.decision`) including denials. `dryRun` computes real decisions while marking zero side effects; shadow mode and durable workflow-state persistence are the next slices (AUTO-005/008). Mode semantics: draft-only never publishes; auto-safe publishes only pre-approved content classes; autonomous requires the `allowAutoPublish` flag on top of all hard gates.
+
+## Measurement layer (DATA-001/002/003, 2026-08-24)
+
+`packages/analytics/src/events.js` is the canonical ingestion boundary: 17-type versioned event taxonomy, mandatory source classification (first-party / provider-reported / modeled… never merged invisibly), frozen lineage ids on every envelope, and deterministic deduplication (`provider + external_event_id`, payload-fingerprint fallback) so duplicate webhooks can never double-count conversions or commissions. Raw events are immutable and tenant-partitioned; semantic metrics (`summarize`) are derived only from accepted events, with pending commission excluded from net revenue. Metric definitions live in `docs/ANALYTICS.md`.
+
+## Commerce intelligence (COM-001..006, 2026-08-24)
+
+`packages/affiliate-core/src/commerce.js`: Product (stable) vs Offer (provider commercial state) separation; append-only PriceSnapshots; typed Promotions with clock-resolved lifecycle (UPCOMING/ACTIVE/EXPIRING/EXPIRED, UNKNOWN never active); inventory normalization with UNKNOWN never purchasable; configurable per-claim freshness thresholds; pre-publish `revalidateCommercialClaim` returning ALLOW or fail-closed BLOCK (`stale_price`, `stale_evidence`, `promotion_expired`) with regeneration actions. Details and metric formulas: docs/AFFILIATE-COMMERCE.md.
+
+## Mission Control UI foundation (UI-001..005, UI-020..022, 2026-08-24)
+
+Control plane web gains a semantic design-token layer (`apps/web/public/tokens.css`: severity INFO/SUCCESS/WARNING/DANGER/CRITICAL as color+text-label pairs — never color-only — plus surface/foreground/muted/primary themes with light/dark overrides, spacing/radius/typography/z-index scales, reduced-motion support) and a real API-backed Mission Control: `GET /api/ui/overview` (tenant-gated like every control-plane route) returns six primary KPIs (net commission, conversions, affiliate clicks, published content, pending approvals, critical failures), secondary signals (CTR/CVR/EPC/pending commission), and a Critical Action Center derived from injected live stores — active kill switches (DANGER), expiring promotions (WARNING), provider degradation (CRITICAL). Zero-state and degraded states are explicit: when a source fails, KPIs render zero but are labeled 'not confirmed zeros' so stale data never masquerades as real-time. Provider-controlled strings are HTML-escaped server-side (`escapeHtml`) before reaching any render path.

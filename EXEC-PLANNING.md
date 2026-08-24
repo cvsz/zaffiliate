@@ -476,3 +476,52 @@ Stop cutover/retirement on any of:
 # Completion definition
 
 The project is COMPLETE only when EP-00 through EP-13 are evidence-complete, `zaffiliate` is the sole production runtime, final release gates are green, backups/restores are verified, and legacy repositories have completed the approved retirement procedure. Documentation alone is never sufficient evidence of completion.
+
+# Master-meta alignment pass (2026-08-23)
+
+## MM-001 — Provider capability states + normalized domain contracts
+
+- ID: MM-001
+- Priority: P0
+- Status: COMPLETE (evidence below)
+- Dependencies: none
+- Scope: `packages/adapters/src/provider-registry.js` (capability availability states: available / approval_required / manual / unsupported / temporarily_disabled; fail-closed defaults; approval-id gate for mutating ops); `packages/contracts/src/schema.js` (normalized domain model + zero-dep validator); master-meta required docs (THREAT-MODEL, COMPLIANCE, IMPLEMENTATION-CHECKLIST, CHANGELOG, PRIVACY, CONTRIBUTING, docs/PROVIDER-CAPABILITY-MATRIX).
+- Non-goals: live provider calls, persistence rewiring, OAuth browser flow, redirect endpoint.
+- Acceptance criteria: capability decisions enumerable per provider for dashboards; mutating ops blocked without approval id; manual ops never automatable; unknown capabilities unsupported; domain entities validate with explicit issue paths.
+- Tests: `test/provider-capability.test.js` (10), `test/domain-schema.test.js` (14) — RED then GREEN.
+- Security requirements: fail-closed semantics; secrets remain server-only at construction; no browser automation path expressible.
+- Documentation changes: files listed above; `npm run check` extended.
+- Evidence: `npm test` 257/257 pass; `npm run check` clean. Also fixed pre-existing time-bomb in `test/identity-billing.test.js` (expiry assertions now pin clock).
+
+## MM-002 (next) — Public link redirect + webhook ingress routes
+
+- ID: MM-002 · Priority: P1 · Status: TODO · Dependencies: MM-001 (contracts)
+- Scope: expose `/go/:slug` redirect with attribution event + HTTPS/open-redirect guards, and multi-platform webhook ingest endpoint reusing tiktok-shop replay/dedupe machinery, both backed by existing affiliate-core runtime and audit chain.
+- Non-goals: Postgres rewiring, new adapters.
+- Acceptance criteria: e2e tests prove click recorded → redirect issued → webhook deduped → conversion idempotent; cross-tenant slugs denied; non-HTTPS targets rejected.
+
+## Backlog (priority order)
+
+MM-003 runtimes→Postgres behind dev/prod toggle · MM-004 OAuth/OIDC browser flow + account recovery · MM-005 Redis streams bus w/ graceful degradation · MM-006 storage adapter package · MM-007 versioned provider policy registry (restrictions/disclosures/rate limits/last_verified_at) · MM-008 creator-studio surfaces on control plane · MM-009 trend/opportunity scoring engine · MM-010 k8s/helm packaging.
+
+## MM-002 — Public link redirect + webhook ingress
+
+- ID: MM-002
+- Title: `/go/:slug` attribution redirect and multi-platform signed webhook ingest
+- Priority: P1
+- Status: COMPLETE (evidence below)
+- Dependencies: MM-001 (contracts), affiliate-core runtime
+- Scope: `apps/api/src/business.js` (pure decision layer: `resolveRedirect`, `ingestWebhook`); server wiring in `apps/api/src/server.js` (`GET /go/:slug`, `POST /webhooks/:platform`); additive runtime extensions in `packages/affiliate-core/src/runtime.js` (link `slug`+`expiresAt`, `resolveLinkBySlug`/`resolveLinkById`/`findLinkBySubId`, optional hashed `visitorHash` on click touchpoints).
+- Non-goals: persistence rewiring, new adapters, OAuth, storage.
+- Acceptance criteria: slug redirect issues 302 to HTTPS deep link after recording an attribution event; unknown and foreign-tenant slugs indistinguishable 404; expired links 410; corrupted destinations fail closed; webhooks require valid HMAC (canonical TikTok scheme for tiktok) before any state change; replay guard dedupes within window and rejects stale timestamps; conversions idempotent by orderRef.
+- Tests: `test/api-business-routes.test.js` (13, RED→GREEN).
+- Security requirements: tenant header gate on both routes (fail-closed 404); timing-safe signature compare; secrets only via `ref:` manager; 1 MiB body cap; no payload-controlled redirects (stored, re-validated HTTPS targets only); privacy-conscious visitor hash (salted SHA-256 of ip+ua, never raw).
+- Documentation changes: CHANGELOG, IMPLEMENTATION-CHECKLIST, THREAT-MODEL residual update.
+- Evidence: `npm test` 270/270 pass; `npm run check` clean including new modules.
+
+## MM-003 (next) — Runtimes → Postgres behind dev/prod toggle
+
+- ID: MM-003 · Priority: P0 · Status: TODO · Dependencies: MM-001/MM-002 contracts stable
+- Scope: port zaff db client/migrator pattern as JS `packages/db`; apply existing `db/migrations/*.sql`; inject repo-backed stores into affiliate-core/workflow/outreach behind a persistence toggle (in-memory default for dev/tests).
+- Non-goals: Redis streams bus (MM-005), OAuth (MM-004).
+- Acceptance criteria: integration tests run against Postgres when DATABASE_URL is reachable and skip cleanly otherwise; runtime API unchanged for consumers; RLS tests stay green.

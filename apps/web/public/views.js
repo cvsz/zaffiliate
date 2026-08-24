@@ -262,3 +262,77 @@ export const views = {
   audit: { title: 'Audit Log', render: renderAudit },
   admin: { title: 'Operator Console', render: renderAdmin }
 };
+
+export async function renderMissionControl(root, ctx) {
+  root.replaceChildren(el('p', { class: 'note', text: 'Loading mission control…' }));
+  let payload;
+  try {
+    const response = await fetch('/api/ui/overview', { headers: { 'x-tenant-id': ctx.tenant() } });
+    if (!response.ok) throw new Error(`overview_${response.status}`);
+    payload = await response.json();
+  } catch {
+    const failure = el('div', { class: 'mc mc__empty' });
+    failure.append(
+      el('strong', { text: 'Mission Control could not load.' }),
+      el('p', { text: 'Impact: KPIs and action items are unavailable. Retry is safe. If this persists, check API health at /healthz.' })
+    );
+    root.replaceChildren(failure);
+    return;
+  }
+
+  const wrap = el('div', { class: 'mc' });
+  const kpiTitle = el('h3', { class: 'mc__section-title', text: 'Primary KPIs' });
+  const strip = el('div', { class: 'kpi-strip' });
+  for (const kpi of payload.kpis.primary) {
+    strip.append(kpiCard(kpi, 'primary'));
+  }
+  const secondaryStrip = el('div', { class: 'kpi-strip' });
+  for (const kpi of payload.kpis.secondary) {
+    if (kpi.value == null && kpi.valueMinorUnits == null) continue;
+    secondaryStrip.append(kpiCard({ ...kpi }, 'secondary'));
+  }
+
+  const actionTitle = el('h3', { class: 'mc__section-title', text: 'Critical Action Center' });
+  const actionWrap = el('div', { class: 'action-center' });
+  if (payload.actionCenter.length === 0) {
+    actionWrap.append(el('div', {
+      class: 'mc__empty',
+      text: 'No critical actions. This center surfaces publishing failures, provider outages, expiring promotions, stale commercial claims, pending approvals and kill switches the moment they need a human.'
+    }));
+  } else {
+    for (const item of payload.actionCenter) actionWrap.append(actionItem(item));
+  }
+
+  const stamp = el('p', { class: 'note', text: `Updated ${payload.freshness.generatedAt}${payload.freshness.degraded ? ' · DEGRADED SOURCES — zero values are not confirmed zeros' : ''}` });
+
+  wrap.append(kpiTitle, strip, el('h3', { class: 'mc__section-title', text: 'Secondary signals' }), secondaryStrip, actionTitle, actionWrap, stamp);
+  root.replaceChildren(wrap);
+}
+
+function kpiCard(kpi, tier) {
+  const value = kpi.valueMinorUnits != null
+    ? `${kpi.valueMinorUnits.toLocaleString()} ${kpi.currency ?? ''}`.trim()
+    : kpi.format === 'ratio'
+      ? `${(100 * Number(kpi.value ?? 0)).toFixed(1)}%`
+      : String(kpi.value ?? 0);
+  return el('article', { class: `kpi kpi--${tier}` },
+    [el('span', { class: 'kpi__label', text: kpi.label }), el('span', { class: 'kpi__value', text: value })]);
+}
+
+function actionItem(item) {
+  const badge = el('span', { class: 'badge badge--severity', text: item.severity });
+  badge.dataset.severity = item.severity;
+  const row = el('article', { class: 'action-item' });
+  row.dataset.severity = item.severity;
+  row.append(
+    badge,
+    el('div', {}, [
+      el('strong', { text: item.resource }),
+      el('p', { text: `${item.reason} — ${item.impact}` }),
+      el('p', { text: `Next: ${item.recommendedAction} · detected ${item.detectedAt}` })
+    ])
+  );
+  return row;
+}
+
+views.overview = { render: renderMissionControl };

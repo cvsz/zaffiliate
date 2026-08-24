@@ -218,7 +218,7 @@ test('each fixture GET endpoint returns its expected shape', async () => {
 test('approve happy path mutates fixture state and later GETs reflect the decision', async () => {
   await withServer(async (base) => {
     const tenant = 'tenant-northwind';
-    const jsonHeaders = { 'x-tenant-id': tenant, 'content-type': 'application/json' };
+    const jsonHeaders = { 'x-tenant-id': tenant, 'x-zaff-csrf': '1', 'content-type': 'application/json' };
 
     const before = await (await fetch(`${base}/api/workflow/pending-approvals`, { headers: { 'x-tenant-id': tenant } })).json();
     assert.ok(before.approvals.some((approval) => approval.id === 'apr-1002'));
@@ -261,7 +261,7 @@ test('approve happy path mutates fixture state and later GETs reflect the decisi
 
 test('approve decisions fail closed: invalid bodies 400, unknown id 404, state untouched', async () => {
   await withServer(async (base) => {
-    const headers = { 'x-tenant-id': 'tenant-acme', 'content-type': 'application/json' };
+    const headers = { 'x-tenant-id': 'tenant-acme', 'x-zaff-csrf': '1', 'content-type': 'application/json' };
     const pendingBefore = await (await fetch(`${base}/api/workflow/pending-approvals`, { headers: { 'x-tenant-id': 'tenant-acme' } })).json();
     const invalidBodies = [
       { approvalId: 'apr-1001', decision: 'maybe' },
