@@ -117,3 +117,8 @@ Control plane web gains a semantic design-token layer (`apps/web/public/tokens.c
 ## Intelligence layer (ML-001/002/004/020, INTEL-0, 2026-08-24)
 
 `packages/intelligence`: versioned feature registry (name@version identity, typed values, per-definition freshness windows resolving FRESH/AGING/STALE/UNKNOWN at read time — stale values withheld, never silently used), tenant-partitioned feature store, and the baseline opportunity ranker `baseline-rules-v1`: pure rules over verified metrics (observed CVR, verified discount ratio, refund risk, expected net commission per conversion) with confidence tiers from sample size, hard inventory safety (OUT_OF_STOCK/UNKNOWN -> score 0), promotion-expiry penalties with claim-removal reasons, and mandatory human-readable explanations citing real numbers. Details: docs/INTELLIGENCE.md.
+
+## Event bus & storage foundation (MM-005/MM-006/SEC-008-lite, 2026-08-24)
+
+- `packages/events` — tenant-partitioned domain event bus: per-handler bounded retry then dead-letter capture; a failing handler never blocks sibling handlers or other tenants.
+- `packages/storage` — media-intake contract (`validateMediaUpload`: MIME allowlist, size caps, path-traversal-proof generated object keys under `tenants/<org>/<yyyy>/<mm>/`), local filesystem driver over validated immutable keys, and HMAC-signed expiring object URLs with tamper detection. S3-compatible driver implements the same interface when object storage lands.

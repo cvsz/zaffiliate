@@ -203,3 +203,12 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 ### Verification
 
 - `test/decision-gate.test.js` 8/8 (incl. stale-price DENY despite high ranker confidence, kill-switch precedence, cross-tenant denial, expired-promotion denial, audit capture). Full suite: 437 tests - 436 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Platform foundation — MM-005-lite/MM-006/SEC-008-lite, 2026-08-24)
+
+- `packages/events`: tenant-partitioned domain event bus with per-handler bounded retry, dead-letter capture, and cross-tenant delivery isolation.
+- `packages/storage`: media-upload validation (MIME allowlist, size caps, traversal-proof generated keys), local filesystem driver, HMAC-signed expiring object URLs with tamper verification.
+
+### Verification
+
+- `test/platform-foundation.test.js` 5/5. Full suite: 442 tests - 441 pass, 0 fail, 1 gated skip. `npm run check` clean.
