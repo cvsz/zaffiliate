@@ -6,7 +6,8 @@ const sourceLedger = JSON.parse(await readFile(new URL('../docs/migration/SOURCE
 const version = process.env.RELEASE_VERSION || pkg.version;
 const commitSha = process.env.GITHUB_SHA || process.env.COMMIT_SHA || 'local-uncommitted';
 const createdAt = process.env.RELEASE_CREATED_AT || new Date().toISOString();
-const sourceSnapshots = sourceLedger.sources.map((source) => ({ repo: source.repo, sha: source.snapshot_sha }));
+const sourceRecords = sourceLedger.sources ?? sourceLedger.records ?? [];
+const sourceSnapshots = sourceRecords.map((source) => ({ repo: source.repo ?? source.source_repo, sha: source.snapshot_sha ?? source.blob_sha }));
 const manifest = createReleaseManifest({
   version,
   commitSha,
