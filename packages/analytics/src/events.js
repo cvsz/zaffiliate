@@ -203,9 +203,53 @@ export function createEventStore() {
     });
   }
 
+  function summarizeByProduct(organizationId) {
+    const scope = partition(organizationId);
+    const byProduct = new Map();
+    function bucket(productId) {
+      const key = String(productId ?? '').trim() || '_unattributed';
+      let entry = byProduct.get(key);
+      if (!entry) {
+        entry = { impressions: 0, clicks: 0, conversions: 0, grossCommissionMinorUnits: 0, refundMinorUnits: 0 };
+        byProduct.set(key, entry);
+      }
+      return entry;
+    }
+    for (const event of scope.events) {
+      const productId = event.lineage?.product_id;
+      switch (event.eventType) {
+        case 'impression_recorded':
+          bucket(productId).impressions += 1;
+          break;
+        case 'affiliate_click_recorded':
+          bucket(productId).clicks += 1;
+          break;
+        case 'commission_reported': {
+          const amount = Number(event.payload?.amountMinorUnits ?? 0);
+          if (!Number.isFinite(amount)) break;
+          const entry = bucket(productId);
+          if (String(event.payload?.status ?? '').toLowerCase() === 'pending') break;
+          entry.conversions += 1;
+          entry.grossCommissionMinorUnits += amount;
+          break;
+        }
+        case 'refund_reported':
+          bucket(productId).refundMinorUnits += Number(event.payload?.amountMinorUnits ?? 0);
+          break;
+        default:
+          break;
+      }
+    }
+    for (const [, entry] of byProduct) {
+      entry.netCommissionMinorUnits = Math.max(0, entry.grossCommissionMinorUnits - entry.refundMinorUnits);
+      Object.freeze(entry);
+    }
+    return byProduct;
+  }
+
   function rawEvents(organizationId) {
     return Object.freeze([...partition(organizationId).events]);
   }
 
-  return Object.freeze({ ingest, size, summarize, rawEvents });
+  return Object.freeze({ ingest, size, summarize, summarizeByProduct, rawEvents });
 }

@@ -108,6 +108,69 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### OPT-004 — Autonomous decision gate wiring — Status: COMPLETE
+Scope: `packages/intelligence/src/decision-gate.js`. Composes commerce revalidation (BLOCK or ERROR -> DENY w/ blockers; tenant-ambiguous offers fail closed) with the automation policy evaluator (tenant/kill-switch/risk/platform/scores/frequency/budget/mode), emitting combined ALLOW/APPROVAL_REQUIRED/DENY verdicts + audited intelligence.gate_decision events.
+Tests: `test/decision-gate.test.js` 8 cases RED->GREEN (full ALLOW path w/ revalidation evidence; stale-price DENY regardless of ranker confidence; global kill switch precedence; APPROVAL_REQUIRED passthrough preserving evidence; cross-tenant denial; capability-platform denial; expired-promotion denial; audit-sink capture).
+Evidence: full suite 437 tests - 436 pass, 0 fail, 1 gated skip; `npm run check` clean. OPT backlog complete: intelligence outputs are now structurally incapable of acting outside the policy plane.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### OPT-002/OPT-003 — Experiment recommendation + exploration policy — Status: COMPLETE
+Scope: `packages/intelligence/src/optimization.js`. recommendExperiments (LOW-confidence -> CREATE_EXPERIMENT w/ control+challenger variants, hypothesis, 30-sample statistical floor, promotion-window-bounded expiry; settled HIGH-confidence winners excluded); createExplorationPolicy (validated configurable exploreRatio, deterministic slot allocation filling explore slots from TEST-class first, frozen org-provenance outputs).
+Tests: `test/intelligence-optimization.test.js` 8 cases RED->GREEN.
+Evidence: full suite 429 tests - 428 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### MLOPS-007/OPT-001 — Audited rollback + portfolio classification — Status: COMPLETE
+Scope: registry rollbackModel (audited model.rollback events w/ actor+reason+previousVersion; refuses ghost targets and no-op rollbacks); `packages/intelligence/src/portfolio.js` classifyPortfolio (deterministic PAUSE/WATCH/TEST/SCALE/MAINTAIN rules over ranker output + drift signals, frozen reasons-carrying entries).
+Tests: `test/intelligence-portfolio.test.js` 6 cases RED->GREEN.
+Evidence: full suite 421 tests - 420 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### MLOPS-005/MLOPS-006 — Model monitoring + drift detection — Status: COMPLETE
+Scope: `packages/intelligence/src/drift.js` (baseline-registered numeric feature drift: relative mean shift, configurable WARN/ALERT ratios, min-sample floor returning INSUFFICIENT_DATA, fail-closed unknown features, frozen reports); `packages/intelligence/src/monitoring.js` (ModelMonitor over the existing MetricsRegistry: model_predictions_total/_errors/_latency, feature_stale_total, feature_missing_total).
+Tests: `test/mlops-monitoring.test.js` 8 cases RED->GREEN (no-drift identity, ALERT/WARN bands, insufficient-evidence refusal, unknown-feature fail-closed, frozen reports, counter semantics w/ conventional _total-includes-errors alignment, stale/missing separation, tenant-free unit surface).
+Evidence: full suite 415 tests - 414 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### MLOPS-001/MLOPS-004 — Model registry + shadow comparison — Status: COMPLETE
+Scope: `packages/intelligence/src/registry.js` (ModelRegistry: frozen reproducibility metadata, CANDIDATE->VALIDATING->SHADOW->PRODUCTION lifecycle w/ REJECTED terminal + RETIRED preservation, single-production-per-name w/ challenger demotion, approver-required promotion, instant rollback from RETIRED, fail-closed illegal transitions incl. explicit terminal-status messaging); `packages/intelligence/src/shadow.js` (tenant-scoped champion/challenger pairs, agreement rate + mean absolute delta, nulls for empty windows).
+Tests: `test/mlops.test.js` 8 cases RED->GREEN (candidate-jump denial, full-path+approver requirement, champion retirement + rollback, rejection terminality, unknown-model fail-closed, pair recording/agreement/MAE, empty-window nulls, tenant scoping).
+Evidence: full suite 407 tests - 406 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### ML-021/ML-024 — Ranking evaluation framework + explanation layer — Status: COMPLETE
+Scope: `packages/intelligence/src/evaluation.js`. evaluateRanking: strict-window top-K hit rate (K=|knownGood| default, clamped; verifiably-bad product in window zeroes credit; unobservable windows score 0), Pearson score-vs-outcome correlation w/ null below 2 paired samples, frozen report. explainRecommendation: structured operator artifact (summary text citing ranker reasons verbatim, confidence, modelVersion, per-feature freshness map, executable flag w/ fail-closed EXPIRED labeling).
+Tests: `test/intelligence-evaluation.test.js` 8 cases RED->GREEN (perfect/inverted rankings, monotonic correlation ~1, null-correlation honesty, k clamping, no-outcome zero rule, explanation structure/freshness/expiry).
+Evidence: full suite 399 tests - 398 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### ML-003/ML-004-wiring/ML-023 — Feature computation + recommendation service — Status: COMPLETE
+Scope: `packages/intelligence/src/pipeline.js` (computeOfferFeatures, createRecommendationService); additive `summarizeByProduct` in analytics events store; `list()` on recommendation store. Offer features (discount ratio / inventory / effective price) computed from verified commerce records with computedAt=offer.verifiedAt so stale evidence yields STALE features naturally via the existing freshness gate; per-product engagement features (clicks/CVR/net commission 7d) derived from the deduplicated event stream's lineage; rankAndRecord runs baseline-rules-v1 then persists every entry as a Recommendation and the top candidate as a Prediction — full audit trail through the ML-022 stores.
+Tests: `test/intelligence-pipeline.test.js` 5 cases RED->GREEN (typed feature computation from snapshots, stale-evidence->STALE regression, dedup-stream engagement features, auditable rank-and-record w/ top prediction, end-to-end tenant isolation).
+Evidence: full suite 391 tests - 390 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### ML-005/ML-022 — Dataset versioning + prediction/recommendation stores — Status: COMPLETE
+Scope: `packages/intelligence/src/stores.js`. TrainingDatasetStore (immutable reproducibility metadata: labels, validated time range, row count, feature-set versions); PredictionStore (model@version + featuresVersion + confidence tiers + future-only validUntil; latest() excludes expired while history() stays fully queryable); RecommendationStore (ACTIVE lifecycle with single-shot feedback ACCEPTED/REJECTED/MODIFIED/IGNORED; fail-closed coercion of late ACCEPTED to EXPIRED; terminal-state immutability).
+Tests: `test/intelligence-stores.test.js` 7 cases RED->GREEN incl. immutability, range inversion rejection, expiry-vs-history separation, expired-accept coercion, cross-tenant isolation across all three stores.
+Evidence: full suite 386 tests - 385 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
+### ML-001/002/004/020 — Feature platform foundation + baseline ranker — Status: COMPLETE
+Scope: `packages/intelligence/src/index.js`. Versioned immutable FeatureDefinition registry (8 entity types, 3 value types, name@version identity w/ duplicate-first validation); tenant-partitioned FeatureStore with type-enforced writes; freshness resolution FRESH/AGING/STALE/UNKNOWN against configurable windows (stale values withheld + retained separately); baseline-rules-v1 opportunity ranker: expected-net-per-conversion x observed-cvr x discount boost x sample-size confidence weight x promotion factor, hard zero for OUT_OF_STOCK/UNKNOWN inventory, expired-promotion penalty demanding urgency-claim removal, explainable reasons citing actual figures, expiry bounded by promotion window.
+Tests: `test/intelligence-features.test.js` 10 cases RED->GREEN (registry immutability/duplicates/malformed shapes, type enforcement, freshness transitions via injected clock, UNKNOWN semantics, cross-tenant isolation, deterministic evidence-backed ordering, inventory sink rules, expired-promotion flagging, tenant scoping).
+Evidence: full suite 379 tests - 378 pass, 0 fail, 1 gated skip; `npm run check` clean. Also this turn: GPG-signed commit 152b6bf pushed to origin/main (signature verified Good).
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### SEC-005b (CSRF, master-spec §8) — Web mutation gate — Status: COMPLETE
 Scope: `apps/web/server.js approveWorkflow` now enforces, in order: custom `x-zaff-csrf: 1` header -> `application/json` content-type -> Origin/host equality when Origin is present. Any failure: 403 csrf_check_failed with zero state mutation. Read routes untouched.
 Tests: `test/web-csrf.test.js` 6 cases RED->GREEN (blocked attempt leaves approval pending; wrong content-type; evil-origin rejection; same-origin happy path; headerless non-browser clients allowed; GET neutrality). Legacy approval fixtures updated to carry the header deliberately — they test approval semantics, not the bypass.

@@ -122,3 +122,84 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 ### Verification
 
 - New `test/web-csrf.test.js` (6 cases incl. blocked-attempt-leaves-state-unchanged) plus legacy approval fixtures updated to authenticate properly. All web suites 22/22; full suite 369 tests - 368 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+### Added (Intelligence foundation — ML-001/002/004/020, 2026-08-24)
+
+- `packages/intelligence`: versioned immutable feature definitions across 8 entity types with typed, tenant-partitioned values and per-definition freshness windows (FRESH/AGING/STALE/UNKNOWN; stale values withheld from decisions); `baseline-rules-v1` opportunity ranker producing deterministic, explainable, confidence-graded rankings from verified commerce metrics with hard inventory-safety and promotion-expiry rules.
+- `docs/INTELLIGENCE.md`: feature-platform contracts, ranker formula, safety rules.
+
+### Verification
+
+- `test/intelligence-features.test.js` 10/10. Full suite: 379 tests - 378 pass, 0 fail, 1 gated skip. `npm run check` clean. GPG-signed `152b6bf` pushed to origin/main.
+
+### Added (Intelligence stores — ML-005/022, 2026-08-24)
+
+- TrainingDatasetStore: immutable reproducibility metadata per dataset version (label definition, validated time ranges, row counts, feature-set versions).
+- PredictionStore: model@version predictions with confidence tiers, future-only validity windows; expired predictions never serve as current while full history remains queryable.
+- RecommendationStore: ACTIVE -> feedback lifecycle with single-shot decisions and fail-closed EXPIRED coercion for late acceptances; terminal immutability.
+
+### Verification
+
+- `test/intelligence-stores.test.js` 7/7. Full suite: 386 tests - 385 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Intelligence pipeline — ML-003/023, 2026-08-24)
+
+- `computeOfferFeatures`: derives discount-ratio/inventory/price features from verified commerce offers (stale evidence flows into STALE feature states automatically) and per-product clicks/CVR/net-commission features from the deduplicated analytics event stream via new `summarizeByProduct`.
+- `createRecommendationService.rankAndRecord`: runs the baseline ranker and persists every ranked entry as an auditable Recommendation plus the top candidate as a Prediction in the ML-022 stores.
+
+### Verification
+
+- `test/intelligence-pipeline.test.js` 5/5. Full suite: 391 tests - 390 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Intelligence evaluation — ML-021/024, 2026-08-24)
+
+- `evaluateRanking`: offline ranking evaluation with strict-window top-K hit rate (verifiably-bad entries inside the window zero the credit; unobservable windows score 0 — no fabricated hits), Pearson score/outcome correlation reported as null below two paired samples.
+- `explainRecommendation`: renders stored recommendations into operator-facing explanations with verbatim evidence reasons, confidence, model version, per-feature freshness and a fail-closed executable/EXPIRED label.
+
+### Verification
+
+- `test/intelligence-evaluation.test.js` 8/8. Full suite: 399 tests - 398 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Model registry + shadow mode — MLOPS-001/004, 2026-08-24)
+
+- ModelRegistry: name@version identity with immutable reproducibility metadata; enforced CANDIDATE→VALIDATING→SHADOW→PRODUCTION lifecycle (REJECTED terminal; RETIRED retained for audit + instant rollback); single-PRODUCTION-per-name with automatic champion demotion on challenger promotion; approver-recorded promotions; fail-closed illegal transitions.
+- ShadowComparator: tenant-scoped champion/challenger score pairs with agreement-rate and mean-absolute-delta reporting; empty windows report nulls.
+
+### Verification
+
+- `test/mlops.test.js` 8/8. Full suite: 407 tests - 406 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Model monitoring + drift — MLOPS-005/006, 2026-08-24)
+
+- DriftDetector: numeric feature drift vs registered baselines — relative mean shift with configurable WARN/ALERT ratios, minimum-sample floor returning INSUFFICIENT_DATA instead of guesses, fail-closed unknown features.
+- ModelMonitor: prediction total/error/latency and feature stale/missing counters on the shared MetricsRegistry.
+
+### Verification
+
+- `test/mlops-monitoring.test.js` 8/8. Full suite: 415 tests - 414 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Portfolio + rollback — MLOPS-007/OPT-001, 2026-08-24)
+
+- `registry.rollbackModel`: instant audited rollback to any previously registered version (actor + reason required; ghost/no-op targets refused).
+- `classifyPortfolio`: deterministic SCALE/MAINTAIN/TEST/WATCH/PAUSE classification over ranked recommendations with drift-aware WATCH caps and reason-carrying frozen entries.
+
+### Verification
+
+- `test/intelligence-portfolio.test.js` 6/6. Full suite: 421 tests - 420 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Experiment recommendations + exploration policy — OPT-002/003, 2026-08-24)
+
+- `recommendExperiments`: LOW-confidence candidates become structured CREATE_EXPERIMENT proposals with control/challenger variants and a non-negotiable 30-sample-per-variant statistical floor; proven winners are never experiment targets.
+- `createExplorationPolicy`: validated configurable exploration/exploitation ratio with deterministic slot allocation prioritizing exploratory candidates.
+
+### Verification
+
+- `test/intelligence-optimization.test.js` 8/8. Full suite: 429 tests - 428 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Autonomous decision gate — OPT-004, 2026-08-24)
+
+- `packages/intelligence/src/decision-gate.js`: composes live commercial revalidation (stale claims / expired promotions / revalidation ERRORS all fail closed to DENY) with the automation policy evaluator — producing combined ALLOW/APPROVAL_REQUIRED/DENY verdicts with blockers, policy-check explanations and audited gate decisions. Model predictions can never bypass policy or override live commercial truth.
+
+### Verification
+
+- `test/decision-gate.test.js` 8/8 (incl. stale-price DENY despite high ranker confidence, kill-switch precedence, cross-tenant denial, expired-promotion denial, audit capture). Full suite: 437 tests - 436 pass, 0 fail, 1 gated skip. `npm run check` clean.
