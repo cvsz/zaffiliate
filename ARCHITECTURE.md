@@ -122,3 +122,9 @@ Control plane web gains a semantic design-token layer (`apps/web/public/tokens.c
 
 - `packages/events` — tenant-partitioned domain event bus: per-handler bounded retry then dead-letter capture; a failing handler never blocks sibling handlers or other tenants.
 - `packages/storage` — media-intake contract (`validateMediaUpload`: MIME allowlist, size caps, path-traversal-proof generated object keys under `tenants/<org>/<yyyy>/<mm>/`), local filesystem driver over validated immutable keys, and HMAC-signed expiring object URLs with tamper detection. S3-compatible driver implements the same interface when object storage lands.
+
+## S3-compatible storage (MM-006 completion, 2026-08-24)
+
+`packages/storage/src/s3.js`: zero-dependency AWS Signature V4 client (four-stage HMAC key schedule, x-amz-content-sha256 payload integrity, bucket-prefixed paths) implementing the same put/get interface as the local driver. Keys are validated by the shared immutable-key contract before any network call.
+
+Live verification against the provisioned Supabase S3 endpoint: signature structure accepted (request reached resource resolution) but **write denied 403** by provider policy for the supplied access key — recorded fail-closed per policy; no bypass attempted. Offline contract tests cover deterministic signing, payload hashing, 404->null mapping and pre-flight key rejection.

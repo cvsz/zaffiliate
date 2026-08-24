@@ -233,3 +233,13 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 ### Verification
 
 - `test/security-jwks.test.js` 5/5. Full suite: 451 tests - 450 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Storage SigV4 + envelopes + redis streams — 2026-08-24)
+
+- `packages/storage/src/s3.js`: zero-dependency AWS Signature V4 S3 driver sharing the immutable-key contract with the local driver.
+- Domain-route errors fully migrated to the canonical envelope; `packages/events/redis-streams.js` XADD publisher with memory fallback.
+
+### Live evidence
+
+- Supabase Postgres (IPv4 pooler): migrations 001..003 applied idempotently, 18 RLS-enabled tables, integration suite 7/7 zero-skip.
+- Supabase S3 endpoint: SigV4 signature accepted to resource resolution; writes return 403 provider-permission denial — recorded as a credential/policy blocker (fail-closed, no bypass).

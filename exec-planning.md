@@ -108,6 +108,14 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### MM-006 completion — SigV4 S3 driver + canonical envelope completion + redis streams — Status: COMPLETE
+Scope: `packages/storage/src/s3.js` (zero-dep AWS SigV4: four-stage HMAC schedule, sha256 payload integrity, shared immutable-key validation before network); business-layer error bodies migrated to canonical envelope across all sites; `packages/events/redis-streams.js` XADD publisher w/ memory fallback.
+LIVE EVIDENCE: Supabase Postgres migrations applied idempotently via IPv4 pooler (18 RLS tables); integration suite 7/7 zero-skip. Supabase S3 smoke: signature accepted to resource resolution, write returned 403 provider-permission denial -> recorded fail-closed, no bypass.
+Tests: storage-s3 (4), events-redis (3), envelope spec (1), db integration now executing against real PG.
+Evidence: full suite 455 tests - 454 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### MM-004 foundation — JWKS-backed RS256 token verification — Status: COMPLETE
 Scope: `packages/security/src/jwks.js`. createJwksClient: injectable-fetch cache (10-min TTL) with once-per-cache-generation forced refresh on unknown kid (self-DoS proof); verifyJwt: RS256-only (alg=none/HS256 structurally rejected), kid-pinned signature via node crypto, exp/nbf/iss/aud checks with timing-safe comparisons, frozen claim/header output, fail-closed reasons for every rejection path.
 Tests: `test/security-jwks.test.js` 5 cases RED->GREEN (happy path, tamper, expired/aud/iss matrix, unknown-kid refresh-count contract incl. no-loop assertion, algorithm confusion).
