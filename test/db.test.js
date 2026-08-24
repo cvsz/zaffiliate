@@ -135,7 +135,10 @@ test('integration against real postgres when reachable', async (t) => {
     await client.close();
     return;
   }
-  const migrator = createMigrator({ client });
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'db', 'migrations');
+  const migrator = createMigrator({ client, migrationsDir });
   const first = await migrator.applyAll();
   assert.ok(Array.isArray(first.applied));
   const second = await migrator.applyAll();

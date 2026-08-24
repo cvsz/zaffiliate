@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, basename } from 'node:path';
 
-const MIGRATION_FILE_PATTERN = /^\d{4}_[a-z0-9_]+\.sql$/;
+const MIGRATION_FILE_PATTERN = /^\d{3,4}_[a-z0-9_]+\.sql$/;
 
 export class MigrationDriftError extends Error {
   constructor(drift) {

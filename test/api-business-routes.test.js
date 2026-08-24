@@ -144,6 +144,17 @@ test('tiktok deliveries verify through the canonical tiktok scheme', () => {
   assert.equal(result.status, 202);
 });
 
+test('domain errors use the canonical error envelope with request correlation', () => {
+  const { runtime, secrets, guard } = buildHarness();
+  const outcome = ingestWebhook({
+    runtime, secrets, guard, platform: 'myspace', tenantId: TENANT,
+    rawBody: '{}', signature: 'sha256=00', timestamp: String(NOW), eventId: 'evt-env', now: NOW
+  });
+  assert.equal(outcome.status, 404);
+  assert.equal(outcome.error.code, 'UNKNOWN_PLATFORM');
+  assert.ok(outcome.error.message.length > 0);
+});
+
 test('unconfigured platforms answer 404 and never reach verification', () => {
   const { runtime, secrets, guard } = buildHarness();
   const result = ingestWebhook({

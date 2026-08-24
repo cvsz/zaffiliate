@@ -1,3 +1,5 @@
+import { setDefaultResultOrder } from 'node:dns';
+
 export function createDbClient({ connectionString = process.env.DATABASE_URL || null, poolFactory = null, logger = null } = {}) {
   if (poolFactory != null && typeof poolFactory !== 'function') throw new TypeError('poolFactory must be a function');
   let pool = null;
@@ -11,6 +13,7 @@ export function createDbClient({ connectionString = process.env.DATABASE_URL || 
     if (pool) return pool;
     if (!connecting) {
       connecting = (async () => {
+        try { setDefaultResultOrder('ipv4first'); } catch { void 0; }
         let Pool;
         if (poolFactory) {
           Pool = await poolFactory();
@@ -23,7 +26,14 @@ export function createDbClient({ connectionString = process.env.DATABASE_URL || 
           error.code = 'DB_NOT_CONFIGURED';
           throw error;
         }
-        return new Pool({ connectionString, max: 5, connectionTimeoutMillis: 5000 });
+        const host = new URL(connectionString).hostname;
+        const local = ['localhost', '127.0.0.1', '::1', 'postgres', 'db'].includes(host);
+        return new Pool({
+          connectionString,
+          max: 5,
+          connectionTimeoutMillis: 5000,
+          ssl: local ? false : { rejectUnauthorized: false }
+        });
       })();
     }
     try {

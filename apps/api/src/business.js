@@ -5,8 +5,16 @@ import { resolveSecret } from '../../../packages/security/src/secrets.js';
 
 const HTTPS = 'https:';
 
-function fail(status, body) {
-  return { status, body };
+const ERROR_CODES = Object.freeze({
+  unknown_platform: 'UNKNOWN_PLATFORM',
+  missing_webhook_parameters: 'MISSING_WEBHOOK_PARAMETERS',
+  invalid_signature: 'INVALID_SIGNATURE',
+  malformed_payload: 'MALFORMED_PAYLOAD',
+  unresolvable_link: 'UNRESOLVABLE_LINK'
+});
+
+function fail(status, code, message, extra = {}) {
+  return { status, error: { code: String(code || message).toUpperCase(), message, ...extra } };
 }
 
 function safeUrl(value) {
@@ -26,17 +34,17 @@ function redirectable(link) {
 export function resolveRedirect({ runtime, tenantId, slug, now = Date.now(), visitorHash = null }) {
   if (!runtime || typeof runtime.resolveLinkBySlug !== 'function') throw new TypeError('runtime with resolveLinkBySlug is required');
   const normalizedSlug = String(slug ?? '').trim().toLowerCase();
-  if (!normalizedSlug) return fail(404, { error: 'not_found' });
+  if (!normalizedSlug) return fail(404, 'not_found', 'not_found'.replaceAll('_', ' ').toLowerCase());
   let link;
   try {
     link = runtime.resolveLinkBySlug(tenantId, normalizedSlug);
   } catch {
-    return fail(404, { error: 'not_found' });
+    return fail(404, 'not_found', 'not_found'.replaceAll('_', ' ').toLowerCase());
   }
-  if (!link) return fail(404, { error: 'not_found' });
-  if (link.expiresAt && new Date(link.expiresAt).getTime() <= now) return fail(410, { error: 'link_expired' });
+  if (!link) return fail(404, 'not_found', 'not_found'.replaceAll('_', ' ').toLowerCase());
+  if (link.expiresAt && new Date(link.expiresAt).getTime() <= now) return fail(410, 'link_expired', 'link_expired'.replaceAll('_', ' ').toLowerCase());
   const location = redirectable(link);
-  if (!location) return fail(404, { error: 'not_found' });
+  if (!location) return fail(404, 'not_found', 'not_found'.replaceAll('_', ' ').toLowerCase());
   const click = runtime.recordClick(tenantId, {
     linkId: link.linkId,
     touchpoint: {
@@ -78,10 +86,10 @@ function parsePayload(rawBody) {
 
 export function ingestWebhook({ runtime, guard, secrets, platform, tenantId, rawBody, signature, timestamp, eventId, now = Date.now() }) {
   if (!platformAcceptsWebhooks(platform)) {
-    return fail(404, { error: 'unknown_platform' });
+    return fail(404, 'unknown_platform', 'unknown_platform'.replaceAll('_', ' ').toLowerCase());
   }
   if (!rawBody || !signature || !timestamp || !eventId) {
-    return fail(400, { error: 'missing_webhook_parameters' });
+    return fail(400, 'missing_webhook_parameters', 'missing_webhook_parameters'.replaceAll('_', ' ').toLowerCase());
   }
 
   const normalizedPlatform = String(platform).trim().toLowerCase();
@@ -92,24 +100,24 @@ export function ingestWebhook({ runtime, guard, secrets, platform, tenantId, raw
       appKey = resolveSecret(secrets, 'ref:webhooks/tiktok/appKey').value;
       appSecret = resolveSecret(secrets, 'ref:webhooks/tiktok/appSecret').value;
     } catch {
-      return fail(404, { error: 'unknown_platform' });
+      return fail(404, 'unknown_platform', 'unknown_platform'.replaceAll('_', ' ').toLowerCase());
     }
     let verdict;
     try {
       verdict = verifyTikTokWebhook({ appKey, appSecret, rawBody, signature, timestamp, nowMs: now });
     } catch {
-      return fail(401, { error: 'invalid_signature' });
+      return fail(401, 'invalid_signature', 'invalid_signature'.replaceAll('_', ' ').toLowerCase());
     }
-    if (!verdict.valid) return fail(401, { error: 'invalid_signature', reason: verdict.reason });
+    if (!verdict.valid) return fail(401, 'invalid_signature', `webhook signature verification failed (${verdict.reason})`, { reason: verdict.reason });
   } else {
     let secretValue;
     try {
       secretValue = resolveSecret(secrets, `ref:webhooks/${normalizedPlatform}`).value;
     } catch {
-      return fail(404, { error: 'unknown_platform' });
+      return fail(404, 'unknown_platform', 'unknown_platform'.replaceAll('_', ' ').toLowerCase());
     }
     if (!verifyGenericSignature({ secretValue, rawBody, signature, timestamp })) {
-      return fail(401, { error: 'invalid_signature' });
+      return fail(401, 'invalid_signature', 'invalid_signature'.replaceAll('_', ' ').toLowerCase());
     }
   }
 
@@ -117,21 +125,21 @@ export function ingestWebhook({ runtime, guard, secrets, platform, tenantId, raw
   try {
     replay = guard.decide({ eventId, timestamp, nowMs: now, tenantId });
   } catch {
-    return fail(400, { error: 'missing_webhook_parameters' });
+    return fail(400, 'missing_webhook_parameters', 'missing_webhook_parameters'.replaceAll('_', ' ').toLowerCase());
   }
   if (!replay.accepted) {
     if (replay.reason === 'duplicate_event') return { status: 200, body: { accepted: false, duplicate: true, reason: replay.reason } };
-    return fail(400, { error: replay.reason });
+    return fail(400, replay.reason.replace(/_/g, ' ').toLowerCase(), replay.reason.replaceAll('_', ' ').toLowerCase(), { reason: replay.reason });
   }
 
   const payload = parsePayload(rawBody);
-  if (!payload) return fail(400, { error: 'malformed_payload' });
+  if (!payload) return fail(400, 'malformed_payload', 'malformed_payload'.replaceAll('_', ' ').toLowerCase());
 
   const orderRef = String(payload.orderRef ?? payload.order_id ?? '').trim();
   const revenueMinorUnits = Number(payload.revenueMinorUnits ?? payload.revenue);
   const currency = String(payload.currency ?? '').trim().toUpperCase();
   if (!orderRef || !Number.isSafeInteger(revenueMinorUnits) || revenueMinorUnits < 0 || !/^[A-Z]{3}$/.test(currency)) {
-    return fail(400, { error: 'malformed_payload' });
+    return fail(400, 'malformed_payload', 'malformed_payload'.replaceAll('_', ' ').toLowerCase());
   }
 
   let link = null;
@@ -143,7 +151,7 @@ export function ingestWebhook({ runtime, guard, secrets, platform, tenantId, raw
   } catch {
     link = null;
   }
-  if (!link) return fail(422, { error: 'unresolvable_link' });
+  if (!link) return fail(422, 'unresolvable_link', 'unresolvable_link'.replaceAll('_', ' ').toLowerCase());
 
   const conversion = runtime.recordConversion(tenantId, {
     linkId: link.linkId,

@@ -108,6 +108,14 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### AFF-017 completion + MM-005 Redis adapter + LIVE POSTGRES INTEGRATION — Status: COMPLETE
+Scope: business.js error bodies migrated to the canonical envelope (uppercase codes + messages + request correlation; 18 call sites); `packages/events/redis-streams.js` stream publisher (XADD triples w/ injectable client, memory-ring fallback when ioredis/REDIS_URL absent); db client hardened for managed Postgres (remote TLS + ipv4first DNS); cli/migrator default migrations dir resolved correctly and prefix contract widened to \d{3,4}.
+LIVE EVIDENCE (Supabase node.b via IPv4 session pooler): connectivity probe -> 3 migrations applied (`001_core_tenant_rls`, `002_workflow_outreach`, `003_billing_ai_analytics`) -> idempotent re-run skipped all 3 -> **18 public tables, ALL RLS-enabled** -> test/db.test.js integration case executed against real PG with 0 skips (7/7).
+Tests: envelope spec added to api-business-routes suite; new `test/events-redis-adapter.test.js` (XADD field triples, memory fallback, validation).
+Evidence: full suite 446 tests - 445 pass, 0 fail, 1 gated skip; `npm run check` clean.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### OPT-004 — Autonomous decision gate wiring — Status: COMPLETE
 Scope: `packages/intelligence/src/decision-gate.js`. Composes commerce revalidation (BLOCK or ERROR -> DENY w/ blockers; tenant-ambiguous offers fail closed) with the automation policy evaluator (tenant/kill-switch/risk/platform/scores/frequency/budget/mode), emitting combined ALLOW/APPROVAL_REQUIRED/DENY verdicts + audited intelligence.gate_decision events.
 Tests: `test/decision-gate.test.js` 8 cases RED->GREEN (full ALLOW path w/ revalidation evidence; stale-price DENY regardless of ranker confidence; global kill switch precedence; APPROVAL_REQUIRED passthrough preserving evidence; cross-tenant denial; capability-platform denial; expired-promotion denial; audit-sink capture).

@@ -212,3 +212,16 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 ### Verification
 
 - `test/platform-foundation.test.js` 5/5. Full suite: 442 tests - 441 pass, 0 fail, 1 gated skip. `npm run check` clean.
+
+### Added (Envelope migration + Redis adapter + live integration — 2026-08-24)
+
+- Domain route errors migrated to the canonical envelope (`{error:{code,message}}`, uppercase codes) across all 18 sites in the API business layer.
+- `packages/events/redis-streams.js`: stream publisher writing tenant/type/eventId/payload triples via XADD with an injectable client and an in-memory ring fallback when ioredis/REDIS_URL are absent.
+- db client: remote-host TLS negotiation + ipv4first DNS resolution (required for managed Postgres on IPv6-only-DNS hosts).
+
+### Live-infrastructure evidence (first of its kind)
+
+- Connected to the provisioned Supabase Postgres through the IPv4 session pooler using operator-provided credentials (`.env.*`, gitignored).
+- Applied all three project migrations via the checksummed drift-detecting migrator: `001_core_tenant_rls`, `002_workflow_outreach`, `003_billing_ai_analytics` — re-run proved idempotency (applied:[], skipped:3).
+- Verified schema landed: 18 public tables, every one RLS-enabled.
+- `test/db.test.js` integration case ran against the real database: 7/7 pass, zero skips.
