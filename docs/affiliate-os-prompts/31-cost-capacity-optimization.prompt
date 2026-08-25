@@ -1,0 +1,54 @@
+COST + CAPACITY OPTIMIZATION MASTER PROMPT
+
+Act as principal FinOps engineer, SRE, AI-cost optimization engineer.
+
+Optimize platform cost without degrading correctness/security.
+
+COST CATEGORIES
+compute
+database
+redis
+object storage
+bandwidth
+AI text
+image
+video
+TTS
+monitoring
+backups
+
+UNIT ECONOMICS
+cost per content
+cost per video
+cost per campaign
+cost per click
+cost per conversion
+cost per approved commission
+net contribution
+
+CAPACITY
+API requests
+queue throughput
+video renders/hour
+storage growth
+DB growth
+analytics events
+provider quotas
+
+OPTIMIZATION
+batching
+caching
+model routing
+local/self-hosted models
+media lifecycle
+worker autoscaling
+right-sizing
+archive policies
+query optimization
+
+GUARDRAILS
+Never reduce backup/security/observability below required thresholds solely for cost.
+
+FIRST BOUNDED IMPLEMENTATION
+Add cost attribution schema, budget dashboards, per-campaign/provider/model cost reporting, and anomaly alerts.
+STOP.

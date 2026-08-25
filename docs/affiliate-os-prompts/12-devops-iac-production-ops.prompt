@@ -1,0 +1,138 @@
+DEVOPS + IaC + CI/CD + OBSERVABILITY + PRODUCTION OPERATIONS MASTER PROMPT
+
+Act as principal DevOps architect, platform engineer, SRE, cloud-native engineer, infrastructure security engineer, release engineer, DR engineer.
+
+Make Affiliate OS reproducible, observable, recoverable, secure, deployable from local→test→staging→production with low-cost self-hosting path.
+
+ENVIRONMENTS
+local, test, staging, production, optional preview. Explicit config/isolation; no prod creds in local/test.
+
+LOCAL
+cp .env.example .env
+./scripts/bootstrap.sh
+docker compose up -d
+./scripts/healthcheck.sh
+Windows equivalents.
+
+CONTAINERS
+web/api/worker/scheduler. Multi-stage, non-root, minimal, locked deps, health, graceful shutdown. Avoid latest/root/privileged/host network/docker.sock/embedded secrets. Read-only/tmps/cap drops/resource limits where feasible.
+
+COMPOSE
+Production-like local reverse proxy→web/api→postgres/redis/object storage→workers/scheduler. Named volumes.
+
+HEALTH + GRACEFUL SHUTDOWN
+/health,/ready,/version and worker heartbeat. Workers drain/checkpoint/release locks/close DB; preserve publishing idempotency.
+
+INFRASTRUCTURE
+infrastructure/docker,terraform,kubernetes,helm,monitoring.
+Use simplest appropriate tool. Self-hosted single-host Docker Compose baseline; HA and Kubernetes only when justified.
+Profiles A single host, B HA, C Kubernetes.
+
+REVERSE PROXY
+Caddy/Traefik/NGINX choose one. TLS, routing, compression, request limits, security headers.
+HTTPS prod, cert renewal monitoring.
+Networks separated, DB/Redis private, firewall minimal ports.
+
+POSTGRES
+Persistent, backup, limits, monitoring, TLS where appropriate, least privilege. Pooling metrics.
+Migrations Build→validate→backup/checkpoint→migrate→rollout→verify. Expand-contract for risky changes.
+
+REDIS
+Auth/network, memory/eviction/health; no durable-only business state.
+
+OBJECT STORAGE
+S3-compatible private buckets media/generated/exports/backups as appropriate, signed URLs, lifecycle for temp/intermediates/failed/published/exports.
+
+QUEUES
+Logical affiliate-sync/content/image/video/publishing/analytics/webhooks/notifications. DLQ with error/attempt/time/correlation and re-drive.
+Idempotency for side-effecting jobs.
+Scheduler HA via DB lock/distributed lock/leader election.
+
+CONFIG + SECRETS
+Typed per env. Secret backends env(dev), Docker, Kubernetes, Vault/cloud. Key rotation session/encryption/OAuth/webhook/service tokens.
+
+CI
+PR: Format→Lint→Typecheck→Unit→Integration→Security→Build→Artifact.
+Ephemeral Postgres/Redis/object-storage/mock provider. E2E login/org/campaign/content/approval/mock publish/analytics/pause.
+Security SAST/dependency/secret/container/IaC/SBOM.
+Pin relevant actions. Dependabot/Renovate with verification.
+
+SBOM/PROVENANCE/SIGNING
+CycloneDX/SPDX, git/build/time/lock/digest, sign images/release archives/SBOM where practical.
+Immutable image tags/digests, semantic versioning, dev/staging/prod/canary channels.
+
+DEPLOYMENT
+Simple rolling/recreate or HA rolling/blue-green/canary when justified.
+Zero-downtime principles: backwards migrations, readiness, graceful drain, idempotent jobs.
+Rollback strategy must document image/config/migration constraints.
+Release gate: CI/security/migration/backup/staging smoke/observability/rollback.
+Release evidence version/commit/tests/scans/digest/migration/deploy.
+
+STAGING
+Production-like enough for migrations, sandbox/mock provider, publishing flow, load. No prod creds unless isolated and authorized.
+Feature flags not authorization.
+Kill switches for all automation/publishing/AI/provider/campaign/tenant.
+
+OBSERVABILITY
+Metrics, Logs, Traces, Alerts, Dashboards; OpenTelemetry.
+Metrics for HTTP, DB, queues/jobs, affiliate sync, content generation, video/TTS, publishing, provider calls/tokens/webhooks, automation, AI cost, aggregate business metrics.
+Structured JSON logs with request/trace/job/org safe fields; no secrets.
+Correlation across HTTP→queue→worker→provider→webhook→analytics.
+Prometheus/Grafana self-hosted option.
+Actionable alerts P0-P3 with dedupe/group/cooldown/recovery.
+SLIs API success/latency, publishing, jobs, provider health, analytics freshness. SLO after baseline. External uptime and safe synthetic mock flows.
+
+BACKUP/RESTORE
+Postgres + object data/critical config according to policy. Encrypted. Verify checksum/readability/size. Automated isolated restore test with record/invariant checks.
+Define RPO/RTO by DB/media/publishing/analytics.
+DR scenarios server loss, DB corruption, storage loss, Redis loss, provider credential loss, queue outage, bad deploy, malicious publication.
+Recovery order secrets/config→DB→storage→API→workers→scheduler→provider reconciliation→analytics.
+After outage reconcile provider before replay; no blind duplicate publishing.
+
+FAILURE TESTING
+DB stop→readiness fail/unsafe writes stop/recover.
+Redis outage behavior per cache/lock/queue/security.
+Storage outage blocks media publication.
+AI provider failure fallback/retry/manual.
+Provider failure circuit/retry/reconcile.
+
+CAPACITY/SCALING
+Track requests/jobs/renders/storage/DB/events. Video workers separate compute pool, AI workers quota-aware.
+Stateless APIs/shared DB/storage/distributed job ownership before replicas.
+K8s later: Deployments, Services, Ingress, Secrets, ConfigMaps, PVC, HPA, PDB, NetworkPolicy. Helm chart, requests/limits, PVC backups.
+Terraform modules network/compute/DNS/storage/DB/registry/monitoring only as needed; secure state.
+CI validate terraform fmt/validate, helm lint, compose config, IaC scan.
+
+PREVIEW
+Optional isolated synthetic data/mock provider and auto expiry. No prod PII/financial/publishing.
+
+CI SECRETS
+Least privilege, no fork secrets, OIDC short-lived identity where possible.
+
+RELEASE AUTOMATION
+tag→build→test→scan→SBOM→sign→publish image→deploy staging→smoke→prod authorization→deploy→verify.
+Changelog meaningful Added/Changed/Fixed/Security/Deprecated/Removed.
+Release notes include features/migrations/security/breaking/ops.
+
+RUNBOOKS
+API down, Postgres, Redis, queue backlog, provider auth, publishing failure, backup/restore, disk, incident.
+Format Symptoms, Impact, Checks, Mitigation, Diagnosis, Recovery, Verification, Escalation.
+Incident severity SEV0-SEV3 and postmortems.
+
+COST
+Track host/storage/bandwidth/AI/video/monitoring. Alert AI/storage/bandwidth/render/queue anomalies.
+Cleanup temp render/exports/uploads/intermediates according retention.
+Separate log/audit/security/provider payload retention.
+
+OPERATIONS UI
+Platform health, deploy version, queues, workers, providers, backups, release status.
+Health SAFE/DEGRADED/ACTION_REQUIRED/CRITICAL.
+Maintenance mode may make web read-only, block campaigns/publish, drain workers while reconciliation continues.
+
+DEPLOY CHECKS
+Pre: git/commit/CI/migration/backup/disk/provider/queue.
+Post: version/health/migration/workers/scheduler/queue/providers/mock smoke/errors.
+Abort on migration/health/security/error/publishing uncertainty.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect Docker/CI/infra, read planning, validate compose, identify smallest P0 ops gap, fix health/bootstrap/verify, tests, compose config/build/health/security, update ops docs/checklist/planning, one next slice, STOP.

@@ -1,0 +1,72 @@
+CONTINUOUS AUTONOMOUS IMPROVEMENT MASTER PROMPT
+
+Act as principal continuous-improvement architect, experimentation scientist, SRE, security engineer, product operations lead.
+
+Build a controlled closed loop:
+
+Observe
+→ Diagnose
+→ Hypothesize
+→ Prioritize
+→ Experiment
+→ Measure
+→ Learn
+→ Recommend
+→ Approve/Act
+→ Verify
+→ Rollback if needed
+→ Repeat
+
+INPUTS
+business metrics
+system reliability
+security findings
+provider changes
+cost
+model performance
+content performance
+operator feedback
+
+IMPROVEMENT TYPES
+creative
+campaign
+provider configuration
+scheduler
+cost
+reliability
+model
+UI/UX
+security hardening
+documentation
+operations
+
+PRIORITIZATION
+Impact
+Confidence
+Effort
+Risk
+Urgency
+Dependencies
+
+CHANGE CLASSES
+Recommendation only
+Safe automated
+Approval required
+Engineering required
+Security review required
+
+AUTOMATED ENGINEERING
+Do not allow production code mutation/merge/deploy without separate engineering authorization and verification workflow.
+
+LEARNING RECORD
+Problem
+Evidence
+Hypothesis
+Action
+Result
+Confidence
+Follow-up
+
+FIRST BOUNDED IMPLEMENTATION
+Define ImprovementOpportunity, Hypothesis, ExperimentLink, Decision, Outcome, and backlog integration.
+STOP.

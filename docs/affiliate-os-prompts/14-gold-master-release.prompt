@@ -1,0 +1,152 @@
+GOLD MASTER + FULL-SYSTEM INTEGRATION + RELEASE READINESS MASTER PROMPT
+
+Act as principal systems architect, release engineer, QA lead, security lead, SRE, product owner, data integrity engineer, compliance lead, TPM.
+
+Mission: prove all implemented modules operate as one coherent production system. Focus integration, verification, hardening, release evidence, failure recovery, operational readiness, launch safety.
+
+END-TO-END
+Providers → Products/Offers/Promotions → Opportunity → Campaign → AI Content → Compliance/Commercial Validation → Approval/Policy → Publishing → TikTok/Shopee/Meta/YouTube → Reconciliation → Clicks/Conversions/Orders → Commission/Payouts → Analytics/Experiments → Recommendations/Optimization → Automation loop.
+
+GOLD MASTER
+Current verification evidence for functional correctness, security, tenant isolation, provider boundaries, financial integrity, commercial claims, publishing safety, lineage, automation safety, backup/restore, observability, deployment, rollback, docs.
+
+MATURITY
+FOUNDATION, ALPHA, BETA, RELEASE_CANDIDATE, GOLD_MASTER, PRODUCTION.
+
+RELEASE SOURCE
+RELEASE-READINESS.md with identity, scope, included/deferred/limitations, security/provider/data/ops/test/deploy/rollback/blockers/approval.
+Machine-readable release manifest with version/commit/build/components/migrations/provider status/scans/tests.
+
+SCOPE FREEZE
+During RC allow only bugs/security/blockers/docs/ops hardening.
+
+SYSTEM INVENTORY
+Classify Web/Admin/Creator/API/DB/Redis/Object/Workers/Scheduler/Affiliate/Content/Image/Video/Publishing/Analytics/Attribution/Automation/ML/Security/Observability as COMPLETE/PARTIAL/BLOCKED/NOT_REQUIRED.
+
+TRACEABILITY
+Requirement → Implementation → Tests → Runtime Evidence → Release Status.
+
+GOLDEN E2E
+Create Org → Brand → Connect Mock/Sandbox → Import Product/Offer → Opportunity → Campaign → Brief/Copy/Image/Video → Compliance/Claims → Approval → Schedule → Publish → Reconcile → Click → Conversion → Commission → Analytics → Recommendation.
+All tenant-owned and traceable.
+
+MULTI-TENANT GOLDEN TEST
+Org A/B parallel. A cannot access/use B data/accounts/links/analytics/media/policies.
+
+RBAC MATRIX
+Roles OWNER/ADMIN/EDITOR/CREATOR/ANALYST/VIEWER across campaign/content/approval/publish/financial/integration/automation/org.
+
+PROVIDER READINESS
+Per TikTok/Shopee/Meta/YouTube: Auth, Catalog, Affiliate, Publishing, Analytics, Webhooks, Testing, Limitations, Last Verified. Only verified capabilities production-ready.
+Provider outage should degrade only that provider. Revocation → REAUTH_REQUIRED and unsafe jobs stop.
+
+PUBLISHING SAFETY
+Timeout-after-provider-accept + worker crash/retry must not duplicate external post.
+Partial provider success → PARTIAL, retry failed only.
+
+COMMERCIAL SAFETY
+Stale price change before publish blocks/revision.
+Promotion expiry invalidates scheduled promo.
+AI problematic inputs unsupported health/fake reviews/fake discounts/fake scarcity blocked.
+Prompt injection in product/provider data cannot bypass tools/policy.
+Agent without publish permission denied.
+
+AUTOMATION
+Test exact behavior MANUAL/DRAFT_ONLY/APPROVAL_REQUIRED/AUTO_SAFE/AUTONOMOUS.
+Global/provider/org/campaign/publishing kill switches stop new prohibited side effects.
+Dry run/shadow have zero external mutation.
+
+ANALYTICS + FINANCE
+Trace dashboard metric → aggregate → normalized → raw.
+Golden dataset 1000 impressions/100 clicks/10 conversions/1000 approved/100 reversal → CTR10%, CVR10%, Net900, EPC9.
+Ledger conversion/commission/adjustment/refund/reversal/payout consistent.
+Duplicate event one effect, out-of-order converges, original currencies preserved.
+Experiment deterministic dataset enforces sample/confidence/guardrails/no premature winner.
+Recommendation trace features→model/rule→prediction→confidence→evidence→recommendation.
+Model outage fallback safe; model version rollback preserves history.
+
+FRONTEND
+E2E Login→Org→Overview→Opportunity→Campaign→Creator→Approval→Schedule→Publish→Analytics→Pause.
+Responsive critical routes desktop/tablet/mobile.
+Accessibility keyboard/focus/dialog/labels/contrast/landmarks.
+
+API + SCHEMA
+Frontend/backend enums/schemas/errors/pagination/filter compatible.
+Migrations pass fresh DB and existing release DB.
+Migration rehearsal on representative restore + golden flow.
+Per migration rollback/forward-fix/backfill/compatibility documented.
+
+PERFORMANCE
+Measure API/DB/queue/video/content/dashboard baseline.
+Load test API/redirect/webhooks/catalog/publishing/analytics without stressing real providers.
+Video concurrency resource behavior.
+Queue saturation preserves system responsiveness/priority.
+DB connections/query latency/storage/indexes/query plans.
+
+SECURITY RELEASE
+Tenant isolation, RBAC, CSRF, XSS, SSRF, safe redirects, OAuth state, webhook signature/replay, path traversal, media, agents, secret redaction.
+SAST findings triaged VALID/FALSE_POSITIVE/ACCEPTED_RISK/FIXED; unresolved exploitable critical/high blocks.
+Dependency audit, secret scan, container scan, SBOM, artifact provenance.
+
+BACKUP/RESTORE
+Real staging/test backup, integrity check, clean isolated restore, schema/tenant/financial/golden flow.
+No Gold Master without successful restore evidence.
+Object storage recovery strategy tested/documented.
+
+FAILURE TESTS
+Redis stop behavior documented; DB stop readiness/controlled errors/recovery; storage outage blocks media publish; queue outage no false completion and shows degradation; provider 429/500/timeout/invalid token handled.
+
+OBSERVABILITY
+Logs/metrics/traces/dashboards/alerts for API/DB/queue/workers/providers/publishing/analytics/automation.
+Golden trace API→queue→worker→provider→webhook→analytics.
+Synthetic alerts provider auth/queue backlog/backup failure/publishing failures with recovery.
+
+RUNBOOKS
+Tabletop provider unavailable, DB unavailable, credential leak, publishing incident, financial mismatch.
+Operators can pause publishing/AI/provider/org automation.
+Maintenance mode verified.
+
+DEPLOYMENT
+Staging rehearsal exact prod mechanism, immutable artifact/digest.
+Pre-deploy requires RC approval, CI green, security, backup, migration rehearsal, rollback, provider health.
+Flow Lock Release→Validate Artifact/Config→Backup→Migrate→Deploy→Readiness→Smoke→Golden Safe Flow→Metrics→Complete.
+Abort on migration/health/security/tenant/publishing uncertainty/error spike.
+Post-deploy inspect errors/latency/DB/queue/workers/auth/publishing/webhooks/analytics freshness.
+Canary when suitable; rollback test in staging including DB/external side-effect constraints.
+
+BLOCKERS
+BLOCKER/HIGH/MEDIUM/LOW/DEFERRED.
+Automatic blockers: tenant isolation failure, duplicate publishing risk, financial inconsistency, invalid claims publishable, unrestorable DB, critical exploitable security issue.
+
+KNOWN LIMITATIONS
+Document unsupported/manual provider flows transparently.
+
+RECOVERY TOOLS
+Controlled retry job, reconcile publication, reprocess webhook, rerun analytics import, reauth provider, recompute metric; all audited. Avoid direct DB hacks.
+
+DOCUMENTATION
+README, ARCHITECTURE, ROADMAP, SECURITY, THREAT-MODEL, PRIVACY, COMPLIANCE, OPERATIONS, RELEASE-READINESS, CHANGELOG, IMPLEMENTATION-CHECKLIST, exec-planning.
+Operator and developer handbooks plus provider/data runbooks.
+
+GOLD MASTER CHECKLIST
+Architecture inventory/boundaries
+Security tenant/RBAC/OAuth/webhooks/SSRF/secrets/SAST
+Commerce price/promo/claim evidence
+Publishing idempotency/reconciliation/partial
+Financial dedupe/ledger/refunds/payouts
+Analytics definitions/lineage/freshness
+Automation policy/kill/dry/shadow
+Operations backup/restore/alerts/rollback
+Release staging rehearsal/evidence
+
+GOLD MASTER DECISION
+Exactly READY_FOR_GOLD_MASTER or NOT_READY_FOR_GOLD_MASTER with evidence-backed blockers.
+Gold Master does not auto-deploy; production requires separate authorization.
+
+PRODUCTION LAUNCH
+Change Freeze → Final Backup → Deploy → Migrate → Health → Safe Smoke → Enable Providers → Enable Publishing → Enable lowest required automation → Observe → Progressive Enablement.
+Autonomy ramp L0 Recommendations→L1 Draft→L2 Approval→L3 Auto-safe→L4 Limited Autonomous.
+Provider/campaign ramp gradually with small org/brand/product/volume.
+
+FIRST BOUNDED GOLD-MASTER SLICE
+Inspect repo/planning/PR/CI, create full inventory, map requirements, update RELEASE-READINESS, identify highest-priority blocker, regression test first, minimal fix, focused/security verification, update evidence/checklist/planning, report release status/fixed blocker/evidence/remaining/next, STOP.

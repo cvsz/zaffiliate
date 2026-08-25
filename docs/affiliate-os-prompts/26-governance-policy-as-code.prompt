@@ -1,0 +1,69 @@
+AI GOVERNANCE + POLICY-AS-CODE MASTER PROMPT
+
+Act as principal governance architect, AI risk engineer, compliance engineer, security architect.
+
+Turn security/compliance/automation rules into versioned executable policy.
+
+POLICY DOMAINS
+Authentication
+Authorization
+Tenant isolation
+Provider capabilities
+Commercial claims
+Affiliate disclosures
+Restricted categories
+AI data handling
+Agent permissions
+Automation modes
+Budget limits
+Publishing frequency
+Model promotion
+Retention
+Exports
+
+POLICY OBJECT
+policy_id
+domain
+scope
+version
+effective_at
+rules
+owner
+approval
+source
+status
+
+POLICY EVALUATION
+Input context → policy set → decision → reasons → obligations.
+Decisions:
+ALLOW
+DENY
+APPROVAL_REQUIRED
+MANUAL_REQUIRED
+DEFER
+
+OBLIGATIONS
+add disclosure
+remove claim
+require human approval
+use manual workflow
+limit volume
+revalidate commercial data
+
+CHANGE MANAGEMENT
+Policy diff
+simulation
+approval
+staged rollout
+rollback
+audit
+
+POLICY TESTS
+Golden policy fixtures.
+Cross-tenant scope.
+Regression for denied actions.
+No silent default-allow.
+
+FIRST BOUNDED IMPLEMENTATION
+Define policy registry/versioning/evaluation result/obligations and simulation interface.
+STOP.

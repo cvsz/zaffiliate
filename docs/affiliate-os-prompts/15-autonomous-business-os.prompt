@@ -1,0 +1,140 @@
+AUTONOMOUS BUSINESS OS MASTER PROMPT
+
+Act as principal autonomous-systems architect, multi-agent engineer, operations architect, affiliate-growth strategist, SRE, security engineer, and technical product owner.
+
+Your mission is to evolve the Affiliate OS from a collection of automations into a policy-controlled Autonomous Business OS.
+
+The system must coordinate specialized agents and workflows across:
+Opportunity Discovery
+Product Evaluation
+Campaign Planning
+Creative Generation
+Commercial Validation
+Compliance
+Approval
+Publishing
+Attribution
+Revenue
+Experimentation
+Optimization
+Incident Response
+Recovery
+
+AUTONOMY PRINCIPLES
+- Every high-impact action must be authorized.
+- Every autonomous decision must be explainable.
+- Every workflow must be resumable.
+- Every agent must have bounded permissions.
+- Every external side effect must be idempotent.
+- Every risky action must be stoppable.
+- Every action must be auditable.
+- No agent receives general shell/database/admin authority.
+
+AGENT RUNTIME
+Create:
+AgentDefinition
+AgentRun
+AgentTask
+AgentToolPermission
+AgentBudget
+AgentMemory
+AgentCheckpoint
+AgentDecision
+AgentOutcome
+
+SPECIALIZED AGENTS
+OpportunityAgent
+TrendAgent
+ProductResearchAgent
+CampaignPlannerAgent
+CreativeDirectorAgent
+CopyAgent
+ImageAgent
+VideoAgent
+ComplianceAgent
+CommercialValidatorAgent
+PublisherAgent
+AnalyticsAgent
+RevenueAgent
+ExperimentAgent
+OptimizationAgent
+IncidentAgent
+RecoveryAgent
+
+AGENT CONTRACT
+Each agent declares:
+purpose
+input schema
+output schema
+tool allowlist
+data scope
+tenant scope
+budget
+timeout
+retry policy
+risk level
+
+COORDINATION
+Use typed events/tasks rather than free-form agent-to-agent side effects.
+Support parent/child runs and deterministic checkpoints.
+
+MEMORY
+Separate:
+working memory
+campaign memory
+brand memory
+performance memory
+operational memory
+Never treat unverified LLM-generated text as durable truth.
+
+TASK DELEGATION
+Coordinator may delegate bounded tasks only after policy evaluation.
+No recursive unbounded agent creation.
+
+AUTONOMOUS BUSINESS LOOPS
+Daily:
+sync → rank → recommend → draft → approve/publish → reconcile → analyze → optimize.
+Event-driven:
+promotion starts, price changes, conversion spikes, provider failures, campaign fatigue, security events.
+
+SELF-HEALING
+IncidentAgent may diagnose failures and propose remediation.
+Automatic remediation allowed only for low-risk pre-approved actions such as:
+retry transient job
+restart failed worker
+pause provider workflow
+refresh safe caches
+reconcile status
+Never auto-modify credentials, financial data, or security policy without approval.
+
+ESCALATION
+Severity-based:
+INFO → log
+LOW → auto-remediate if safe
+MEDIUM → operator review
+HIGH → pause affected scope + escalate
+CRITICAL → activate kill switch + incident workflow
+
+BUSINESS CONTROL PLANE
+Mission Control must expose:
+active agents
+current tasks
+blocked tasks
+pending approvals
+budgets
+autonomy mode
+kill switches
+recent decisions
+recovery actions
+incidents
+decision explanations
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect current automation/agent code.
+Define typed agent contracts, tool permissions, budgets, checkpoints, audit events, and coordinator interface.
+Add tests for permission denial, tenant isolation, budget enforcement, recursive delegation prevention, and kill-switch behavior.
+Update architecture, security, checklist, exec planning.
+STOP after one bounded slice.
+
+DEFINITION OF DONE
+Agent autonomy is complete only when permissions, budget, policy, checkpoints, auditability, failure handling, and safe shutdown are verified.

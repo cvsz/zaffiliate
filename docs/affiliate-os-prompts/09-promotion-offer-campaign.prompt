@@ -1,0 +1,138 @@
+PROMOTION + OFFER INTELLIGENCE + CAMPAIGN ORCHESTRATION MASTER PROMPT
+
+Act as principal affiliate-commerce architect, promotion engine designer, pricing analyst, campaign strategist, backend/data/automation/compliance engineer.
+
+Build system understanding product, price, promotion, commission, provider, audience, content, risk.
+Never fabricate discounts, prices, stock, coupons, urgency, commission rates, delivery guarantees, promotion deadlines.
+
+COMMERCE MODEL
+Merchant, Brand, Product, ProductVariant, Offer, PriceSnapshot, Promotion, Coupon, InventorySnapshot, CommissionRule, AffiliateOpportunity, Campaign, CampaignOffer.
+Separate stable Product from time-sensitive Offer.
+
+OFFER
+org/provider/account/merchant/product/variant/provider_offer/currency/list/sale/effective price/inventory/availability/commission/start/end/source/last_verified_at.
+
+PRICE SNAPSHOTS
+Historical immutable price evidence.
+
+PROMOTIONS
+PRICE_DROP, PERCENT_DISCOUNT, FIXED_DISCOUNT, COUPON, VOUCHER, BUNDLE, FREE_SHIPPING, FLASH_SALE, CAMPAIGN_SALE, PROVIDER_PROMOTION, OTHER.
+Validity starts/ends/verified/source/status UPCOMING/ACTIVE/EXPIRING/EXPIRED/CANCELLED/UNKNOWN.
+UNKNOWN is not ACTIVE.
+
+FRESHNESS
+Configurable thresholds for price/inventory/coupon/commission/promotion.
+
+PRE-PUBLISH REVALIDATION
+Load Content → Extract Commercial Claims → Fetch Latest Offer → Check Freshness → Compare → ALLOW/REWRITE/BLOCK.
+Revalidate price/discount/coupon/deadline/stock/commission-related strategy/shipping.
+
+COMMERCIAL CLAIM BINDING
+CommercialClaim with content/offer/type/display/source/source timestamp/expires.
+Stale claims trigger REGENERATE, REMOVE_DYNAMIC_CLAIM, REQUEST_REVIEW, CANCEL.
+
+OFFER INGESTION
+Provider → Fetch → Validate → Normalize → Dedup → Version → Persist → OfferUpdated.
+Handle pagination/rate limits.
+
+COMMISSION
+Rate/fixed amount/currency/tier/category/campaign/start/end/conditions/source/confidence with history snapshots. Never invent unavailable commission.
+
+EXPECTED ECONOMIC VALUE
+TrafficPotential × ClickProbability × ConversionProbability × ExpectedNetCommission × Confidence, adjusted by refund/content/AI cost/promo lifetime/inventory risk/competition.
+
+OPPORTUNITY
+product/offer/provider/promotion/audience/score/confidence/expected clicks/CVR/net commission/trend/content fit/promotion/risk/expires/explanation.
+Lifecycle DISCOVERED/EVALUATING/READY/SELECTED/CAMPAIGNED/WATCH/EXPIRED/REJECTED.
+
+COMMERCIAL RISK
+price volatility, promo expiry, inventory confidence, refunds, merchant quality, freshness, commission uncertainty, provider instability.
+
+INVENTORY
+IN_STOCK/LOW_STOCK/OUT_OF_STOCK/PREORDER/UNKNOWN.
+No fake low-stock urgency.
+
+CATALOG
+Normalize title/description/brand/category/variant/images/attributes/GTIN/SKU. Raw provider payload kept separately.
+Dedup with GTIN/SKU/brand/model/merchant/attributes/title; ambiguous requires confidence/review.
+
+PRODUCT QUALITY
+title/description/image/attributes/offer freshness/category/claim evidence.
+
+PROMOTION STRENGTH
+price drop/history/coupon/duration/commission uplift/audience/CVR. Do not equate displayed discount with true value without valid baseline.
+
+HISTORICAL PRICE
+current, 7d median, 30d median, lowest/highest observed.
+Deal class STANDARD/GOOD_VALUE/PROMOTION/STRONG_PROMOTION/PRICE_VOLATILE/INSUFFICIENT_DATA.
+
+COUPON
+code, type, value, min spend, max discount, starts/ends, eligibility, source. Validate active/eligibility/provider/minimum/end before content.
+
+CAMPAIGN
+org/name/objective/status/products/offers/provider targets/audience/persona/start/end/budget/content strategy/automation policy/primary metric/guardrails.
+Objectives AWARENESS, TRAFFIC, AFFILIATE_CLICKS, CONVERSION, NET_COMMISSION, PRODUCT_TEST, CREATIVE_TEST, PROMOTION_PUSH.
+States DRAFT, PLANNING, READY, ACTIVE, PAUSED, ENDING, COMPLETE, CANCELLED, ARCHIVED.
+
+CAMPAIGN GENERATION
+Opportunity+Brand+Audience+Policy+History → CampaignBrief+ContentPlan+PlatformPlan+ExperimentPlan+SchedulePlan+BudgetPlan.
+AI output proposal until policy approval.
+
+CONTENT MATRIX
+Product×Persona×Platform×Format×Hook×CTA with creative budget to prevent explosion.
+
+CAMPAIGN CALENDAR
+Promo validity, content readiness, approval, platform rules, frequency, historical performance, timezone.
+Never schedule stale promo claims beyond expiry.
+
+PROMOTION EXPIRATION
+Block unpublished stale promotional content, invalidate claims, cancel obsolete schedules, create revision tasks. Keep history.
+
+OFFER EVENTS
+OfferPriceChanged, PromotionChanged, PromotionExpired, InventoryChanged, CommissionChanged, OfferUnavailable.
+
+CAMPAIGN REVALIDATION
+campaign active, offer available, product eligible, promotion valid, creative current, approval valid, provider healthy. Fail closed.
+
+MULTI-PROVIDER COMPARISON
+Compare price/promo/commission/CVR/EPC/freshness. Do not claim cheapest/best without valid criterion/evidence.
+
+DESTINATION SELECTION
+audience fit/provider eligibility/offer quality/CVR/commission/data confidence/campaign strategy; persist rationale.
+
+LINK/CREATIVE CONSISTENCY
+creative → campaign → offer → affiliate link. Validate pre-publish.
+
+CAMPAIGN VERSIONING
+Version, changes, reason, actor, created_at.
+
+BLOCKLIST/ALLOWLIST
+allowed providers/merchants/categories, blocked products/keywords.
+
+CATEGORY RISK
+LOW/MEDIUM/HIGH/RESTRICTED; high risk requires extra review.
+
+CLAIM EVIDENCE
+Product claim source/reference/verified/expires/confidence.
+Extract claims from caption/script/voice/thumbnail/image/video text; classify PRODUCT_FACT, PRICE, DISCOUNT, PROMOTION, INVENTORY, COMPARISON, PERFORMANCE, TESTIMONIAL, OTHER.
+Mismatch blocks.
+
+PUBLICATION COMMERCIAL SNAPSHOT
+Immutable offer/price/promotion/coupon/commission/inventory/verified_at at publish.
+
+PROMOTION ANALYTICS
+promotion CTR/CVR/EPC/net commission/refund/creative performance vs baselines.
+
+DAILY OFFER INTELLIGENCE
+Sync catalog → prices → promotions → commissions → inventory → recompute opportunities → detect changes → recommendations. Idempotent.
+Fast watch only within provider rules.
+
+MISSION CONTROL
+Opportunity board and campaign health with time remaining/content/approval/scheduled/published/clicks/conversions/net commission.
+
+SECURITY
+cross-tenant offer access, forged offers, unsafe redirects, payload injection, XSS, malicious media URLs, SSRF, auth bypass.
+Provider text untrusted, sanitize HTML/URLs/media origins.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect product/affiliate models, read planning, separate Product/Offer, define Offer/PriceSnapshot/Promotion/freshness, tests first incl tenant/promo expiry/stale price, run tests/security, update docs/checklist/planning, one next task, STOP.

@@ -1,0 +1,62 @@
+SELF-HEALING + RELIABILITY ENGINEERING MASTER PROMPT
+
+Act as principal reliability architect, SRE, incident automation engineer, chaos engineer.
+
+Build safe self-healing capabilities around observable failure states.
+
+DETECT
+API degradation
+DB saturation
+queue backlog
+worker crash loop
+provider auth failure
+provider outage
+webhook lag
+render failures
+storage capacity
+analytics lag
+backup failure
+cost anomaly
+
+DIAGNOSE
+Correlate logs/metrics/traces/events.
+Generate evidence-based diagnosis with confidence.
+Never let an LLM invent root cause as fact.
+
+SAFE REMEDIATION CLASSES
+AUTO_SAFE:
+retry transient job
+restart stateless worker
+open circuit breaker
+pause provider workflow
+scale worker within limits
+invalidate safe cache
+reconcile publication state
+
+APPROVAL_REQUIRED:
+database failover
+credential rotation
+bulk re-drive
+large scaling changes
+policy changes
+
+BLOCKED_AUTOMATION:
+manual financial edits
+security-policy weakening
+tenant permission changes
+secret disclosure
+
+CHAOS
+Test DB outage
+Redis outage
+object storage outage
+provider 429/5xx
+queue delay
+worker crash
+network partition
+backup corruption
+Always in isolated/safe environments.
+
+FIRST BOUNDED IMPLEMENTATION
+Define Incident, Diagnosis, RemediationAction, RiskClass, approval rules, and one safe automatic remediation with tests.
+STOP.

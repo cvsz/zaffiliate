@@ -1,0 +1,145 @@
+ONE-CLICK BOOTSTRAP & SECURE FOUNDATION PROMPT
+
+Act as principal platform engineer, DevSecOps engineer, backend/frontend/database/security engineer, and SRE for the Affiliate Automation OS.
+
+Goal: turn architecture + exec-planning.md into a locally runnable, testable, secure P0 foundation.
+
+FIRST ACTIONS
+Inspect git status, branch, recent log, repo structure, stack, tests, CI, Docker/K8s/Terraform/Helm/security.
+Read README, ARCHITECTURE, ROADMAP, SECURITY, THREAT-MODEL, IMPLEMENTATION-CHECKLIST, exec-planning.
+
+TARGET LOCAL EXPERIENCE
+Linux:
+cp .env.example .env
+./scripts/bootstrap.sh
+docker compose up -d
+./scripts/healthcheck.sh
+Windows:
+Copy-Item .env.example .env
+pwsh ./scripts/bootstrap.ps1
+docker compose up -d
+pwsh ./scripts/healthcheck.ps1
+
+Target services: Web, API, Worker, Scheduler, PostgreSQL, Redis, Object Storage, Queue, Observability.
+
+DIRECTORY BASELINE
+apps/web, api, worker, scheduler
+packages/db, contracts, events, security, config, observability
+infrastructure/docker,kubernetes,helm,terraform
+scripts/bootstrap/healthcheck/migrate/backup/restore for sh/ps1
+
+ENVIRONMENT
+Safe .env.example with APP_ENV, APP_URL, API_URL, DATABASE_URL, REDIS_URL, OBJECT_STORAGE_*, QUEUE_URL, SESSION_SECRET, JWT_SECRET, ENCRYPTION_KEY, LOG_LEVEL, OTEL endpoint.
+No real credentials.
+Production requires strong secrets.
+
+CONFIG VALIDATION
+Typed validation; fail on missing/invalid production config; one canonical config layer.
+
+POSTGRESQL
+Healthcheck, persistent volume, non-root app user, separate DB, migrations, pooling.
+Foundational tables: users, organizations, memberships, roles, permissions, audit_events, integration_accounts, webhook_events.
+Explicit tenant ownership.
+
+REDIS
+Use for cache, distributed locks, rate limiting, job coordination, short-lived state; not permanent records.
+
+QUEUE
+Job, JobAttempt, RetryPolicy, DeadLetter, IdempotencyKey, CorrelationId.
+Logical queues: default, affiliate-sync, content-generation, media, publishing, analytics, webhooks.
+
+OBJECT STORAGE
+S3-compatible local storage for images/videos/audio/subtitles/generated assets/exports. Store metadata and object key in DB.
+
+MEDIA SECURITY
+File size, MIME detection, extension validation, safe names, scanning hook, metadata stripping where needed, no executable content.
+
+AUTH
+Secure password hashing if used, session expiry, cookies, SameSite, CSRF, logout, disable, rate limits.
+
+MULTI-TENANCY
+Organization, Membership, Role, Permission.
+Every request resolves authenticated user, active org, membership, permission.
+Tests prove Org A cannot read/update/delete Org B.
+
+RBAC
+OWNER, ADMIN, EDITOR, CREATOR, ANALYST, VIEWER with explicit permissions.
+Permission evaluation over hardcoded role checks.
+
+AUDIT
+Immutable-sensitive action audit with actor, org, action, resource, ID, timestamp, request ID, metadata; no secrets.
+
+SECRETS
+Dev .env/Docker secrets where practical; production SecretProvider abstraction.
+
+API
+/api/v1, /health, /ready, /version, standard safe error envelope, no production stack traces.
+
+HEALTH
+Separate liveness/readiness/dependency health.
+
+OBSERVABILITY
+Structured logs, OpenTelemetry, http/db/queue/job metrics.
+
+ERROR MODEL
+ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError, RateLimitError, ProviderError, DependencyUnavailableError.
+
+RATE LIMITING
+login, password reset, API, webhooks, expensive AI, affiliate redirects.
+
+SECURITY HEADERS
+CSP, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS in HTTPS prod, frame protection.
+
+DOCKER COMPOSE
+web/api/worker/scheduler/postgres/redis/object-storage plus optional OTel/Prometheus/Grafana.
+Healthchecks, restart policies, named volumes, isolated networks, dependency readiness.
+
+DOCKERFILES
+Multi-stage, non-root, minimal runtime, locked deps, no .env/secrets.
+
+BOOTSTRAP SCRIPTS
+Check tools, create env if absent, generate local-only secrets, dirs, start dependencies, wait health, migrate, optional dev seed, smoke, print endpoints. Idempotent.
+
+LINUX INSTALLER
+Ubuntu/Debian helper; validate/install git/curl/Docker/Compose/runtime as needed; no destructive unrelated OS changes.
+
+WINDOWS
+PowerShell modern support; clear errors for Docker/Git.
+
+MIGRATION
+One canonical command.
+
+DEV SEED
+Development-only demo org/owner/product/campaign; never predictable prod admins.
+
+TEST FOUNDATION
+config, DB, tenancy, RBAC, health, queue, object storage, audit, security regressions.
+
+CI
+format, lint, typecheck, unit, integration, build plus dependency audit, secret scanning, SAST, container scan, SBOM.
+
+GITHUB SECURITY
+SECURITY.md, CODEOWNERS, dependabot.yml, PR template, issue templates where appropriate.
+
+SUPPLY CHAIN
+lockfiles, pinning, reproducible builds where practical, SBOM, digest/provenance.
+
+BACKUP/RESTORE
+scripts/backup.sh, restore.sh; DB and critical metadata. Explicit destination for restore. Add restore test.
+
+LOCAL SECURITY CHECK
+./scripts/security-check.sh
+dependency audit, secret scan, SAST, container scan, config checks.
+
+LOCAL VERIFY
+./scripts/verify.sh
+format, lint, typecheck, unit, integration, security, build.
+
+TASK RUNNER
+make bootstrap/up/down/migrate/test/verify/logs/backup/restore or extend existing runner.
+
+P0 ACCEPTANCE
+Fresh clone → env → bootstrap → stack → migrations → web/API → authenticated request → tenancy/RBAC → queue job → object store → audit → health → tests → security → backup → restore.
+
+FIRST BOUNDED SLICE
+Inspect repo/plans, identify smallest missing P0 slice, tests first, implement, verify, update exec-planning/checklist, report files/commands/results/blockers/next task, STOP.
