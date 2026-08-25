@@ -86,9 +86,10 @@ OAuth/OIDC browser login + token refresh · Meta/YouTube catalog+analytics adapt
 
 ## Test Evidence
 
-- `npm test`: **480 tests — 478 pass, 0 fail, 2 environment-gated skips** (2026-08-25, GM-B5 slice; skips are DB-reachability-gated integrations that run green against live Supabase PG when DATABASE_URL points at the pooler).
+- `npm test`: **494 tests — 492 pass, 0 fail, 2 environment-gated skips** (2026-08-25, GM-B4/B9 slices; skips are DB-reachability-gated integrations that run green against live Supabase PG).
 - Restore rehearsal (§55/56/41): PASSED end-to-end — see blocker B5; evidence artifact `dist/restore-rehearsal-evidence.json` (`passed: true`).
-- `npm run check`: clean (all modules incl. rehearsal tooling).
+- Multi-tenant golden chain (§10): PASSED over real HTTP — see blocker B9.
+- `npm run check`: clean (all modules incl. oauth + e2e tooling).
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities.
 - `scripts/security-check.sh`: PASS (tracked-secret material, high-signal patterns, non-root container).
 
@@ -129,14 +130,14 @@ Observability active (/metrics, structured logs, SLO eval). Runbooks partial (OP
 | B1 | CI red on main: dedupe clock-mixing time bomb (duplicate-event gate) + fresh-checkout ENOENT in migration writer | BLOCKER | CLOSED 2026-08-25 — GM-001 commit `531b69d`, CI green: https://github.com/cvsz/zaffiliate/actions/runs/32871141615 |
 | B2 | Live provider credentials unprovisioned; no provider capability may be marked production-ready | BLOCKER | open |
 | B3 | PublicationJob durable persistence (MM-003 remainder); idempotent publish/retry/DLQ must survive restart | BLOCKER | CLOSED 2026-08-25 — GM-002 commit `6a17bc9`, CI green: https://github.com/cvsz/zaffiliate/actions/runs/32874226709 |
-| B4 | OAuth browser flow + token refresh missing; REAUTH_REQUIRED lifecycle unimplementable | HIGH | open |
+| B4 | OAuth browser flow + token refresh missing; REAUTH_REQUIRED lifecycle unimplementable | HIGH | CLOSED 2026-08-25 — GM-B4 slice: `packages/security/src/oauth.js` (authorization-code + PKCE S256, injectable transport/clock, typed fail-closed errors), token store over `ref:` manager with rotation + revocation→REAUTH_REQUIRED, server routes `/api/v1/oauth/:provider/{authorize,callback}` (single-use state, 503 when unconfigured), identity-link binding via `linkExternalIdentity`, audited `OAUTH_LINK_COMPLETED`; 13 tests RED→GREEN |
 | B5 | Restore-into-clean-environment rehearsal + migration rollback classification not evidenced (§41/42/56) | HIGH | CLOSED 2026-08-25 — GM-B3 slice `restore-rehearsal.mjs`: live Supabase dump (`gm-b5-source-dump` sha256 `57d6e819…`; app-scope secret-free archive sha256 `cc9a9563…`) restored into isolated postgres:17; migration 006 applied forward onto restored snapshot (pending=0 drift=0); RLS 13/13 enabled+forced; cross-tenant read+write isolation proven through a dedicated non-owner app role; golden publication flow + golden financial metrics passed; per-migration rollback classification documented in `db/migrations/ROLLBACK.md`. Rehearsal findings fixed en route: `tenants` FORCE+policy (migration 006) and cross-call analytics-event dedupe crash |
 | B6 | Distributed rate-limit store (Redis) pending; single-instance limiter only | MEDIUM | open |
 | B7 | Object storage writes fail-closed BLOCKED on bucket permissions | HIGH | open |
 | B8 | Performance/load baselines not recorded against representative workloads (§43–47) | MEDIUM | open |
-| B9 | Full-chain multi-tenant golden E2E over HTTP (org A vs B, §10) not assembled end-to-end | HIGH | open |
+| B9 | Full-chain multi-tenant golden E2E over HTTP (org A vs B, §10) not assembled end-to-end | HIGH | CLOSED 2026-08-25 — GM-B9 slice `test/multi-tenant-golden-e2e.test.js`: both tenants driven in parallel over real HTTP — disjoint commerce offers, indistinguishable cross-tenant/unknown `/go` 404s, foreign-tenant subId attribution rejected (422) while own attribution succeeds exactly once despite replays (runtime outbox single conversion, none for B), per-tenant analytics/commission totals never bleed under interleaved reads, automation policy PUT for A leaves B on default, recommendation records partitioned end-to-end |
 | B10 | Operator/developer handbooks incomplete (§83/84) | LOW | open |
 
 ## Approval
 
-Not approved for Gold Master. B1, B3, B5 closed with recorded evidence. Next bounded task: B4 (OAuth/OIDC browser flow + token refresh) or B9 (full-chain multi-tenant golden E2E over HTTP). B2 requires external credential provisioning; B7 requires Supabase bucket permission change.
+Not approved for Gold Master. B1, B3, B4, B5, B9 closed with recorded evidence. Remaining: B2 (external credentials), B6 (Redis distributed rate-limit store), B7 (S3 bucket write permissions — external), B8 (performance/load baselines), B10 (operator/developer handbooks). Next bounded task: B8 or B10; B2/B7 await maintainer-provisioned access.

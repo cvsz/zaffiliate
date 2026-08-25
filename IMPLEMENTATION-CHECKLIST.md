@@ -1,6 +1,6 @@
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
-Updated: 2026-08-25 · Evidence base: `npm test` 480 tests — 478 pass, 0 fail, 2 gated skips; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
+Updated: 2026-08-25 · Evidence base: `npm test` 494 tests — 492 pass, 0 fail, 2 gated skips; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
 
 ## Classification legend
 
@@ -13,7 +13,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 1 | Monorepo + zero-dep runtime (§2) | COMPLETE | single-package ESM monorepo, `node --test`, CI in `.github/workflows/ci.yml` |
 | 2 | Tenancy, RBAC, audit chain (§24) | COMPLETE | `packages/contracts/src/{tenancy,grants,audit}.js`, RLS tests `db/tests/rls.sql`, escalation audit |
 | 3 | Identity: sessions, API keys, plans, ledger (§24) | COMPLETE | `packages/identity-billing/*`; time-bomb test fixed this slice |
-| 4 | OAuth/OIDC browser flow, PKCE, JWKS | MISSING | only API-key + external identity links; no password/OIDC login yet |
+| 4 | OAuth/OIDC browser flow, PKCE, JWKS | PARTIAL | JWKS RS256 verifier + OAuth2 authorization-code flow with PKCE S256, token store w/ rotation+REAUTH_REQUIRED revocation lifecycle, authorize/callback routes over real HTTP (GM-B4); remaining: production provider registration + consent UI |
 | 5 | Affiliate lifecycle P→O→L→click→conversion→commission (§3) | COMPLETE | `packages/affiliate-core/*`, immutable minor-unit snapshots, outbox |
 | 6 | Provider adapters TikTok/Shopee/Lazada/Meta/YouTube/LINE (§3) | PARTIAL | TikTok full SDK (`packages/tiktok-shop`); Shopee/Lazada signed clients; Meta/YT = publishing boundary only; no catalog/order reads for Meta/YT |
 | 7 | Provider capability states manual/approval-required/unsupported (§1) | COMPLETE (this slice) | `packages/adapters/src/provider-registry.js` + `test/provider-capability.test.js` (10 tests) |
@@ -56,5 +56,8 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 1. ~~**GM-001 closure**: push slice, record green CI run as release evidence~~ CLOSED (run 32871141615)
 2. ~~**GM blocker B3**: durable PublicationJob persistence~~ CLOSED (GM-002, live PG evidence)
 3. ~~**GM blocker B5**: restore rehearsal + per-migration rollback classification~~ CLOSED (GM-B5, `passed:true` evidence + `db/migrations/ROLLBACK.md`)
-4. **MM-004 / GM blocker B4**: OAuth/OIDC browser flow + token refresh
-5. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store
+4. ~~**GM blocker B4**: OAuth/OIDC browser flow + token refresh~~ CLOSED (GM-B4, PKCE + refresh lifecycle)
+5. ~~**GM blocker B9**: full-chain multi-tenant golden E2E over HTTP~~ CLOSED (GM-B9 suite)
+6. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store
+7. **GM blocker B8**: performance/load baselines (§43–47)
+8. **External (maintainer)**: B2 provider credentials · B7 Supabase S3 write permissions

@@ -4,6 +4,17 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (GM-B4 + GM-B9 — 2026-08-25)
+
+- OAuth2 authorization-code flow with PKCE S256 (`packages/security/src/oauth.js`): fail-closed https-only configuration, injectable clock/randomness/transport, typed `OAuthStateError`/`OAuthTokenError`; token store over the `ref:` secret manager with rotation-preserving refresh and revocation lifecycle — `invalid_grant`/401/400 clears stored material and returns `REAUTH_REQUIRED`.
+- API routes `/api/v1/oauth/:provider/authorize|callback`: server-owned single-use state (fail-closed 503 when provider unregistered, 400 unknown/expired/replayed state, 502 exchange failure, 409 identity-already-linked), identity binding through `linkExternalIdentity`, success audited as new `OAUTH_LINK_COMPLETED` security event.
+- Multi-tenant golden E2E (`test/multi-tenant-golden-e2e.test.js`, master-spec §10): orgs A/B in parallel over real HTTP — disjoint offers/catalog, indistinguishable cross-tenant `/go` 404s, foreign subId attribution rejected while own conversion is exactly-once across replays, per-tenant analytics/commission totals stable under interleaved reads, automation policy isolation, partitioned recommendations.
+- `docs/affiliate-os-prompts/`: complete 33-prompt Affiliate OS build pack (reference material, untracked→tracked).
+
+### Verification (GM-B4/B9)
+
+- OAuth suite 13/13 RED→GREEN. Full suite: **494 tests — 492 pass, 0 fail, 2 gated skips**. `npm run check` clean incl. new modules; `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities; `scripts/security-check.sh`: PASS.
+
 ### Added (GM-B5 — restore rehearsal + rollback classification — 2026-08-25)
 
 - `scripts/restore-rehearsal.mjs`: repeatable §41/§56 drill — restores the app-scope archive into an isolated localhost postgres, forward-applies release migrations onto the restored snapshot, then runs schema, RLS, cross-tenant read/write isolation, golden publication flow and golden financial-metric checks through a dedicated non-owner app role (superuser BYPASSRLS would mask every policy); emits `dist/restore-rehearsal-evidence.json`.
