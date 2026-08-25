@@ -91,4 +91,35 @@ for attempt in 1 2 3; do
   sleep 5
 done
 if [ "$migrate_ok" = "1" ]; then echo "deploy: migrations verified against live DB"; else echo "deploy: WARN migrations unreachable this run (non-blocking)"; fi
+# Tunnel connector (locally-managed; ingress = zaffiliate.zeaz.dev -> :8788)
+TUNNEL_ID="77107d8b-8293-421d-8189-85f74a73b30b"
+CF_TOKEN="$(grep -E '^CLOUDFLARE_API_TOKEN=' "$HOME/zeaz/.env.cloudflare" | cut -d= -f2-)"
+[ -n "$CF_TOKEN" ] || fail "CLOUDFLARE_API_TOKEN missing from ~/zeaz/.env.cloudflare"
+sudo mkdir -p /etc/cloudflared-zaffiliate
+TT=$(curl -sf -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$(grep -E '^CLOUDFLARE_ACCOUNT_ID=' "$HOME/zeaz/.env.cloudflare" | cut -d= -f2-)/cfd_tunnel/$TUNNEL_ID/token" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).result))")
+[ -n "$TT" ] || fail "could not fetch tunnel token"
+echo "TUNNEL_TOKEN=$TT" | sudo tee /etc/cloudflared-zaffiliate/token.env >/dev/null
+sudo chmod 600 /etc/cloudflared-zaffiliate/token.env
+printf 'tunnel: %s\ningress:\n  - hostname: zaffiliate.zeaz.dev\n    service: http://127.0.0.1:8788\n  - service: http_status:404\n' "$TUNNEL_ID" | sudo tee /etc/cloudflared-zaffiliate/config.yml >/dev/null
+if [ ! -f /etc/systemd/system/zaffiliate-tunnel.service ]; then
+sudo tee /etc/systemd/system/zaffiliate-tunnel.service >/dev/null <<'UNIT'
+[Unit]
+Description=zaffiliate Cloudflare Tunnel connector
+After=network-online.target zaffiliate.service
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/cloudflared-zaffiliate/token.env
+ExecStart=/home/cvsz/zworkforce/bin/cloudflared --no-autoupdate --config /etc/cloudflared-zaffiliate/config.yml tunnel run --token ${TUNNEL_TOKEN}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+fi
+sudo systemctl daemon-reload
+sudo systemctl enable --now zaffiliate-tunnel.service >/dev/null
+
 echo "deploy: done — public reachability requires Cloudflare DNS: zaffiliate.<zone> -> this origin"

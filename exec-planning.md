@@ -108,6 +108,14 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### DEPLOY-001 — Public deployment at https://zaffiliate.zeaz.dev — Status: COMPLETE
+Live chain: Internet -> Cloudflare edge -> dedicated locally-managed tunnel 77107d8b (ingress self-hosted in /etc/cloudflared-zaffiliate/config.yml; connector systemd unit token-mode w/ 600 env file) -> loopback Caddy vhost (:80/:8080, CF real-IP headers) -> API :8788 (APP_ENV=production, APP_ENV gates enforced, secrets root-side /etc/zaffiliate.env 640) -> Supabase Postgres pooler.
+Root-caused en route: NAT blocks ALL inbound ports (why siblings use tunnels), remote-managed tunnel ingress not API-editable (10405), systemd EnvironmentFile section placement, cloudflared flag order (--config global before subcommand; --token after run).
+Ops artifact: scripts/deploy-host.sh now provisions api+tunnel+edge+migrations idempotently.
+Verification: external healthz 200 {"ok":true,"service":"zaffiliate-api"}; version endpoint appEnv=production. zeaz tf change signed f1264a3 pushed.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### MM-003-lite — Durable analytics_events persistence (live end-to-end) — Status: COMPLETE
 Scope: `packages/db/src/analytics-repo.js` (awaited multi-row parameterized inserts of canonical envelopes w/ lineage+payload folded into dimensions jsonb; app-level dedupe pre-insert; async listRecent mapping); migration `004_canonical_analytics_types.sql` (replaced legacy 6-value CHECK with the canonical 17-type set — real schema drift resolved via the migrator itself).
 LIVE EVIDENCE (Supabase node.b pooler): tenant seeded -> canonical affiliate_click envelope persisted -> readback matched eventId+type. Full chain now durable: ingest -> dedupe -> feature pipeline -> Postgres.

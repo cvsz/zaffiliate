@@ -253,3 +253,11 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 - Tenant seeded -> canonical `affiliate_click_recorded` envelope persisted to Supabase Postgres -> readback matched eventId and type.
 - Migrator applied 004 live then proved idempotency (skipped:4 on re-run).
+
+### Deployed (2026-08-25) — zaffiliate.zeaz.dev is LIVE
+
+- Public HTTPS via a dedicated locally-managed Cloudflare Tunnel (`77107d8b…`) whose ingress (`zaffiliate.zeaz.dev -> http://127.0.0.1:8788`) is fully self-hosted — no dashboard dependency for future changes.
+- Connector runs as `zaffiliate-tunnel.service` (token via 600-permission env file); API as `zaffiliate.service`; both enabled for boot persistence.
+- DNS CNAME managed by the new Terraform stack in the zeaz repo (signed f1264a3).
+- Verified live: `https://zaffiliate.zeaz.dev/healthz` -> 200 `{"ok":true,...}`; `/api/v1/version` reports production build.
+- `scripts/deploy-host.sh` now provisions the tunnel connector too (idempotent, re-runnable).
