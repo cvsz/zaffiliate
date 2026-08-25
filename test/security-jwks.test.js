@@ -25,6 +25,8 @@ function signToken(payload, { kid = KID, alg = 'RS256', key = privateKey } = {})
 const JWKS = { keys: [{ ...jwkPublic, kid: KID, use: 'sig', alg: 'RS256' }] };
 const NOW_SECONDS = Math.floor(new Date('2026-08-24T12:00:00Z').getTime() / 1000);
 
+const FIXED_CLOCK_MS = new Date('2026-08-24T12:00:00Z').getTime();
+
 function clientWith(jwksResponses) {
   let calls = 0;
   const fetchImpl = async () => {
@@ -32,7 +34,7 @@ function clientWith(jwksResponses) {
     calls += 1;
     return { ok: true, json: async () => payload };
   };
-  return { client: createJwksClient({ jwksUri: 'https://issuer/.well-known/jwks.json', fetchImpl }), calls: () => calls };
+  return { client: createJwksClient({ jwksUri: 'https://issuer/.well-known/jwks.json', fetchImpl, clock: () => FIXED_CLOCK_MS }), calls: () => calls };
 }
 
 const CLAIMS = {

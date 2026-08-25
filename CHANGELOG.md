@@ -265,3 +265,10 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 ### Added (Feature wiring — 2026-08-25)
 
 - `apps/api/src/features-api.js`: tenant-gated `/api/v1` surfaces wiring existing packages over HTTP — commerce offers list, intelligence opportunities ranking (rank-and-record), recommendations list + operator feedback, analytics overview. POST bodies bounded (64KB) with strict JSON parsing; gating scoped to known feature prefixes so unknown routes keep the canonical 404 envelope.
+
+### Added (Automation + content wiring — 2026-08-25)
+
+- `/api/v1/automation/*`: per-tenant policy status/update (PUT validated, fail-closed defaults) and kill-switch raise/clear — all feeding the gate live.
+- `/api/v1/intelligence/gate`: the OPT-004 decision gate exposed over HTTP (policy plane + kill switches + commercial revalidation -> ALLOW/APPROVAL_REQUIRED/DENY).
+- `/api/v1/content/*`: personas, evidence-gated creative briefs, scored hook generation (>=20, fail-closed on unsubstantiated claims), quality scoring with hard disclosure/claims stops.
+- JWKS test de-flaked via injected fixed clock.

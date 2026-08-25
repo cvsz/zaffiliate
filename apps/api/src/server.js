@@ -48,7 +48,8 @@ export function buildServer({
   analyticsEvents = createEventStore(),
   featureStore = createFeatureStore(),
   recommendationStore = createRecommendationStore(),
-  predictionStore = createPredictionStore()
+  predictionStore = createPredictionStore(),
+  policyOverrides = {}
 } = {}) {
   const config = loadConfig(env);
   const visitorSalt = config.visitorSalt || randomBytes(16).toString('hex');
@@ -58,7 +59,8 @@ export function buildServer({
     recommendationService: createRecommendationService({
       featureStore, recommendationStore, predictionStore, ranker: defineBaselineRanker({ featureStore })
     }),
-    recommendationStore
+    recommendationStore,
+    automationDefaults: policyOverrides
   });
   const events = securityEvents ?? createSecurityEventRecorder({});
   return http.createServer(async (req, res) => {
@@ -123,14 +125,14 @@ export function buildServer({
     }
 
     const tenantHeader = String(req.headers['x-tenant-id'] ?? '').trim();
-    const FEATURE_PREFIXES = ['/api/v1/commerce/', '/api/v1/intelligence/', '/api/v1/analytics/'];
+    const FEATURE_PREFIXES = ['/api/v1/commerce/', '/api/v1/intelligence/', '/api/v1/analytics/', '/api/v1/automation/', '/api/v1/content/'];
     const isFeaturePath = FEATURE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
     if (isFeaturePath) {
       if (!tenantHeader) {
         return json(400, 'features', { error: { code: 'TENANT_HEADER_REQUIRED', message: 'x-tenant-id header is required', request_id: context.requestId } });
       }
       let parsedBody = null;
-      if (req.method === 'POST') {
+      if (req.method === 'POST' || req.method === 'PUT') {
         const chunks = [];
         let size = 0;
         let overflow = false;

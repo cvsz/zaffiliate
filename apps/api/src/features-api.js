@@ -1,10 +1,41 @@
+import { createAutomationPolicy, evaluateAction, setKillSwitch } from '../../../packages/automation/src/index.js';
+import { createDecisionGate } from '../../../packages/intelligence/src/decision-gate.js';
+import {
+  PERSONAS,
+  getPersona,
+  createCreativeBrief,
+  generateHooks,
+  scoreContentQuality,
+  getPrompt
+} from '../../../packages/ai-content/src/factory.js';
+
+const AUTOMATION_MODES = ['manual', 'assisted', 'draft_only', 'approval_required', 'auto_safe', 'autonomous'];
+
 export function createFeatureApi(deps) {
   const {
     commerceStore,
     analyticsEvents,
     recommendationService,
-    recommendationStore
+    recommendationStore,
+    automationDefaults = {}
   } = deps;
+
+  const policies = new Map();
+  const killSwitchesByTenant = new Map();
+  const briefsByTenant = new Map();
+  const decisionGate = commerceStore ? createDecisionGate({ commerceStore }) : null;
+
+  function getPolicy(tenantId) {
+    if (!policies.has(tenantId)) {
+      policies.set(tenantId, createAutomationPolicy({ organizationId: tenantId, ...automationDefaults }));
+    }
+    return policies.get(tenantId);
+  }
+
+  function getSwitches(tenantId) {
+    if (!killSwitchesByTenant.has(tenantId)) killSwitchesByTenant.set(tenantId, []);
+    return killSwitchesByTenant.get(tenantId);
+  }
 
   function listOffers(tenantId) {
     const scope = commerceStore.partitions.get(tenantId);
@@ -104,6 +135,78 @@ export function createFeatureApi(deps) {
       return { status: 200, body: analyticsEvents.summarize(tenantId) };
     }
 
+    if (pathname === '/api/v1/automation/status' && method === 'GET') {
+      const policy = getPolicy(tenantId);
+      return { status: 200, body: { mode: policy.mode, policyVersion: policy.version, allowAutoPublish: policy.allowAutoPublish, activeKillSwitches: getSwitches(tenantId).filter((k) => k.active) } };
+    }
+
+    if (pathname === '/api/v1/automation/kill-switch' && method === 'POST') {
+      try {
+        const record = setKillSwitch({
+          scope: String(body?.scope ?? ''), id: body?.id ?? null,
+          active: body?.active !== false,
+          reason: String(body?.reason ?? ''), actorId: undefined
+        });
+        getSwitches(tenantId).push(record);
+        return { status: 200, body: { ok: true, switch: record } };
+      } catch (error) {
+        return { status: 400, error: { code: 'INVALID_KILL_SWITCH', message: error.message } };
+      }
+    }
+
+    if (pathname === '/api/v1/automation/policy' && method === 'PUT') {
+      try {
+        if (!body || typeof body !== 'object') throw new Error('policy body is required');
+        const mode = String(body.mode ?? 'manual').toLowerCase();
+        if (!AUTOMATION_MODES.includes(mode)) throw new Error(`unsupported automation mode: ${mode}`);
+        const next = createAutomationPolicy({ organizationId: tenantId, ...body, mode });
+        policies.set(tenantId, next);
+        return { status: 200, body: { mode: next.mode, policyVersion: next.version, allowAutoPublish: next.allowAutoPublish } };
+      } catch (error) {
+        return { status: 400, error: { code: 'INVALID_POLICY', message: error.message } };
+      }
+    }
+
+    if (pathname === '/api/v1/intelligence/gate' && method === 'POST' && decisionGate) {
+      const outcome = decisionGate.evaluate({
+        policy: getPolicy(tenantId),
+        action: body?.action ?? {},
+        counters: { postsToday: () => 0, aiCostTodayMinorUnits: () => 0, campaignAiCostMinorUnits: () => 0 },
+        killSwitches: getSwitches(tenantId),
+        context: { tenantId, actorId: String(body?.actorId ?? 'operator') }
+      });
+      return { status: 200, body: outcome };
+    }
+
+    if (pathname === '/api/v1/content/personas' && method === 'GET') {
+      return { status: 200, body: { personas: PERSONAS.map((p) => ({ id: p.id, name: p.name })) } };
+    }
+
+    if (pathname === '/api/v1/content/briefs' && method === 'POST') {
+      try {
+        const brief = createCreativeBrief({ tenantId, ...body });
+        const scope = briefsByTenant.get(tenantId) ?? new Map();
+        scope.set(brief.briefId, brief);
+        briefsByTenant.set(tenantId, scope);
+        return { status: 200, body: { brief } };
+      } catch (error) {
+        return { status: 422, error: { code: 'INVALID_BRIEF', message: error.message } };
+      }
+    }
+
+    if (pathname === '/api/v1/content/hooks' && method === 'POST') {
+      const brief = briefsByTenant.get(tenantId)?.get(String(body?.briefId ?? ''));
+      if (!brief) return { status: 404, error: { code: 'BRIEF_NOT_FOUND', message: 'unknown briefId for this tenant' } };
+      const result = generateHooks({ brief, count: Math.min(Number(body?.count ?? 20), 40) });
+      return { status: 200, body: { hooks: result.hooks, rejected: result.rejected, prompt: result.prompt.name } };
+    }
+
+    if (pathname === '/api/v1/content/score' && method === 'POST') {
+      return { status: 200, body: { score: scoreContentQuality(body ?? {}) } };
+    }
+
+    void getPersona;
+    void getPrompt;
     return null;
   }
 

@@ -108,6 +108,13 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
+### WIRE-002 — Automation control plane + content factory over HTTP — Status: COMPLETE
+Routes: GET /api/v1/automation/status · POST kill-switch · PUT policy · POST /api/v1/intelligence/gate (full OPT-004 chain) · GET personas · POST briefs/hooks/score.
+Tests: test/features-automation-content.test.js 4 cases RED->GREEN; JWKS suite stabilized w/ injected clock (3 consecutive green runs).
+Evidence: full suite 469 tests - 468 pass, 0 fail, 1 gated skip; npm run check clean. Production service restarted post-wiring.
+
+## Prior task — COMPLETE — COMPLETE this turn
+
 ### WIRE-001 — Feature HTTP surfaces — Status: COMPLETE
 Routes live (tenant-gated, canonical envelopes): GET /api/v1/commerce/offers · GET /api/v1/intelligence/opportunities/rank (rankAndRecord) · GET /api/v1/intelligence/recommendations · POST .../:id/feedback · GET /api/v1/analytics/overview. Unknown /api/v1 paths keep the 404 envelope; feature paths without tenant header -> 400 TENANT_HEADER_REQUIRED.
 Tests: test/features-wiring.test.js 5 cases RED->GREEN.
