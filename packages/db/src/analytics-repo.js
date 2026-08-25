@@ -35,9 +35,9 @@ export async function saveAnalyticsEvents(client, tenantId, envelopes) {
     );
     void index;
   });
-  const text = `INSERT INTO analytics_events (tenant_id, event_id, event_type, occurred_at, received_at, dimensions, measures) VALUES ${values.join(', ')}`;
-  await client.query(text, params);
-  return { inserted: list.length };
+  const text = `INSERT INTO analytics_events (tenant_id, event_id, event_type, occurred_at, received_at, dimensions, measures) VALUES ${values.join(', ')} ON CONFLICT (tenant_id, event_id) DO NOTHING`;
+  const result = await client.query(text, params);
+  return { inserted: Number(result?.rowCount ?? list.length) };
 }
 
 export async function listRecentAnalyticsEvents(client, tenantId, limit = 50) {

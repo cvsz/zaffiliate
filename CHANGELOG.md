@@ -4,6 +4,21 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (GM-B5 — restore rehearsal + rollback classification — 2026-08-25)
+
+- `scripts/restore-rehearsal.mjs`: repeatable §41/§56 drill — restores the app-scope archive into an isolated localhost postgres, forward-applies release migrations onto the restored snapshot, then runs schema, RLS, cross-tenant read/write isolation, golden publication flow and golden financial-metric checks through a dedicated non-owner app role (superuser BYPASSRLS would mask every policy); emits `dist/restore-rehearsal-evidence.json`.
+- Migration `006_tenants_rls_force.sql`: FORCE RLS + isolation policy on `tenants` — rehearsal finding; previously ENABLE-only with no policy.
+- `db/migrations/ROLLBACK.md`: per-migration rollback classification per master-spec §42 (forward-fix vs reversible vs empty-env-only), with the no-automatic-rollback and external-side-effect rules.
+
+### Fixed
+
+- Cross-call analytics event redelivery: `saveAnalyticsEvents` dedupe was intra-batch only, so a webhook redelivering an already-persisted eventId crashed on the `(tenant_id, event_id)` unique constraint. Insert now carries `ON CONFLICT (tenant_id, event_id) DO NOTHING` and reports truthful rowCount. Regression test RED→GREEN (`test/analytics-repo.test.js`).
+
+### Verification (GM-B5)
+
+- Rehearsal verdict `"passed": true` on a pristine single run: 19 restored tables; migration 006 forward-applied (pending=0 drift=0); RLS 13/13 enabled+forced; tenant A/B read+write isolation via app role; golden publication flow idempotent with exactly-once claim; golden metrics 1000/100/10 single-effect after duplicate delivery, CTR=CVR=10%.
+- `npm test`: 480 tests — 478 pass, 0 fail, 2 gated skips. `npm run check` clean incl. rehearsal tooling. `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities. `scripts/security-check.sh`: PASS.
+
 ### Changed (2026-08-25 — planning-file consolidation)
 
 - The two execution-planning files were merged into a single canonical `EXEC-PLANNING.md`: mission, EP-00..EP-13 phase definitions and historical completion record, operating policies (PR evidence, merge policy, stop-the-line, completion definition) now live alongside the requirement-vs-repository mapping and all evidence-backed slice records. The lowercase `exec-planning.md` variant was removed; references updated across README, CONTRIBUTING, IMPLEMENTATION-CHECKLIST, RELEASE-READINESS, docs/closure, docs/migration, the PR template, and the CI existence gate.

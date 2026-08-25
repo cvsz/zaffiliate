@@ -384,13 +384,16 @@ Evidence: `npm test` 270/270 includes 10 capability + 14 schema tests; `npm run 
 ### AFF-MM-002 — Safe redirect + webhook ingress — Status: COMPLETE
 Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed, replay dedupe, stale-window reject, cross-tenant 404, tampered destination 404); full suite 270/270; check clean. Files: `apps/api/src/business.js`, `apps/api/src/server.js`, `packages/affiliate-core/src/runtime.js`. (Merged from former EXEC-PLANNING.md MM-002 record.)
 
-## Current task
+## Current task — COMPLETE this turn
 
-GM-B5 — restore-into-clean-environment rehearsal + per-migration rollback classification — IN PROGRESS (real pg_dump of live Supabase captured; isolated postgres:17 target restored; verifier battery surfaced two findings being fixed: `tenants` table missing FORCE+policy → migration 006; verifier must exercise RLS via non-owner app role due to superuser BYPASSRLS semantics). Merge of EXEC-PLANNING.md into this file completed this turn.
+### GM-B5 — Restore rehearsal + rollback classification — Status: COMPLETE
+Scope: real `pg_dump` of live Supabase captured (full archive sha256 `57d6e819…` — contains platform secret material, kept 0600 untracked; app-scope secret-free archive sha256 `cc9a9563…` used for restore); isolated postgres:17 container as clean target; `scripts/restore-rehearsal.mjs` battery executed the §41/§56 chain end-to-end through a dedicated non-owner app role (superuser BYPASSRLS would mask every policy): forward-applied migration `006_tenants_rls_force.sql` onto restored snapshot (pending=0 drift=0), 13/13 tenant-scoped tables RLS enabled+forced, cross-tenant read isolation + spoofed-write WITH CHECK denial, golden publication flow (idempotent create → exactly-once skip-locked claim → publish → terminal freeze), golden financial metrics 1000/100/10 with duplicate-delivery single-effect and CTR=CVR=10%, cleanup verified. Per-migration rollback classification documented in `db/migrations/ROLLBACK.md`.
+Rehearsal findings fixed en route: (1) `tenants` table had ENABLE but neither FORCE nor any policy — migration 006; (2) `saveAnalyticsEvents` dedupe was intra-batch only, so cross-call webhook redelivery crashed on the `(tenant_id,event_id)` unique constraint instead of single-effect no-op — regression test RED→GREEN + `ON CONFLICT DO NOTHING` with truthful rowCount.
+Evidence: verifier `"passed":true`; focused suites green (analytics-repo 5/5); full suite 480 tests — 478 pass, 0 fail, 2 gated skips; check clean incl. rehearsal script; audit 0 vulns; security-check PASS. Files: db/migrations/006_tenants_rls_force.sql, db/migrations/ROLLBACK.md, scripts/restore-rehearsal.mjs, packages/db/src/analytics-repo.js, test/analytics-repo.test.js, package.json, RELEASE-READINESS.md, IMPLEMENTATION-CHECKLIST.md, CHANGELOG.md.
 
 ## Next bounded item
 
-Complete GM-B5: apply migration 006, rework restore-rehearsal verifier to provision and use a dedicated app role, re-run full rehearsal (restore → schema/tenant/financial/golden checks), document per-migration rollback classification in db/migrations/ROLLBACK.md, record evidence in RELEASE-READINESS.md.
+**GM-B4** — OAuth/OIDC browser flow + token refresh (MM-004 continuation): authorize endpoint + PKCE, callback exchange, encrypted `ref:` token storage, refresh lifecycle emitting REAUTH_REQUIRED on revocation. Alternative equally-bounded candidate: GM-B9 full-chain multi-tenant golden E2E over HTTP. Depends on nothing unmet.
 
 ## Backlog (dependency-ordered)
 

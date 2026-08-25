@@ -86,9 +86,9 @@ OAuth/OIDC browser login + token refresh · Meta/YouTube catalog+analytics adapt
 
 ## Test Evidence
 
-- `npm test`: **479 tests — 477 pass, 0 fail, 2 environment-gated skips** (2026-08-25, GM-002 slice; skips are DB-reachability-gated integrations that run green against live Supabase PG when DATABASE_URL points at the pooler).
-- Live PG integration (Supabase pooler): publication-jobs suite 8/8 zero-skip — migration 005 applied idempotently; job created → duplicate suppressed → survived fresh-client "restart" → claimed exactly once (skip-locked) → transitioned to published.
-- `npm run check`: clean (all modules incl. publication-jobs).
+- `npm test`: **480 tests — 478 pass, 0 fail, 2 environment-gated skips** (2026-08-25, GM-B5 slice; skips are DB-reachability-gated integrations that run green against live Supabase PG when DATABASE_URL points at the pooler).
+- Restore rehearsal (§55/56/41): PASSED end-to-end — see blocker B5; evidence artifact `dist/restore-rehearsal-evidence.json` (`passed: true`).
+- `npm run check`: clean (all modules incl. rehearsal tooling).
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities.
 - `scripts/security-check.sh`: PASS (tracked-secret material, high-signal patterns, non-root container).
 
@@ -130,7 +130,7 @@ Observability active (/metrics, structured logs, SLO eval). Runbooks partial (OP
 | B2 | Live provider credentials unprovisioned; no provider capability may be marked production-ready | BLOCKER | open |
 | B3 | PublicationJob durable persistence (MM-003 remainder); idempotent publish/retry/DLQ must survive restart | BLOCKER | CLOSED 2026-08-25 — GM-002 commit `6a17bc9`, CI green: https://github.com/cvsz/zaffiliate/actions/runs/32874226709 |
 | B4 | OAuth browser flow + token refresh missing; REAUTH_REQUIRED lifecycle unimplementable | HIGH | open |
-| B5 | Restore-into-clean-environment rehearsal + migration rollback classification not evidenced (§41/42/56) | HIGH | open |
+| B5 | Restore-into-clean-environment rehearsal + migration rollback classification not evidenced (§41/42/56) | HIGH | CLOSED 2026-08-25 — GM-B3 slice `restore-rehearsal.mjs`: live Supabase dump (`gm-b5-source-dump` sha256 `57d6e819…`; app-scope secret-free archive sha256 `cc9a9563…`) restored into isolated postgres:17; migration 006 applied forward onto restored snapshot (pending=0 drift=0); RLS 13/13 enabled+forced; cross-tenant read+write isolation proven through a dedicated non-owner app role; golden publication flow + golden financial metrics passed; per-migration rollback classification documented in `db/migrations/ROLLBACK.md`. Rehearsal findings fixed en route: `tenants` FORCE+policy (migration 006) and cross-call analytics-event dedupe crash |
 | B6 | Distributed rate-limit store (Redis) pending; single-instance limiter only | MEDIUM | open |
 | B7 | Object storage writes fail-closed BLOCKED on bucket permissions | HIGH | open |
 | B8 | Performance/load baselines not recorded against representative workloads (§43–47) | MEDIUM | open |
@@ -139,4 +139,4 @@ Observability active (/metrics, structured logs, SLO eval). Runbooks partial (OP
 
 ## Approval
 
-Not approved for Gold Master. B1 and B3 closed with recorded evidence. Next bounded task: B5 (restore-into-clean-environment rehearsal + per-migration rollback classification), then B4 (OAuth/token refresh). B2 requires external credential provisioning.
+Not approved for Gold Master. B1, B3, B5 closed with recorded evidence. Next bounded task: B4 (OAuth/OIDC browser flow + token refresh) or B9 (full-chain multi-tenant golden E2E over HTTP). B2 requires external credential provisioning; B7 requires Supabase bucket permission change.

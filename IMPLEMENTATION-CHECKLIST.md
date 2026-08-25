@@ -1,6 +1,6 @@
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
-Updated: 2026-08-25 · Evidence base: `npm test` 471 tests — 470 pass, 0 fail, 1 gated skip; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
+Updated: 2026-08-25 · Evidence base: `npm test` 480 tests — 478 pass, 0 fail, 2 gated skips; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
 
 ## Classification legend
 
@@ -55,6 +55,6 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 
 1. ~~**GM-001 closure**: push slice, record green CI run as release evidence~~ CLOSED (run 32871141615)
 2. ~~**GM blocker B3**: durable PublicationJob persistence~~ CLOSED (GM-002, live PG evidence)
-3. **GM blocker B5**: restore rehearsal + per-migration rollback classification (§41/42/56)
+3. ~~**GM blocker B5**: restore rehearsal + per-migration rollback classification~~ CLOSED (GM-B5, `passed:true` evidence + `db/migrations/ROLLBACK.md`)
 4. **MM-004 / GM blocker B4**: OAuth/OIDC browser flow + token refresh
 5. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store

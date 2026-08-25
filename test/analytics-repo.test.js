@@ -53,6 +53,21 @@ test('duplicate deliveries are deduped before any database round-trip', async ()
   assert.equal(client.calls.length, 1, 'single multi-row insert, no duplicate rows');
 });
 
+test('cross-call redelivery degrades to zero-row insert instead of constraint crash', async () => {
+  const env = envelope();
+  const first = fakeClient();
+  first.query = async (text, params) => { first.calls.push({ text, params }); return { rows: [], rowCount: 1 }; };
+  const initial = await saveAnalyticsEvents(first, 'org-A', [env]);
+  assert.equal(initial.inserted, 1);
+  assert.match(first.calls[0].text, /ON CONFLICT \(tenant_id, event_id\) DO NOTHING/i);
+
+  const replay = fakeClient();
+  replay.query = async (text, params) => { replay.calls.push({ text, params }); return { rows: [], rowCount: 0 }; };
+  const saved = await saveAnalyticsEvents(replay, 'org-A', [env]);
+  assert.equal(saved.inserted, 0, 'redelivered event must report zero inserted');
+  assert.match(replay.calls[0].text, /ON CONFLICT \(tenant_id, event_id\) DO NOTHING/i);
+});
+
 test('listRecent maps rows back into envelope-shaped records', async () => {
   const client = fakeClient([{
     event_id: 'evt_x', event_type: 'impression_recorded',
