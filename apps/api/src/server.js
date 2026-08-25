@@ -9,6 +9,7 @@ import { createInMemorySecretBackend, createSecretManager } from '../../../packa
 import { loadConfig } from '../../../packages/config/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createSecurityEventRecorder } from '../../../packages/security/src/security-events.js';
+import { OAuthTokenError } from '../../../packages/security/src/oauth.js';
 import { resolveRedirect, ingestWebhook } from './business.js';
 import { createFeatureApi } from './features-api.js';
 import { createCommerceStore } from '../../../packages/affiliate-core/src/commerce.js';
@@ -49,7 +50,10 @@ export function buildServer({
   featureStore = createFeatureStore(),
   recommendationStore = createRecommendationStore(),
   predictionStore = createPredictionStore(),
-  policyOverrides = {}
+  policyOverrides = {},
+  oauthRegistry = null,
+  identityRuntime = null,
+  nowMs = Date.now
 } = {}) {
   const config = loadConfig(env);
   const visitorSalt = config.visitorSalt || randomBytes(16).toString('hex');
@@ -63,6 +67,7 @@ export function buildServer({
     automationDefaults: policyOverrides
   });
   const events = securityEvents ?? createSecurityEventRecorder({});
+  const oauthPending = new Map();
   return http.createServer(async (req, res) => {
     const startedAt = process.hrtime.bigint();
     const context = traceContext(req.headers);
@@ -165,6 +170,67 @@ export function buildServer({
         version: packageManifest.version,
         appEnv: config.appEnv
       });
+    }
+
+    const oauthAuthorizeMatch = req.method === 'GET' ? pathname.match(/^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/authorize$/) : null;
+    const oauthCallbackMatch = req.method === 'GET' ? pathname.match(/^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/callback$/) : null;
+    if (oauthAuthorizeMatch || oauthCallbackMatch) {
+      const route = '/api/v1/oauth/:provider/:action';
+      const providerId = (oauthAuthorizeMatch ?? oauthCallbackMatch)[1];
+      if (!oauthRegistry || !(oauthRegistry instanceof Map) || !oauthRegistry.has(providerId)) {
+        return json(503, route, { error: { code: 'OAUTH_NOT_CONFIGURED', message: 'no oauth flow registered for provider', request_id: context.requestId } });
+      }
+      if (!identityRuntime || typeof identityRuntime.linkExternalIdentity !== 'function') {
+        return json(500, route, { error: { code: 'OAUTH_MISCONFIGURED', message: 'identity runtime unavailable', request_id: context.requestId } });
+      }
+      const entry = oauthRegistry.get(providerId);
+      const url = new URL(req.url || '/', 'http://localhost');
+      if (oauthAuthorizeMatch) {
+        const userId = String(url.searchParams.get('userId') ?? '').trim();
+        if (!userId) return json(400, route, { error: { code: 'USER_ID_REQUIRED', message: 'userId query parameter is required', request_id: context.requestId } });
+        const authorization = entry.flow.createAuthorization();
+        const stateTtlMs = 10 * 60 * 1000;
+        oauthPending.set(authorization.state, {
+          provider: entry.flow.provider,
+          flow: entry.flow,
+          tokenStore: entry.tokenStore,
+          issuer: entry.issuer ?? `https://oauth.${entry.flow.provider}`,
+          subjectHint: entry.subjectHint ?? null,
+          userId,
+          codeVerifier: authorization.codeVerifier,
+          expiresAt: nowMs() + stateTtlMs
+        });
+        return json(302, route, { authorizeUrl: authorization.url, state: authorization.state, expiresAt: nowMs() + stateTtlMs });
+      }
+      const state = String(url.searchParams.get('state') ?? '');
+      const code = String(url.searchParams.get('code') ?? '');
+      const pending = oauthPending.get(state);
+      if (!pending) {
+        return json(400, route, { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used state', request_id: context.requestId } });
+      }
+      oauthPending.delete(state);
+      if (pending.expiresAt <= nowMs()) {
+        return json(400, route, { error: { code: 'INVALID_OAUTH_STATE', message: 'authorization window expired', request_id: context.requestId } });
+      }
+      let tokens;
+      try {
+        tokens = await pending.flow.exchangeCode({ authorization: { state, codeVerifier: pending.codeVerifier, expiresAt: pending.expiresAt }, code });
+      } catch (error) {
+        const reason = error instanceof OAuthTokenError ? error.reason : 'exchange_failed';
+        return json(502, route, { error: { code: 'OAUTH_EXCHANGE_FAILED', message: reason, request_id: context.requestId } });
+      }
+      const issuerSubject = String(tokens.providerAccountId ?? pending.subjectHint ?? `sub:${pending.userId}`);
+      try {
+        identityRuntime.linkExternalIdentity({ userId: pending.userId, issuer: pending.issuer, issuerSubject });
+      } catch (error) {
+        if (/already linked/i.test(String(error.message))) {
+          return json(409, route, { error: { code: 'IDENTITY_ALREADY_LINKED', message: 'external identity already bound to another user', request_id: context.requestId } });
+        }
+        return json(400, route, { error: { code: 'IDENTITY_LINK_FAILED', message: 'user not found for oauth link', request_id: context.requestId } });
+      }
+      pending.tokenStore.store(tokens);
+      events.record({ type: 'OAUTH_LINK_COMPLETED', severity: 'LOW', resource: `/api/v1/oauth/${pending.provider}/callback`, reason: `identity ${pending.userId} linked via ${pending.provider}`, tenantId: pending.userId });
+      return json(200, route, { linked: true, provider: pending.provider, expiresAt: tokens.expiresAt });
     }
 
     const goMatch = req.method === 'GET' ? pathname.match(/^\/go\/([A-Za-z0-9-]{1,128})$/) : null;
