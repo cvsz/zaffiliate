@@ -128,7 +128,7 @@ Observability active (/metrics, structured logs, SLO eval). Runbooks partial (OP
 |---|---|---|---|
 | B1 | CI red on main: dedupe clock-mixing time bomb (duplicate-event gate) + fresh-checkout ENOENT in migration writer | BLOCKER | CLOSED 2026-08-25 — GM-001 commit `531b69d`, CI green: https://github.com/cvsz/zaffiliate/actions/runs/32871141615 |
 | B2 | Live provider credentials unprovisioned; no provider capability may be marked production-ready | BLOCKER | open |
-| B3 | PublicationJob durable persistence (MM-003 remainder); idempotent publish/retry/DLQ must survive restart | BLOCKER | CLOSED 2026-08-25 — GM-002 slice: migration 005 + `packages/db/src/publication-jobs-repo.js`; restart-survival integration proven live against Supabase PG (8/8 zero-skip) |
+| B3 | PublicationJob durable persistence (MM-003 remainder); idempotent publish/retry/DLQ must survive restart | BLOCKER | CLOSED 2026-08-25 — GM-002 commit `6a17bc9`, CI green: https://github.com/cvsz/zaffiliate/actions/runs/32874226709 |
 | B4 | OAuth browser flow + token refresh missing; REAUTH_REQUIRED lifecycle unimplementable | HIGH | open |
 | B5 | Restore-into-clean-environment rehearsal + migration rollback classification not evidenced (§41/42/56) | HIGH | open |
 | B6 | Distributed rate-limit store (Redis) pending; single-instance limiter only | MEDIUM | open |
