@@ -24,7 +24,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 11 | Outreach engine (consent, quiet hours, budgets) (§11) | COMPLETE | `packages/outreach/*` |
 | 12 | AI content runtime: providers, budgets, moderation, agents (§7) | PARTIAL | `packages/ai-content/*` has LLM/image/video/voice interfaces, bandit experiments; no real provider bindings (BLOCKED on credentials), no FFmpeg render (DEFERRED) |
 | 13 | Video factory / media pipeline (§9) | DEFERRED | interfaces only; rendering architecture not started |
-| 14 | Publishing orchestrator w/ publication_jobs state machine (§12) | PARTIAL | approval+idempotency boundary exists; durable job queue with retry/DLQ states lives only in workflow pkg; unified PublicationJob entity added to contracts this slice, persistence pending |
+| 14 | Publishing orchestrator w/ publication_jobs state machine (§12) | PARTIAL | durable `publication_jobs` table (migration 005, RLS) + fail-closed repo: idempotent create, transition map w/ optimistic guard + retry budget, skip-locked exactly-once claim; restart-survival proven live on PG. HTTP orchestrator surface still pending |
 | 15 | Link service `/go/:slug` + click attribution (§14) | COMPLETE | `GET /go/:slug` in apps/api: tenant-gated, HTTPS re-validated, expiry-aware, hashed-visitor attribution (MM-002 evidence) |
 | 16 | Analytics: metrics, SLO, anomaly (§15) | PARTIAL | `packages/analytics` + `/metrics` + SLO eval; warehouse/OLAP separation absent |
 | 17 | Trend & opportunity scoring engine (§4–5) | MISSING | no trend ingestion or opportunity scoring module |
@@ -40,7 +40,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 33 | Automation policy plane (AUTO-001/002/003/007) | PARTIAL | packages/automation: policy model, typed decisions, evaluator chain, 6-scope kill switches, dry-run, audited denials — durable workflow state + shadow mode pending (AUTO-005/008) |
 | 17b | Content Factory foundation (AFF-130/140/141/142/154) | COMPLETE | factory.js: persona library, evidence-gated briefs, scored hook engine w/ fail-closed claim rejection, versioned prompt registry, quality gate w/ hard compliance stops — evidence in exec-planning.md |
 | 18 | Experimentation beyond seeded bandits (§17) | PARTIAL | bandit variant selection exists; min-sample winner gating added to contracts schema this slice |
-| 19 | Postgres persistence of runtimes (§21) | PARTIAL | analytics_events durability PROVEN live end-to-end incl. migration 004 schema-drift resolution; remaining: offer/campaign store wiring (AFF-013 remainder) |
+| 19 | Postgres persistence of runtimes (§21) | PARTIAL | analytics_events + publication_jobs durability PROVEN live end-to-end; remaining: offer/campaign store wiring (AFF-013 remainder) |
 | 20 | Redis durable events (§20) | PARTIAL | in-memory outbox everywhere; compose provides Redis; streams bus not ported |
 | 21 | Object storage / media assets (§9) | MISSING | no storage adapter package |
 | 22 | Control-plane web SPA (§22–23) | PARTIAL | CSP-first surfaces for nav/audit/billing/workflow/outreach/analytics + approval endpoint; creator-studio/AI-studio views absent |
@@ -53,8 +53,8 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 
 ## Priority order (next bounded items)
 
-1. **GM-001 closure**: push slice, record green CI run as release evidence (RELEASE-READINESS.md B1)
-2. **MM-003 remainder / GM blocker B3**: durable PublicationJob persistence behind dev/prod toggle using `packages/db`
-3. **MM-004 / GM blocker B4**: OAuth/OIDC browser flow + token refresh
-4. **GM blocker B5**: restore rehearsal + per-migration rollback classification (§41/42/56)
+1. ~~**GM-001 closure**: push slice, record green CI run as release evidence~~ CLOSED (run 32871141615)
+2. ~~**GM blocker B3**: durable PublicationJob persistence~~ CLOSED (GM-002, live PG evidence)
+3. **GM blocker B5**: restore rehearsal + per-migration rollback classification (§41/42/56)
+4. **MM-004 / GM blocker B4**: OAuth/OIDC browser flow + token refresh
 5. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store

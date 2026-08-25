@@ -4,6 +4,17 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (GM-002 — durable publication jobs — 2026-08-25)
+
+- Migration `005_publication_jobs.sql`: tenant-scoped `publication_jobs` table on the 9-state machine with idempotency uniqueness, retry-budget CHECKs, dispatch index over `scheduled/failed/partial`, RLS ENABLE+FORCE + isolation policy.
+- `packages/db/src/publication-jobs-repo.js`: fail-closed publication job persistence — canonical transition map (illegal moves throw `PublicationTransitionError`; terminal statuses frozen), optimistic status-guarded updates, retry budget enforced when reprocessing failed/partial jobs, idempotent create (`ON CONFLICT DO NOTHING` returns the existing job), and `claimDue` — a single skip-locked UPDATE that claims due scheduled/retryable jobs exactly once with attempt increments.
+- Restart-survival integration test: create → duplicate suppressed → fresh-client "restart" read-back → exactly-once claim → publish; runs against real Postgres, gated on reachability.
+
+### Verification (GM-002)
+
+- `test/publication-jobs-repo.test.js` 8/8 zero-skip against live Supabase PG (migration 005 applied idempotently).
+- `npm test`: 479 tests — 477 pass, 0 fail, 2 gated skips. `npm run check` clean incl. new modules. `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities. `scripts/security-check.sh`: PASS.
+
 ### Fixed (GM-001 gold-master slice — 2026-08-25)
 
 - Webhook event-dedupe clock mixing (`packages/tiktok-shop/src/event-dedupe.js`): expiry was computed from the caller-supplied `receivedAt` but checked against real wall-clock `Date.now()`, silently expiring entries recorded on frozen/backdated timelines and breaking duplicate-delivery suppression for any non-wall-clock caller. The store now accepts an injectable `now` clock used consistently by `seen()` and `record()`; default remains wall clock so production behavior is unchanged.

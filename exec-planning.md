@@ -100,6 +100,10 @@ M0 Secure Foundation: ~90% (missing: app DB client [in progress], Redis bus, sto
 
 ## Completed slice records (evidence-backed)
 
+### GM-002 — Durable publication jobs (B3 closure) — Status: COMPLETE
+Scope: migration `005_publication_jobs.sql` (9-state table, idempotency uniqueness, retry CHECKs, dispatch index, RLS FORCE+policy) + `packages/db/src/publication-jobs-repo.js` (canonical transition map fail-closed w/ PublicationTransitionError, optimistic status guard, retry budget on failed/partial reprocessing, idempotent create returning existing job, skip-locked exactly-once claimDue honoring scheduled_for/next_retry_at). Restart survival proven: fresh client instance reads, claims exactly once, publishes.
+Evidence: publication-jobs suite 8/8 zero-skip LIVE against Supabase PG pooler (migration 005 applied idempotently); full suite 479 tests — 477 pass, 0 fail, 2 gated skips; check clean; audit 0 vulns; security-check PASS. B1 also CLOSED this turn: GM-001 pushed as 531b69d, CI green run 32871141615. RELEASE-READINESS.md updated. Files: db/migrations/005_publication_jobs.sql, packages/db/src/publication-jobs-repo.js, packages/db/src/index.js, test/publication-jobs-repo.test.js, package.json, RELEASE-READINESS.md, IMPLEMENTATION-CHECKLIST.md, CHANGELOG.md.
+
 ### GM-001 — Gold-master slice: release blocker fix + RELEASE-READINESS — Status: COMPLETE
 Blockers fixed: (1) webhook event-dedupe clock mixing — expiry computed from injected `receivedAt` but checked against wall-clock `Date.now()`, time-bombing duplicate-delivery suppression for frozen/backdated timelines (duplicate-financial-event gate, master-spec §29); store now takes an injectable `now` clock used consistently by seen()/record(), default wall-clock (production call site unchanged). (2) `scripts/migrate-data.mjs` wrote `dist/` outputs without mkdir, ENOENT-crashing CI on fresh checkouts (root cause of red main-branch CI runs since 2026-08-24). Regression tests first: 2 new dedupe/replay-guard cases + webhook replay harness moved onto its frozen clock; RED 3 → GREEN.
 Evidence: focused suites green; full `npm test` 471 tests — 470 pass, 0 fail, 1 gated skip; `npm run check` clean; `npm audit --omit=dev --audit-level=high` 0 vulns; `scripts/security-check.sh` PASS. `RELEASE-READINESS.md` created: decision NOT_READY_FOR_GOLD_MASTER, blockers B2..B10 enumerated. Files: packages/tiktok-shop/src/event-dedupe.js, scripts/migrate-data.mjs, test/tiktok-resources.test.js, test/api-business-routes.test.js, RELEASE-READINESS.md, CHANGELOG.md, IMPLEMENTATION-CHECKLIST.md.
@@ -114,11 +118,11 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
-### GM-001 — Gold-master bounded slice — Status: COMPLETE (see record above)
+### GM-002 — Durable publication jobs (B3) — Status: COMPLETE (see record above)
 
 ## Next bounded item
 
-**GM-B1 closure then B3** — push GM-001 and record the green CI run in RELEASE-READINESS.md; then durable PublicationJob persistence (MM-003 remainder) behind the dev/prod store toggle, with restart-survival tests for idempotent publish/retry/DLQ. Depends on nothing unmet.
+**GM-B5** — restore-into-clean-environment rehearsal + per-migration rollback classification: run scripts/backup.sh → restore into isolated target → schema/tenant/financial checks + golden flow; document per-migration rollback safety in db/migrations. Depends on nothing unmet.
 
 ## Prior task — COMPLETE — COMPLETE this turn
 

@@ -80,14 +80,15 @@ OAuth/OIDC browser login + token refresh · Meta/YouTube catalog+analytics adapt
 | Commercial claim validity (§17/18) | commerce.js revalidateCommercialClaim | commerce.test.js incl. golden scenario | stale-price BLOCK, promotion-expiry BLOCK |
 | Decision gate (§20–22) | intelligence/decision-gate.js | decision-gate.test.js (8 cases) | DENY on stale price/kill switch/cross-tenant/expired promo |
 | Automation policy + kill switch (§22/23) | automation/index.js | automation-policy.test.js (17 cases) | six-scope switches honored, audited denials |
-| Publishing safety (§15/16) | workflow runtime + contracts PublicationJob | workflow tests | in-memory idempotency; durable persistence PENDING → blocker B3 |
+| Publishing safety (§15/16) | workflow runtime + contracts PublicationJob + `packages/db/publication-jobs-repo.js` (migration 005, skip-locked claim, retry budget, optimistic transitions) | workflow tests + publication-jobs-repo.test.js incl. restart-survival integration | durable idempotent create/claim/transition proven live on Supabase PG; HTTP orchestrator wiring remains for a later slice |
 | Migration safety (§40–42) | packages/db migrator + migrate-data.mjs | db.test.js, migration-cutover.test.js | drift fail-closed; fresh-checkout ENOENT fixed GM-001 |
 | Security ingress (§48) | SSRF validator, rate limiter, JWKS, CSRF gate | ssrf-validation, security-hardening, api-security-ingress, web-csrf suites | 429/401/403 fail-closed paths tested |
 
 ## Test Evidence
 
-- `npm test`: **471 tests — 470 pass, 0 fail, 1 environment-gated skip** (2026-08-25, commit 333b024 + GM-001).
-- `npm run check`: clean (all modules).
+- `npm test`: **479 tests — 477 pass, 0 fail, 2 environment-gated skips** (2026-08-25, GM-002 slice; skips are DB-reachability-gated integrations that run green against live Supabase PG when DATABASE_URL points at the pooler).
+- Live PG integration (Supabase pooler): publication-jobs suite 8/8 zero-skip — migration 005 applied idempotently; job created → duplicate suppressed → survived fresh-client "restart" → claimed exactly once (skip-locked) → transitioned to published.
+- `npm run check`: clean (all modules incl. publication-jobs).
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities.
 - `scripts/security-check.sh`: PASS (tracked-secret material, high-signal patterns, non-root container).
 
@@ -125,9 +126,9 @@ Observability active (/metrics, structured logs, SLO eval). Runbooks partial (OP
 
 | ID | Blocker | Severity | Status |
 |---|---|---|---|
-| B1 | CI red on main: dedupe clock-mixing time bomb (duplicate-event gate) + fresh-checkout ENOENT in migration writer | BLOCKER | FIXED in GM-001 slice; needs push + green CI run as recorded evidence |
+| B1 | CI red on main: dedupe clock-mixing time bomb (duplicate-event gate) + fresh-checkout ENOENT in migration writer | BLOCKER | CLOSED 2026-08-25 — GM-001 commit `531b69d`, CI green: https://github.com/cvsz/zaffiliate/actions/runs/32871141615 |
 | B2 | Live provider credentials unprovisioned; no provider capability may be marked production-ready | BLOCKER | open |
-| B3 | PublicationJob durable persistence (MM-003 remainder); idempotent publish/retry/DLQ must survive restart | BLOCKER | open |
+| B3 | PublicationJob durable persistence (MM-003 remainder); idempotent publish/retry/DLQ must survive restart | BLOCKER | CLOSED 2026-08-25 — GM-002 slice: migration 005 + `packages/db/src/publication-jobs-repo.js`; restart-survival integration proven live against Supabase PG (8/8 zero-skip) |
 | B4 | OAuth browser flow + token refresh missing; REAUTH_REQUIRED lifecycle unimplementable | HIGH | open |
 | B5 | Restore-into-clean-environment rehearsal + migration rollback classification not evidenced (§41/42/56) | HIGH | open |
 | B6 | Distributed rate-limit store (Redis) pending; single-instance limiter only | MEDIUM | open |
@@ -138,4 +139,4 @@ Observability active (/metrics, structured logs, SLO eval). Runbooks partial (OP
 
 ## Approval
 
-Not approved for Gold Master. Next bounded task: push GM-001, capture green CI run as B1 closure evidence, then take B3 (PublicationJob persistence) as next highest-priority blocker.
+Not approved for Gold Master. B1 and B3 closed with recorded evidence. Next bounded task: B5 (restore-into-clean-environment rehearsal + per-migration rollback classification), then B4 (OAuth/token refresh). B2 requires external credential provisioning.
