@@ -47,6 +47,27 @@ NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
 UNIT
+sudo tee /etc/systemd/system/zaffiliate-web.service >/dev/null <<'WEBUNIT'
+[Unit]
+Description=zaffiliate Control Plane Web (production)
+After=network-online.target zaffiliate.service
+Wants=zaffiliate.service
+
+[Service]
+User=cvsz
+WorkingDirectory=/home/cvsz/zaffiliate
+Environment=WEB_PORT=3100
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node apps/web/server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+WEBUNIT
+sudo systemctl daemon-reload
+sudo systemctl enable --now zaffiliate-web.service >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable --now zaffiliate.service >/dev/null
 
