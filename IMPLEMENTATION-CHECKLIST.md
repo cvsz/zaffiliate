@@ -1,6 +1,6 @@
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
-Updated: 2026-08-25 · Evidence base: `npm test` 471 tests — 470 pass, 0 fail, 1 gated skip; `npm run check` clean; slice records in `exec-planning.md`; release decision in `RELEASE-READINESS.md`.
+Updated: 2026-08-25 · Evidence base: `npm test` 471 tests — 470 pass, 0 fail, 1 gated skip; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
 
 ## Classification legend
 
@@ -38,7 +38,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 35 | Offer intelligence foundation (COM-001..004+freshness) | PARTIAL | commerce.js: offer/price-snapshot/promotion models, freshness gate, stale-claim BLOCK engine, golden scenario — ingestion pipeline + claim binding/extraction next (COM-020+, COM-040+) |
 | 34 | Measurement layer (DATA-001/002/003) | PARTIAL | canonical envelope + source classes + lineage + dedup + raw store + golden-metric fixtures landed; normalization/enrichment pipeline, attribution windows, commission ledger & reconciliation = next DATA slices |
 | 33 | Automation policy plane (AUTO-001/002/003/007) | PARTIAL | packages/automation: policy model, typed decisions, evaluator chain, 6-scope kill switches, dry-run, audited denials — durable workflow state + shadow mode pending (AUTO-005/008) |
-| 17b | Content Factory foundation (AFF-130/140/141/142/154) | COMPLETE | factory.js: persona library, evidence-gated briefs, scored hook engine w/ fail-closed claim rejection, versioned prompt registry, quality gate w/ hard compliance stops — evidence in exec-planning.md |
+| 17b | Content Factory foundation (AFF-130/140/141/142/154) | COMPLETE | factory.js: persona library, evidence-gated briefs, scored hook engine w/ fail-closed claim rejection, versioned prompt registry, quality gate w/ hard compliance stops — evidence in EXEC-PLANNING.md |
 | 18 | Experimentation beyond seeded bandits (§17) | PARTIAL | bandit variant selection exists; min-sample winner gating added to contracts schema this slice |
 | 19 | Postgres persistence of runtimes (§21) | PARTIAL | analytics_events + publication_jobs durability PROVEN live end-to-end; remaining: offer/campaign store wiring (AFF-013 remainder) |
 | 20 | Redis durable events (§20) | PARTIAL | in-memory outbox everywhere; compose provides Redis; streams bus not ported |

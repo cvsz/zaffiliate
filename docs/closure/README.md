@@ -2,7 +2,7 @@
 
 Updated: 2026-08-22
 
-This directory contains the complete closure package for the 4 remaining external blockers in exec-planning.md. These items cannot be completed from the repository alone; they require real external actions by the maintainer.
+This directory contains the complete closure package for the 4 remaining external blockers in EXEC-PLANNING.md. These items cannot be completed from the repository alone; they require real external actions by the maintainer.
 
 ## Remaining blockers
 

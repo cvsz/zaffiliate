@@ -4,6 +4,10 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Changed (2026-08-25 — planning-file consolidation)
+
+- The two execution-planning files were merged into a single canonical `EXEC-PLANNING.md`: mission, EP-00..EP-13 phase definitions and historical completion record, operating policies (PR evidence, merge policy, stop-the-line, completion definition) now live alongside the requirement-vs-repository mapping and all evidence-backed slice records. The lowercase `exec-planning.md` variant was removed; references updated across README, CONTRIBUTING, IMPLEMENTATION-CHECKLIST, RELEASE-READINESS, docs/closure, docs/migration, the PR template, and the CI existence gate.
+
 ### Added (GM-002 — durable publication jobs — 2026-08-25)
 
 - Migration `005_publication_jobs.sql`: tenant-scoped `publication_jobs` table on the 9-state machine with idempotency uniqueness, retry-budget CHECKs, dispatch index over `scheduled/failed/partial`, RLS ENABLE+FORCE + isolation policy.

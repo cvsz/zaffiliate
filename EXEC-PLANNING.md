@@ -1,6 +1,6 @@
 # zaffiliate Master Execution Planning
 
-Updated: 2026-08-25 · Single canonical source. This file merges the former `EXEC-PLANNING.md` (mission, EP-00..EP-13 phase definitions, historical completion record, operating policies) with the requirement-vs-repository mapping and evidence-backed slice records. The separate uppercase file has been removed.
+Updated: 2026-08-25 · Single canonical source. This file is the merged execution plan: mission, EP-00..EP-13 phase definitions and historical completion record, operating policies, the requirement-vs-repository mapping, and all evidence-backed slice records. The former separate lowercase `exec-planning.md` variant was absorbed here and removed; references across README, CONTRIBUTING, docs/, CI gates, and PR template point to this file.
 
 ## Mission
 
@@ -400,4 +400,4 @@ Redis streams bus w/ graceful degradation · OAuth/OIDC browser flow + account r
 
 - Prompt's `docs/` tree tracked as backlog documentation task; existing flat doc set + `docs/*` subdirs retained until content justifies restructuring.
 - Live-provider verification (Provider Verification Rule steps 1–10) BLOCKED on credentials; recorded as such instead of inventing capabilities.
-- Former `EXEC-PLANNING.md` merged into this file 2026-08-25; references updated repo-wide (README, CONTRIBUTING, docs/closure, docs/migration, ci.yml existence gate).
+- 2026-08-25: the two planning files (`EXEC-PLANNING.md` historical + `exec-planning.md` canonical) were merged, briefly consolidated under the lowercase name, then restored to this uppercase filename as the single source; references updated repo-wide (README, CONTRIBUTING, IMPLEMENTATION-CHECKLIST, RELEASE-READINESS, docs/closure, docs/migration, PR template, ci.yml existence gate).

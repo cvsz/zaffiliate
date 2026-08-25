@@ -1,6 +1,6 @@
 ## Slice
 
-Linked exec-planning item (ID + status change):
+Linked EXEC-PLANNING item (ID + status change):
 
 ## What changed
 
@@ -12,7 +12,7 @@ Linked exec-planning item (ID + status change):
 - [ ] `npm run check` green
 - [ ] `npm test` green (N pass / 0 fail)
 - [ ] `./scripts/security-check.sh` green
-- [ ] Docs updated (exec-planning.md, CHANGELOG.md)
+- [ ] Docs updated (EXEC-PLANNING.md, CHANGELOG.md)
 
 ## Security
 

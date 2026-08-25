@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s exec-planning.md
+          test -s EXEC-PLANNING.md
           test -s SECURITY.md
           test -s OPERATIONS.md
           test -s docs/migration/SOURCE-SNAPSHOT-LEDGER.json

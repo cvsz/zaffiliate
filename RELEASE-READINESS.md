@@ -94,7 +94,7 @@ OAuth/OIDC browser login + token refresh · Meta/YouTube catalog+analytics adapt
 
 ## Deployment Evidence
 
-- Production service live: systemd `zaffiliate.service` :8788 behind Caddy + dedicated Cloudflare tunnel; `https://zaffiliate.zeaz.dev/healthz` → 200 `{"ok":true}` (DEPLOY-001 record, exec-planning.md).
+- Production service live: systemd `zaffiliate.service` :8788 behind Caddy + dedicated Cloudflare tunnel; `https://zaffiliate.zeaz.dev/healthz` → 200 `{"ok":true}` (DEPLOY-001 record, EXEC-PLANNING.md).
 - Deploy mechanism: `scripts/deploy-host.sh` (idempotent api+tunnel+edge+migrations).
 
 ## Rollback Evidence
