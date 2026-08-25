@@ -10,7 +10,7 @@ Updated: 2026-08-22
 - Deduplication matrix and missing-feature matrix are documented.
 - Source-to-target migration map is documented.
 - Production architecture, security and operations contracts are documented.
-- Evidence-gated `ROADMAP.md` and `EXEC-PLANNING.md` are present.
+- Evidence-gated `ROADMAP.md` and `exec-planning.md` are present.
 - Critical legacy findings are recorded, including tracked secret-like values in `ztsaff`, missing `src.utils` dependency in `tiktok-shop-bot`, generated VitePress cache in `tiktok-shop-sdk`, overlapping TS/PHP SDK surfaces and excessive unrelated platform baggage in `ztsaff`.
 - Canonical runnable baseline exists: root Node workspace contract, secure `.gitignore`, sanitized `.env.example`, API `/healthz` and fail-closed `/readyz`, tenant/affiliate domain contracts, and deterministic Node tests.
 - GitHub Actions CI workflow now validates syntax/tests and rejects tracked runtime secret material or high-signal private-key/API-key patterns.

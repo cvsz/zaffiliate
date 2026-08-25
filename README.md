@@ -55,4 +55,4 @@ The legacy `ztsaff` repository contains tracked secret-like values and remains u
 
 Migration is evidence-gated. Legacy repositories remain intact until 100% source classification, mirror/bundle backup + restore evidence, secret remediation, parity/security/CI/load evidence, reversible production cutover, and final retirement approval are all verified.
 
-See `ROADMAP.md`, `EXEC-PLANNING.md`, `SECURITY.md`, `OPERATIONS.md`, and `docs/migration/` for the canonical migration contract and current blockers.
+See `ROADMAP.md`, `exec-planning.md`, `SECURITY.md`, `OPERATIONS.md`, and `docs/migration/` for the canonical migration contract and current blockers.

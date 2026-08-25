@@ -509,7 +509,7 @@ Rollback rules:
    ```bash
    node --test test/release-attestation.test.js
    ```
-4. Update `ROADMAP.md` and `EXEC-PLANNING.md` to mark EP-12, EP-12B, and EP-13 complete.
+4. Update `ROADMAP.md` and `exec-planning.md` to mark EP-12, EP-12B, and EP-13 complete.
 5. Close all open migration/rotation tickets in the tracker.
 
 ### Closure sign-off
