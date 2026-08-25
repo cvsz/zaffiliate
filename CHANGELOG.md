@@ -261,3 +261,7 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 - DNS CNAME managed by the new Terraform stack in the zeaz repo (signed f1264a3).
 - Verified live: `https://zaffiliate.zeaz.dev/healthz` -> 200 `{"ok":true,...}`; `/api/v1/version` reports production build.
 - `scripts/deploy-host.sh` now provisions the tunnel connector too (idempotent, re-runnable).
+
+### Added (Feature wiring — 2026-08-25)
+
+- `apps/api/src/features-api.js`: tenant-gated `/api/v1` surfaces wiring existing packages over HTTP — commerce offers list, intelligence opportunities ranking (rank-and-record), recommendations list + operator feedback, analytics overview. POST bodies bounded (64KB) with strict JSON parsing; gating scoped to known feature prefixes so unknown routes keep the canonical 404 envelope.

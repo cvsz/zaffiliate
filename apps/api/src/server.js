@@ -10,6 +10,12 @@ import { loadConfig } from '../../../packages/config/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createSecurityEventRecorder } from '../../../packages/security/src/security-events.js';
 import { resolveRedirect, ingestWebhook } from './business.js';
+import { createFeatureApi } from './features-api.js';
+import { createCommerceStore } from '../../../packages/affiliate-core/src/commerce.js';
+import { createEventStore } from '../../../packages/analytics/src/events.js';
+import { createFeatureStore, defineBaselineRanker } from '../../../packages/intelligence/src/index.js';
+import { createRecommendationStore, createPredictionStore } from '../../../packages/intelligence/src/stores.js';
+import { createRecommendationService } from '../../../packages/intelligence/src/pipeline.js';
 
 const port = Number(process.env.PORT || 8080);
 const requiredForReady = ['DATABASE_URL', 'REDIS_URL'];
@@ -37,12 +43,25 @@ export function buildServer({
   webhookGuard = createWebhookReplayGuard({ dedupeStore: createEventDedupeStore() }),
   webhookSecrets = defaultWebhookSecrets(),
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
-  securityEvents = null
+  securityEvents = null,
+  commerceStore = createCommerceStore(),
+  analyticsEvents = createEventStore(),
+  featureStore = createFeatureStore(),
+  recommendationStore = createRecommendationStore(),
+  predictionStore = createPredictionStore()
 } = {}) {
   const config = loadConfig(env);
   const visitorSalt = config.visitorSalt || randomBytes(16).toString('hex');
+  const featureApi = createFeatureApi({
+    commerceStore,
+    analyticsEvents,
+    recommendationService: createRecommendationService({
+      featureStore, recommendationStore, predictionStore, ranker: defineBaselineRanker({ featureStore })
+    }),
+    recommendationStore
+  });
   const events = securityEvents ?? createSecurityEventRecorder({});
-  return http.createServer((req, res) => {
+  return http.createServer(async (req, res) => {
     const startedAt = process.hrtime.bigint();
     const context = traceContext(req.headers);
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
@@ -101,6 +120,41 @@ export function buildServer({
       res.writeHead(200);
       res.end(metrics.render());
       return finish(200, '/metrics');
+    }
+
+    const tenantHeader = String(req.headers['x-tenant-id'] ?? '').trim();
+    const FEATURE_PREFIXES = ['/api/v1/commerce/', '/api/v1/intelligence/', '/api/v1/analytics/'];
+    const isFeaturePath = FEATURE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    if (isFeaturePath) {
+      if (!tenantHeader) {
+        return json(400, 'features', { error: { code: 'TENANT_HEADER_REQUIRED', message: 'x-tenant-id header is required', request_id: context.requestId } });
+      }
+      let parsedBody = null;
+      if (req.method === 'POST') {
+        const chunks = [];
+        let size = 0;
+        let overflow = false;
+        await new Promise((resolveBody, rejectBody) => {
+          req.on('data', (chunk) => {
+            size += chunk.length;
+            if (size > 65536) { overflow = true; chunks.length = 0; req.resume(); resolveBody(''); return; }
+            if (!overflow) chunks.push(chunk);
+          });
+          req.on('end', () => resolveBody(Buffer.concat(chunks).toString('utf8')));
+          req.on('error', rejectBody);
+        });
+        if (overflow) {
+          return json(413, pathname, { error: { code: 'PAYLOAD_TOO_LARGE', message: 'request body exceeds 64KB', request_id: context.requestId } });
+        }
+        try { parsedBody = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); }
+        catch { return json(400, pathname, { error: { code: 'INVALID_JSON', message: 'body must be valid JSON', request_id: context.requestId } }); }
+      }
+      const featureResult = await featureApi.handle(pathname, req.method, tenantHeader, {
+        body: parsedBody
+      });
+      if (featureResult) {
+        return json(featureResult.status, pathname, featureResult.body ?? featureResult.error ?? { ok: true });
+      }
     }
 
     if (req.method === 'GET' && pathname === '/api/v1/version') {
