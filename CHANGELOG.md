@@ -4,6 +4,18 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Fixed (GM-001 gold-master slice — 2026-08-25)
+
+- Webhook event-dedupe clock mixing (`packages/tiktok-shop/src/event-dedupe.js`): expiry was computed from the caller-supplied `receivedAt` but checked against real wall-clock `Date.now()`, silently expiring entries recorded on frozen/backdated timelines and breaking duplicate-delivery suppression for any non-wall-clock caller. The store now accepts an injectable `now` clock used consistently by `seen()` and `record()`; default remains wall clock so production behavior is unchanged.
+- Fresh-checkout crash in `scripts/migrate-data.mjs`: live migration wrote `dist/migration-target-manifest.json` without ensuring `dist/` exists, failing CI on clean checkouts with ENOENT. Output directory is now created recursively.
+- Regression tests first: dedupe store injected-clock expiry contract and replay-guard frozen-timeline duplicate detection (`test/tiktok-resources.test.js`); webhook replay harness in `test/api-business-routes.test.js` now runs fully on its frozen clock instead of accidentally passing while wall clock lagged the fixture.
+
+### Verification (GM-001)
+
+- Focused RED→GREEN: 3 failing cases before fix (1 pre-existing time bomb + 2 new regressions), all green after.
+- `npm test`: 471 tests — 470 pass, 0 fail, 1 gated skip. `npm run check`: clean. `npm audit --omit=dev --audit-level=high`: 0 vulnerabilities. `scripts/security-check.sh`: PASS.
+- RELEASE-READINESS.md created as release source of truth; decision NOT_READY_FOR_GOLD_MASTER with enumerated blockers.
+
 ### Added
 - Provider capability-state abstraction (`packages/adapters/src/provider-registry.js`): canonical states `available`, `approval_required`, `manual`, `unsupported`, `temporarily_disabled`; mutating operations fail closed until an approval id is presented; manual operations can never be automated; registry fails closed for unconfigured providers. 10 tests in `test/provider-capability.test.js`.
 - Normalized domain model with zero-dependency schema validation (`packages/contracts/src/schema.js`): merchants, products, offers (percentage ≤ 100), campaigns + explicit transition map, affiliate links (HTTPS-only, DNS-safe slugs), clicks, conversions (non-negative money), content items with generation provenance, publication jobs on the 9-state orchestration machine, experiments with min-sample winner gating, approval requests with decision/decider coupling, webhook events, hash-chained audit events, memberships across the merged role set. 14 tests in `test/domain-schema.test.js`.

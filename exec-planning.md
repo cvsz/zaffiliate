@@ -100,6 +100,12 @@ M0 Secure Foundation: ~90% (missing: app DB client [in progress], Redis bus, sto
 
 ## Completed slice records (evidence-backed)
 
+### GM-001 — Gold-master slice: release blocker fix + RELEASE-READINESS — Status: COMPLETE
+Blockers fixed: (1) webhook event-dedupe clock mixing — expiry computed from injected `receivedAt` but checked against wall-clock `Date.now()`, time-bombing duplicate-delivery suppression for frozen/backdated timelines (duplicate-financial-event gate, master-spec §29); store now takes an injectable `now` clock used consistently by seen()/record(), default wall-clock (production call site unchanged). (2) `scripts/migrate-data.mjs` wrote `dist/` outputs without mkdir, ENOENT-crashing CI on fresh checkouts (root cause of red main-branch CI runs since 2026-08-24). Regression tests first: 2 new dedupe/replay-guard cases + webhook replay harness moved onto its frozen clock; RED 3 → GREEN.
+Evidence: focused suites green; full `npm test` 471 tests — 470 pass, 0 fail, 1 gated skip; `npm run check` clean; `npm audit --omit=dev --audit-level=high` 0 vulns; `scripts/security-check.sh` PASS. `RELEASE-READINESS.md` created: decision NOT_READY_FOR_GOLD_MASTER, blockers B2..B10 enumerated. Files: packages/tiktok-shop/src/event-dedupe.js, scripts/migrate-data.mjs, test/tiktok-resources.test.js, test/api-business-routes.test.js, RELEASE-READINESS.md, CHANGELOG.md, IMPLEMENTATION-CHECKLIST.md.
+
+## Prior slice records
+
 ### AFF-MM-001 — Capability states + normalized contracts — Status: COMPLETE
 Evidence: `npm test` 270/270 includes 10 capability + 14 schema tests; `npm run check` clean. Files: `packages/adapters/src/provider-registry.js`, `packages/contracts/src/schema.js`.
 
@@ -108,10 +114,11 @@ Evidence: 13 tests in `test/api-business-routes.test.js` (signature-fail-closed,
 
 ## Current task — COMPLETE this turn
 
-### WIRE-002 — Automation control plane + content factory over HTTP — Status: COMPLETE
-Routes: GET /api/v1/automation/status · POST kill-switch · PUT policy · POST /api/v1/intelligence/gate (full OPT-004 chain) · GET personas · POST briefs/hooks/score.
-Tests: test/features-automation-content.test.js 4 cases RED->GREEN; JWKS suite stabilized w/ injected clock (3 consecutive green runs).
-Evidence: full suite 469 tests - 468 pass, 0 fail, 1 gated skip; npm run check clean. Production service restarted post-wiring.
+### GM-001 — Gold-master bounded slice — Status: COMPLETE (see record above)
+
+## Next bounded item
+
+**GM-B1 closure then B3** — push GM-001 and record the green CI run in RELEASE-READINESS.md; then durable PublicationJob persistence (MM-003 remainder) behind the dev/prod store toggle, with restart-survival tests for idempotent publish/retry/DLQ. Depends on nothing unmet.
 
 ## Prior task — COMPLETE — COMPLETE this turn
 

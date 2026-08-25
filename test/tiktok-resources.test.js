@@ -241,6 +241,33 @@ test('dedupe accepts second-granularity receivedAt timestamps', () => {
   assert.equal(store.seen('evt-secs'), true);
 });
 
+test('dedupe expiry follows one injected clock instead of mixing wall time', () => {
+  let current = 1_760_000_000_000;
+  const store = createEventDedupeStore({ ttlMs: 60_000, now: () => current });
+  store.record('evt-clock', { receivedAt: current });
+  assert.equal(store.seen('evt-clock'), true);
+  current += 59_000;
+  assert.equal(store.seen('evt-clock'), true);
+  current += 2_000;
+  assert.equal(store.seen('evt-clock'), false);
+  assert.equal(store.record('evt-clock', { receivedAt: current }), true);
+  assert.equal(store.seen('evt-clock'), true);
+});
+
+test('replay guard dedupes on a frozen timeline without wall-clock drift', () => {
+  const nowMs = new Date('2026-08-24T12:00:00.000Z').getTime();
+  const guard = createWebhookReplayGuard({
+    dedupeStore: createEventDedupeStore({ now: () => nowMs }),
+    windowSeconds: 300
+  });
+  const first = guard.decide({ eventId: 'evt-frozen', timestamp: nowMs, nowMs, tenantId: 'tenant-a' });
+  assert.equal(first.accepted, true);
+  const replay = guard.decide({ eventId: 'evt-frozen', timestamp: nowMs, nowMs, tenantId: 'tenant-a' });
+  assert.equal(replay.accepted, false);
+  assert.equal(replay.reason, 'duplicate_event');
+  assert.equal(replay.duplicate, true);
+});
+
 test('replay guard enforces the freshness window on both sides', () => {
   const guard = createWebhookReplayGuard({ dedupeStore: createEventDedupeStore(), windowSeconds: 300 });
   const nowMs = Date.now();

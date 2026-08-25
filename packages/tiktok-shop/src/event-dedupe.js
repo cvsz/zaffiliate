@@ -18,15 +18,16 @@ function normalizeTimestampMs(value, name) {
   return parsed < 10_000_000_000 ? parsed * 1000 : parsed;
 }
 
-export function createEventDedupeStore({ ttlMs = DEFAULT_TTL_MS } = {}) {
+export function createEventDedupeStore({ ttlMs = DEFAULT_TTL_MS, now = Date.now } = {}) {
   const ttl = toPositiveNumber(ttlMs, 'ttlMs');
+  if (typeof now !== 'function') throw new TypeError('now must be a function');
   const entries = new Map();
 
   function seen(eventId) {
     const key = requireEventId(eventId);
     const entry = entries.get(key);
     if (!entry) return false;
-    if (entry.expiresAtMs <= Date.now()) {
+    if (entry.expiresAtMs <= now()) {
       entries.delete(key);
       return false;
     }
@@ -36,7 +37,7 @@ export function createEventDedupeStore({ ttlMs = DEFAULT_TTL_MS } = {}) {
   function record(eventId, meta = {}) {
     const key = requireEventId(eventId);
     if (meta == null || typeof meta !== 'object' || Array.isArray(meta)) throw new TypeError('meta must be an object');
-    const receivedAtMs = meta.receivedAt == null ? Date.now() : normalizeTimestampMs(meta.receivedAt, 'receivedAt');
+    const receivedAtMs = meta.receivedAt == null ? now() : normalizeTimestampMs(meta.receivedAt, 'receivedAt');
     const tenantId = meta.tenantId == null ? null : String(meta.tenantId);
     const firstTime = !seen(key);
     entries.set(key, Object.freeze({ tenantId, receivedAtMs, expiresAtMs: receivedAtMs + ttl }));

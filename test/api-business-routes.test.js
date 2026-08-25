@@ -35,7 +35,7 @@ function buildHarness({ now = NOW } = {}) {
   backend.put('ref:webhooks/tiktok/appKey', 'test-app-key');
   backend.put('ref:webhooks/tiktok/appSecret', 'tiktok-webhook-secret');
   const secrets = createSecretManager({ backend });
-  const guard = createWebhookReplayGuard({ dedupeStore: createEventDedupeStore(), windowSeconds: 300 });
+  const guard = createWebhookReplayGuard({ dedupeStore: createEventDedupeStore({ now: () => now }), windowSeconds: 300 });
   return { runtime, link, secrets, guard, now };
 }
 

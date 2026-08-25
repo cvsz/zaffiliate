@@ -1,6 +1,6 @@
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
-Updated: 2026-08-23 · Evidence base: `npm test` 257/257 pass, `npm run check` clean, EP-02..EP-13 records in `EXEC-PLANNING.md`.
+Updated: 2026-08-25 · Evidence base: `npm test` 471 tests — 470 pass, 0 fail, 1 gated skip; `npm run check` clean; slice records in `exec-planning.md`; release decision in `RELEASE-READINESS.md`.
 
 ## Classification legend
 
@@ -18,7 +18,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 6 | Provider adapters TikTok/Shopee/Lazada/Meta/YouTube/LINE (§3) | PARTIAL | TikTok full SDK (`packages/tiktok-shop`); Shopee/Lazada signed clients; Meta/YT = publishing boundary only; no catalog/order reads for Meta/YT |
 | 7 | Provider capability states manual/approval-required/unsupported (§1) | COMPLETE (this slice) | `packages/adapters/src/provider-registry.js` + `test/provider-capability.test.js` (10 tests) |
 | 8 | Normalized domain model w/ validation (§3) | COMPLETE (this slice) | `packages/contracts/src/schema.js` + `test/domain-schema.test.js` (14 tests) |
-| 9 | Webhook ingress + durable events (§30) | COMPLETE | ingress live + canonical envelopes; canonical envelopes durably persisted to live analytics_events (MM-003-lite evidence) |
+| 9 | Webhook ingress + durable events (§30) | COMPLETE | ingress live + canonical envelopes; canonical envelopes durably persisted to live analytics_events (MM-003-lite evidence); replay-dedupe clock-mixing defect fixed in GM-001 with frozen-clock regressions (injectable store clock) |
 
 | 10 | Workflow engine: grants, DLQ, approvals, reconciliation (§18) | COMPLETE | `packages/workflow/*` |
 | 11 | Outreach engine (consent, quiet hours, budgets) (§11) | COMPLETE | `packages/outreach/*` |
@@ -53,8 +53,8 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 
 ## Priority order (next bounded items)
 
-1. **MM-003**: wire runtimes to repo-backed stores behind dev/prod toggle using new `packages/db` (merge-plan Phase 7)
-2. **MM-004**: OAuth/OIDC browser flow + account recovery (merge-plan Phase 3)
-3. **MM-004**: OAuth/OIDC browser flow + account recovery (merge-plan Phase 3)
-4. **MM-005**: Redis streams event bus with graceful degradation (merge-plan Phase 2)
-5. **MM-006**: storage adapter package (local/S3-compatible)
+1. **GM-001 closure**: push slice, record green CI run as release evidence (RELEASE-READINESS.md B1)
+2. **MM-003 remainder / GM blocker B3**: durable PublicationJob persistence behind dev/prod toggle using `packages/db`
+3. **MM-004 / GM blocker B4**: OAuth/OIDC browser flow + token refresh
+4. **GM blocker B5**: restore rehearsal + per-migration rollback classification (§41/42/56)
+5. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store

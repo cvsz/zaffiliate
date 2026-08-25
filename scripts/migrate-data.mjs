@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 const TRANSFORMS = Object.freeze({
@@ -40,6 +40,7 @@ export function runMigration({ sourcePath = 'docs/migration/SOURCE-SNAPSHOT-LEDG
   const sha256 = createHash('sha256').update(targetJson).digest('hex');
 
   if (!dryRun) {
+    mkdirSync('dist', { recursive: true });
     writeFileSync('dist/migration-target-manifest.json', targetJson);
     writeFileSync('dist/migration-target-manifest.sha256', sha256);
   }
