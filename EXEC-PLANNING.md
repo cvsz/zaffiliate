@@ -228,6 +228,11 @@ M0 Secure Foundation: ~90% (missing: app DB client [in progress], Redis bus, sto
 
 ## Completed slice records (evidence-backed)
 
+### GM-B8 + GM-B10 — Performance baselines + handbooks — Status: COMPLETE
+GM-B8: `scripts/perf-baseline.mjs` measures real routes against an isolated in-process production build: healthz 273rps p95=56ms · /api/v1/version 269rps p95=72ms · /go redirect 214rps p95=79ms p99=135ms · webhook ingest 212rps p95=76ms · analytics overview 320rps p95=63ms; §46 saturation probe — healthz sampled during continuous webhook-ingest flood holds p95=86ms with zero errors (graceful degradation, no priority starvation); 15s soak 100% success RSS +1.5%; live Supabase round-trip ~122–127ms warm (1.7s cold TLS first-connect). Evidence `dist/perf-baselines.json`. Honest caveat recorded: dev-class single-process numbers; re-baseline on the production host before any §90 deployment.
+GM-B10: operator handbook (`docs/operator/`: getting-started, daily-operations, campaign-operations, publishing, provider-health, automation, financial-reconciliation, incident-response) and developer handbook (`docs/developer/`: local-setup, architecture, testing, migrations, provider-adapters, ai-pipeline, queues, debugging, release-process) — every file references real commands, routes, invariants, and failure signatures from this repository.
+Evidence: baseline run output + artifact; full gates green after slice (`npm test` 494/492/0 fail/2 gated skips, check clean incl. perf script, audit 0 vulns, security-check PASS). RELEASE-READINESS B8+B10 CLOSED. Files: scripts/perf-baseline.mjs, docs/operator/*, docs/developer/*, package.json, RELEASE-READINESS.md, IMPLEMENTATION-CHECKLIST.md, CHANGELOG.md.
+
 ### GM-B4 + GM-B9 — OAuth lifecycle + multi-tenant golden E2E — Status: COMPLETE
 GM-B4: `packages/security/src/oauth.js` — authorization-code flow with PKCE S256 (injectable clock/randomness/transport; https-only endpoints fail-closed; typed OAuthStateError/OAuthTokenError), token store over the `ref:` secret manager (rotation-preserving refresh, revocation/invalid_grant → clears material and returns REAUTH_REQUIRED, no-refresh → REAUTH_REQUIRED without network). Server: `/api/v1/oauth/:provider/{authorize,callback}` with single-use pending-state map on server clock (503 OAUTH_NOT_CONFIGURED unregistered, 400 INVALID_OAUTH_STATE unknown/expired/replayed, 502 exchange failure passthrough, 409 IDENTITY_ALREADY_LINKED), identity binding via identity-billing `linkExternalIdentity`, success audited as OAUTH_LINK_COMPLETED (added to SECURITY_EVENT_TYPES).
 GM-B9: `test/multi-tenant-golden-e2e.test.js` — orgs A/B driven in parallel over real HTTP through one shared server: disjoint commerce offers; own-slug 302 vs cross-tenant/unknown indistinguishable 404s; foreign-tenant subId webhook attribution 422 while own attribution is exactly-once across same-tenant and cross-tenant replays (runtime outbox holds a single conversion for A, none for B); interleaved analytics overview reads never bleed tenants (A net 2000 vs B 2800 stable); automation policy PUT approval_required on A leaves B on default with empty kill switches; intelligence rank+recommendations partitioned end-to-end.
@@ -398,7 +403,7 @@ Evidence: verifier `"passed":true`; focused suites green (analytics-repo 5/5); f
 
 ## Next bounded item
 
-**GM-B8** — performance/load baselines: run load-test/soak scripts against a local server for API latency, redirect throughput, webhook ingestion and queue saturation; record baselines in RELEASE-READINESS (§43–47). Parallel external items awaiting maintainer: B2 provider credentials, B7 Supabase S3 write permissions.
+All self-serviceable Gold Master blockers are closed. Remaining work is externally gated: **B2** live provider credentials (maintainer provisioning), **B7** Supabase S3 write-enabled keys (maintainer), **B6** Redis-backed rate-limit store (blocked on the zero-dep-policy decision). When B2 lands, the bounded slice is provider live-verification per the Provider Verification Rule (sandbox contract tests → capability matrix last_verified_at updates).
 
 ## Backlog (dependency-ordered)
 

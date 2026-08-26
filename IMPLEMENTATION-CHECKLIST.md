@@ -59,5 +59,6 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 4. ~~**GM blocker B4**: OAuth/OIDC browser flow + token refresh~~ CLOSED (GM-B4, PKCE + refresh lifecycle)
 5. ~~**GM blocker B9**: full-chain multi-tenant golden E2E over HTTP~~ CLOSED (GM-B9 suite)
 6. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store
-7. **GM blocker B8**: performance/load baselines (§43–47)
-8. **External (maintainer)**: B2 provider credentials · B7 Supabase S3 write permissions
+7. ~~**GM blocker B8**: performance/load baselines~~ CLOSED (GM-B8, dist/perf-baselines.json)
+8. ~~**GM blocker B10**: operator/developer handbooks~~ CLOSED (docs/operator + docs/developer)
+9. **External (maintainer)**: B2 provider credentials · B7 Supabase S3 write permissions · B6 needs zero-dep-policy decision

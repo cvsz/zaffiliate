@@ -4,6 +4,15 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (GM-B8 + GM-B10 — 2026-08-25)
+
+- `scripts/perf-baseline.mjs`: §43–47 baseline battery against an isolated in-process production build — per-route latency/throughput (healthz, version, /go redirect, webhook ingest, analytics overview), §46 saturation probe (healthz sampled during continuous webhook flood), DB reachability latency, short soak with RSS growth; emits `dist/perf-baselines.json`.
+- Operator handbook (`docs/operator/`, 8 files) and developer handbook (`docs/developer/`, 9 files) per master-spec §83/84 — grounded in the repository's real commands, routes, invariants and failure signatures.
+
+### Verification (GM-B8/B10)
+
+- Baselines: healthz 273rps p95=56ms · version 269rps p95=72ms · redirect 214rps p95=79ms · webhook ingest 212rps p95=76ms · overview 320rps p95=63ms; saturation p95=86ms err=0; soak 100%/+1.5% RSS; live PG ~122–127ms warm. Full gates green: 494 tests — 492 pass, 0 fail, 2 gated skips; check clean; audit 0 vulns; security-check PASS.
+
 ### Added (GM-B4 + GM-B9 — 2026-08-25)
 
 - OAuth2 authorization-code flow with PKCE S256 (`packages/security/src/oauth.js`): fail-closed https-only configuration, injectable clock/randomness/transport, typed `OAuthStateError`/`OAuthTokenError`; token store over the `ref:` secret manager with rotation-preserving refresh and revocation lifecycle — `invalid_grant`/401/400 clears stored material and returns `REAUTH_REQUIRED`.
