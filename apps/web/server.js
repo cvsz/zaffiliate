@@ -9,6 +9,9 @@ const publicDir = resolve(here, 'public');
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
+  ['/privacy', ['privacy.html', 'text/html; charset=utf-8']],
+  ['/terms', ['terms.html', 'text/html; charset=utf-8']],
+  ['/icon.svg', ['icon.svg', 'image/svg+xml']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/views.js', ['views.js', 'text/javascript; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
