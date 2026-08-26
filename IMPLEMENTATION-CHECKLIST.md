@@ -1,6 +1,6 @@
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
-Updated: 2026-08-25 · Evidence base: `npm test` 494 tests — 492 pass, 0 fail, 2 gated skips; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
+Updated: 2026-08-25 · Evidence base: `npm test` 499 tests — 497 pass, 0 fail, 2 gated skips; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
 
 ## Classification legend
 
@@ -58,7 +58,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 3. ~~**GM blocker B5**: restore rehearsal + per-migration rollback classification~~ CLOSED (GM-B5, `passed:true` evidence + `db/migrations/ROLLBACK.md`)
 4. ~~**GM blocker B4**: OAuth/OIDC browser flow + token refresh~~ CLOSED (GM-B4, PKCE + refresh lifecycle)
 5. ~~**GM blocker B9**: full-chain multi-tenant golden E2E over HTTP~~ CLOSED (GM-B9 suite)
-6. **MM-005 / GM blocker B6**: Redis-backed distributed rate-limit store
+6. ~~**GM blocker B6**: Redis-backed distributed rate-limit store~~ CLOSED (GM-B6, zero-dep injectable-client pattern)
 7. ~~**GM blocker B8**: performance/load baselines~~ CLOSED (GM-B8, dist/perf-baselines.json)
 8. ~~**GM blocker B10**: operator/developer handbooks~~ CLOSED (docs/operator + docs/developer)
-9. **External (maintainer)**: B2 provider credentials · B7 Supabase S3 write permissions · B6 needs zero-dep-policy decision
+9. **External (maintainer)**: B2 provider credentials · B7 Supabase S3 write permissions (probed 2026-08-26: still read-only)

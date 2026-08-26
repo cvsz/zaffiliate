@@ -1,4 +1,4 @@
-export function createIngressRateLimiter({ requestsPerMinute, burst, clock = () => Date.now() } = {}) {
+export function createIngressRateLimiter({ requestsPerMinute, burst, clock = () => Date.now(), store = null } = {}) {
   const rpm = Number(requestsPerMinute);
   const capacity = Number(burst);
   if (!Number.isFinite(rpm) || rpm <= 0) throw new Error('requestsPerMinute must be a positive number');
@@ -27,7 +27,8 @@ export function createIngressRateLimiter({ requestsPerMinute, burst, clock = () 
     }
   }
 
-  function tryAcquire(key) {
+  function tryAcquireLocal(rawKey) {
+    const key = String(rawKey ?? '').trim();
     const bucket = bucketFor(key);
     refill(bucket);
     if (bucket.tokens >= 1) {
@@ -43,5 +44,19 @@ export function createIngressRateLimiter({ requestsPerMinute, burst, clock = () 
     });
   }
 
-  return Object.freeze({ tryAcquire });
+  if (store == null) {
+    return Object.freeze({ tryAcquire: tryAcquireLocal });
+  }
+  if (typeof store.tryAcquire !== 'function') throw new TypeError('store with tryAcquire is required');
+  return Object.freeze({
+    async tryAcquire(key) {
+      const normalized = String(key ?? '').trim();
+      const outcome = await store.tryAcquire(normalized);
+      if (outcome == null || typeof outcome.allowed !== 'boolean') {
+        // Never fail open: an unusable store answer falls back to local enforcement.
+        return tryAcquireLocal(normalized);
+      }
+      return outcome;
+    }
+  });
 }

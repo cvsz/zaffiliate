@@ -228,6 +228,10 @@ M0 Secure Foundation: ~90% (missing: app DB client [in progress], Redis bus, sto
 
 ## Completed slice records (evidence-backed)
 
+### GM-B6 — Distributed rate-limit store — Status: COMPLETE
+Scope: `packages/security/src/rate-limit-redis.js` — atomic Lua token-bucket evaluation over an injectable Redis client, following the established optional-ioredis + REDIS_URL + memory-fallback pattern of the events bus (zero new dependencies). Fail-closed posture: Redis unavailability degrades to an enforced in-memory limiter instance (budget still denied past burst; never fails open). `createIngressRateLimiter` gained an additive `store` seam delegating verdicts to the distributed store while preserving identical sync default behavior; server call sites now await limiter verdicts and the webhook end-handler is wrapped in try/catch returning a canonical 500 envelope on unexpected failure.
+Evidence: suite 6/6 RED→GREEN incl. cross-instance budget sharing through one store and server-level 429+Retry-After over real HTTP; full battery 499 tests — 497 pass, 0 fail, 2 gated skips; check clean; security-check PASS. RELEASE-READINESS B6 CLOSED. Files: packages/security/src/{rate-limit-redis.js,rate-limit-api.js}, apps/api/src/server.js, test/rate-limit-redis.test.js, package.json.
+
 ### GM-B8 + GM-B10 — Performance baselines + handbooks — Status: COMPLETE
 GM-B8: `scripts/perf-baseline.mjs` measures real routes against an isolated in-process production build: healthz 273rps p95=56ms · /api/v1/version 269rps p95=72ms · /go redirect 214rps p95=79ms p99=135ms · webhook ingest 212rps p95=76ms · analytics overview 320rps p95=63ms; §46 saturation probe — healthz sampled during continuous webhook-ingest flood holds p95=86ms with zero errors (graceful degradation, no priority starvation); 15s soak 100% success RSS +1.5%; live Supabase round-trip ~122–127ms warm (1.7s cold TLS first-connect). Evidence `dist/perf-baselines.json`. Honest caveat recorded: dev-class single-process numbers; re-baseline on the production host before any §90 deployment.
 GM-B10: operator handbook (`docs/operator/`: getting-started, daily-operations, campaign-operations, publishing, provider-health, automation, financial-reconciliation, incident-response) and developer handbook (`docs/developer/`: local-setup, architecture, testing, migrations, provider-adapters, ai-pipeline, queues, debugging, release-process) — every file references real commands, routes, invariants, and failure signatures from this repository.
@@ -403,7 +407,7 @@ Evidence: verifier `"passed":true`; focused suites green (analytics-repo 5/5); f
 
 ## Next bounded item
 
-All self-serviceable Gold Master blockers are closed. Remaining work is externally gated: **B2** live provider credentials (maintainer provisioning), **B7** Supabase S3 write-enabled keys (maintainer), **B6** Redis-backed rate-limit store (blocked on the zero-dep-policy decision). When B2 lands, the bounded slice is provider live-verification per the Provider Verification Rule (sandbox contract tests → capability matrix last_verified_at updates).
+All engineering-side Gold Master blockers are closed. Remaining work is externally gated: **B2** live provider credentials and **B7** Supabase S3 write-enabled keys (both maintainer-provisioned; the probed S3 keys still 403 on writes as of 2026-08-26). When B2 lands: provider live-verification per the Provider Verification Rule. Then §94 checklist review → explicit §90 deployment authorization.
 
 ## Backlog (dependency-ordered)
 

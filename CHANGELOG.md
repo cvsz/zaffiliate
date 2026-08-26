@@ -4,6 +4,15 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (GM-B6 — distributed rate limiting — 2026-08-26)
+
+- `packages/security/src/rate-limit-redis.js`: atomic Lua token-bucket store over an injectable Redis client, following the events-bus pattern of optional `ioredis` + `REDIS_URL` with memory fallback — zero new dependencies. Redis unavailability degrades fail-closed to an enforced in-memory limiter instance; cross-instance budget sharing proven at contract level.
+- `createIngressRateLimiter` gained an additive `store` seam (default sync behavior unchanged); API server awaits limiter verdicts and the webhook end-handler now returns a canonical 500 envelope on unexpected failure.
+
+### Verification (GM-B6)
+
+- Suite 6/6 RED→GREEN (atomic eval args, denied Retry-After propagation, fail-closed fallback, shared-budget across two limiter instances, server-level canonical 429+Retry-After over HTTP). Full battery: **499 tests — 497 pass, 0 fail, 2 gated skips**; check clean; security-check PASS.
+
 ### Added (GM-B8 + GM-B10 — 2026-08-25)
 
 - `scripts/perf-baseline.mjs`: §43–47 baseline battery against an isolated in-process production build — per-route latency/throughput (healthz, version, /go redirect, webhook ingest, analytics overview), §46 saturation probe (healthz sampled during continuous webhook flood), DB reachability latency, short soak with RSS growth; emits `dist/perf-baselines.json`.

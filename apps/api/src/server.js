@@ -242,7 +242,7 @@ export function buildServer({
         .digest('hex')
         .slice(0, 32);
       const limitKey = `go:${tenantId}:${req.socket.remoteAddress ?? ''}`;
-      const limit = rateLimiter.tryAcquire(limitKey);
+      const limit = await rateLimiter.tryAcquire(limitKey);
       if (!limit.allowed) {
         events.record({ type: 'RATE_LIMITED', severity: 'LOW', resource: limitKey, reason: `redirect burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
         return throttled('/go/:slug');
@@ -270,33 +270,38 @@ export function buildServer({
         }
         chunks.push(chunk);
       });
-      req.on('end', () => {
-        if (aborted) return;
-        const rawBody = Buffer.concat(chunks).toString('utf8');
-        const tenantId = String(req.headers['x-tenant-id'] || '').trim();
-        if (!tenantId) return json(404, '/webhooks/:platform', { error: 'not_found' });
-        const limitKey = `webhook:${tenantId}:${webhookMatch[1]}`;
-        const limit = rateLimiter.tryAcquire(limitKey);
-        if (!limit.allowed) {
-          events.record({ type: 'RATE_LIMITED', severity: 'MEDIUM', resource: limitKey, reason: `webhook burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
-          return json(429, '/webhooks/:platform', { error: { code: 'RATE_LIMITED', message: 'too many requests', request_id: context.requestId } }, false, { 'retry-after': String(Math.ceil(limit.retryAfterMs / 1000) || 1) });
+      req.on('end', async () => {
+        try {
+          if (aborted) return;
+          const rawBody = Buffer.concat(chunks).toString('utf8');
+          const tenantId = String(req.headers['x-tenant-id'] || '').trim();
+          if (!tenantId) return json(404, '/webhooks/:platform', { error: 'not_found' });
+          const limitKey = `webhook:${tenantId}:${webhookMatch[1]}`;
+          const limit = await rateLimiter.tryAcquire(limitKey);
+          if (!limit.allowed) {
+            events.record({ type: 'RATE_LIMITED', severity: 'MEDIUM', resource: limitKey, reason: `webhook burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
+            return json(429, '/webhooks/:platform', { error: { code: 'RATE_LIMITED', message: 'too many requests', request_id: context.requestId } }, false, { 'retry-after': String(Math.ceil(limit.retryAfterMs / 1000) || 1) });
+          }
+          const result = ingestWebhook({
+            runtime,
+            guard: webhookGuard,
+            secrets: webhookSecrets,
+            platform: webhookMatch[1],
+            tenantId,
+            rawBody,
+            signature: req.headers['x-zaff-signature'],
+            timestamp: req.headers['x-zaff-timestamp'],
+            eventId: req.headers['x-zaff-event-id'],
+            now: Date.now()
+          });
+          if (result.status === 401) {
+            events.record({ type: 'WEBHOOK_SIGNATURE_FAILURE', severity: 'MEDIUM', resource: `/webhooks/${webhookMatch[1]}`, reason: result.body?.reason ?? 'invalid signature', tenantId });
+          }
+          return json(result.status, '/webhooks/:platform', result.body ?? { error: 'webhook_failed' });
+        } catch (error) {
+          logger.error('webhook_processing_failed', { requestId: context.requestId, message: String(error?.message ?? error) });
+          return json(500, '/webhooks/:platform', { error: { code: 'WEBHOOK_PROCESSING_FAILED', message: 'unexpected failure while processing delivery', request_id: context.requestId } });
         }
-        const result = ingestWebhook({
-          runtime,
-          guard: webhookGuard,
-          secrets: webhookSecrets,
-          platform: webhookMatch[1],
-          tenantId,
-          rawBody,
-          signature: req.headers['x-zaff-signature'],
-          timestamp: req.headers['x-zaff-timestamp'],
-          eventId: req.headers['x-zaff-event-id'],
-          now: Date.now()
-        });
-        if (result.status === 401) {
-          events.record({ type: 'WEBHOOK_SIGNATURE_FAILURE', severity: 'MEDIUM', resource: `/webhooks/${webhookMatch[1]}`, reason: result.body?.reason ?? 'invalid signature', tenantId });
-        }
-        return json(result.status, '/webhooks/:platform', result.body ?? { error: 'webhook_failed' });
       });
       return undefined;
     }
