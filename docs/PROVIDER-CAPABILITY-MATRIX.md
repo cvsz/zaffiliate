@@ -19,4 +19,5 @@ Notes:
 - TikTok is first-class: full SDK in `packages/tiktok-shop` (signing, auth, resilience, pagination, resources).
 - Meta/YouTube rows reflect the publishing boundary only; catalog/order reads are `unsupported`, not faked.
 - All live calls additionally BLOCKED on credentials (see IMPLEMENTATION-CHECKLIST.md #28); sandbox contract tests only.
+- Live probe 2026-08-26 (`scripts/tiktok-sandbox-probe.mjs`, signed GET /affiliate_seller/campaign/search against open-api.tiktokglobalshop.com with the legacy zeaz pair): HTTP 403 code 40006 "no schema found" → that app lacks the affiliate product/schema; NOT a signature failure. TikTok Shop Partner AppKey/AppSecret with the affiliate product enabled + fresh sandbox authorize remain required before any row above may be marked live-verified (`last_verified_at` stays unset).
 - Extend per platform via `createProviderAdapter({ manifest, capabilities: { '<cap>': { state, reason } } })`. Unknown capabilities resolve to `unsupported` and never automate.
