@@ -36,6 +36,20 @@ function defaultWebhookSecrets() {
   return createSecretManager({ backend: createInMemorySecretBackend() });
 }
 
+async function readRequestBody(req, { limit = 65536 } = {}) {
+  const chunks = [];
+  let size = 0;
+  return new Promise((resolve, reject) => {
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > limit) { chunks.length = 0; req.resume(); reject(new Error('payload_too_large')); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
 export function buildServer({
   env = process.env,
   logger = createLogger(),
@@ -174,9 +188,10 @@ export function buildServer({
 
     const oauthAuthorizeMatch = req.method === 'GET' ? pathname.match(/^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/authorize$/) : null;
     const oauthCallbackMatch = req.method === 'GET' ? pathname.match(/^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/callback$/) : null;
-    if (oauthAuthorizeMatch || oauthCallbackMatch) {
+    const oauthDisconnectMatch = req.method === 'POST' ? pathname.match(/^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/disconnect$/) : null;
+    if (oauthAuthorizeMatch || oauthCallbackMatch || oauthDisconnectMatch) {
       const route = '/api/v1/oauth/:provider/:action';
-      const providerId = (oauthAuthorizeMatch ?? oauthCallbackMatch)[1];
+      const providerId = (oauthAuthorizeMatch ?? oauthCallbackMatch ?? oauthDisconnectMatch)[1];
       if (!oauthRegistry || !(oauthRegistry instanceof Map) || !oauthRegistry.has(providerId)) {
         return json(503, route, { error: { code: 'OAUTH_NOT_CONFIGURED', message: 'no oauth flow registered for provider', request_id: context.requestId } });
       }
@@ -185,6 +200,20 @@ export function buildServer({
       }
       const entry = oauthRegistry.get(providerId);
       const url = new URL(req.url || '/', 'http://localhost');
+      if (oauthDisconnectMatch) {
+        let body = {};
+        try { body = JSON.parse((await readRequestBody(req)) || '{}'); } catch { return json(400, route, { error: { code: 'INVALID_JSON', message: 'body must be valid JSON', request_id: context.requestId } }); }
+        const userId = String(body?.userId ?? '').trim();
+        if (!userId) return json(400, route, { error: { code: 'USER_ID_REQUIRED', message: 'userId is required in body', request_id: context.requestId } });
+        try {
+          const unlink = identityRuntime.unlinkExternalIdentities({ userId, issuer: entry.issuer ?? `https://oauth.${entry.flow.provider}` });
+          if (typeof entry.tokenStore?.clear === 'function') entry.tokenStore.clear();
+          events.record({ type: 'OAUTH_DISCONNECTED', severity: 'LOW', resource: `/api/v1/oauth/${providerId}/disconnect`, reason: `identity ${userId} disconnected; removed=${unlink.removed}`, tenantId: userId });
+          return json(200, route, { disconnected: true, provider: providerId, removedLinks: unlink.removed, dataDeleted: ['stored_tokens', 'account_link'] });
+        } catch (error) {
+          return json(400, route, { error: { code: 'DISCONNECT_FAILED', message: String(error?.message ?? 'unlink failed'), request_id: context.requestId } });
+        }
+      }
       if (oauthAuthorizeMatch) {
         const userId = String(url.searchParams.get('userId') ?? '').trim();
         if (!userId) return json(400, route, { error: { code: 'USER_ID_REQUIRED', message: 'userId query parameter is required', request_id: context.requestId } });

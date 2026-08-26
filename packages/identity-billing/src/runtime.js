@@ -189,6 +189,23 @@ export function createIdentityBillingRuntime({ clock = () => Date.now() } = {}) 
     return Object.freeze({ ...identity });
   }
 
+  function unlinkExternalIdentities({ userId, issuer } = {}) {
+    const found = userIndex.get(required(userId, 'userId'));
+    if (!found) throw new Error('user not found');
+    const normalizedIssuer = required(issuer, 'issuer');
+    const resolvedUserId = found.user.userId;
+    const state = tenantState(found.tenantId);
+    let removed = 0;
+    for (const [key, identity] of Array.from(state.externalIdentitiesByKey.entries())) {
+      if (identity.userId === resolvedUserId && identity.issuer === normalizedIssuer) {
+        state.externalIdentitiesByKey.delete(key);
+        removed += 1;
+      }
+    }
+    escalate(found.tenantId, 'system', 'identity.unlink', resolvedUserId);
+    return Object.freeze({ userId: resolvedUserId, issuer: normalizedIssuer, removed });
+  }
+
   function registerServiceIdentity({ tenantId, serviceId, allowedActions } = {}) {
     const id = required(tenantId, 'tenantId');
     const state = tenantState(id);
@@ -559,6 +576,7 @@ export function createIdentityBillingRuntime({ clock = () => Date.now() } = {}) 
     verifySession,
     revokeSession,
     linkExternalIdentity,
+    unlinkExternalIdentities,
     registerServiceIdentity,
     issueApiKey,
     authenticateApiKey,

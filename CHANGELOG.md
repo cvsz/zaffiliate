@@ -4,6 +4,17 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (GM-B2a — TikTok App Review readiness — 2026-08-26)
+
+- Public legal surfaces: `/privacy` and `/terms` served with clean URLs from the Control Plane, matching the actual data flows (TikTok Shop scopes verbatim, salted-hash click attribution, server-side-only tokens, retention/deletion, contacts); shared brand icon `/icon.svg` used as favicon on all pages; no-login public footer (`Privacy · Terms · Contact`) on the main site.
+- Revoke/disconnect: identity runtime `unlinkExternalIdentities` (audited) + `POST /api/v1/oauth/:provider/disconnect` which deletes stored tokens and the account link and returns a deletion receipt; idempotent; new `OAUTH_DISCONNECTED` security event.
+- Reviewer package: `docs/TIKTOK-APP-REVIEW.md` (products/scopes limited to granted set w/ unused-scope removal note, endpoint table, external-evidence checklist) and `docs/TIKTOK-SANDBOX-DEMO.md` (full sandbox flow mapped to real commands).
+- Evidence: TikTok Shop sandbox authorization captured for test shop "Jjj test shop" (region ID) with exactly the two requested scopes.
+
+### Verification (GM-B2a)
+
+- `test/tiktok-app-review.test.js` 4/4 RED→GREEN. Full battery: **503 tests — 501 pass, 0 fail, 2 gated skips**; check clean; audit 0 vulnerabilities; security-check PASS.
+
 ### Added (GM-B6 — distributed rate limiting — 2026-08-26)
 
 - `packages/security/src/rate-limit-redis.js`: atomic Lua token-bucket store over an injectable Redis client, following the events-bus pattern of optional `ioredis` + `REDIS_URL` with memory fallback — zero new dependencies. Redis unavailability degrades fail-closed to an enforced in-memory limiter instance; cross-instance budget sharing proven at contract level.
