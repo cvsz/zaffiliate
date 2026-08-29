@@ -31,10 +31,16 @@ test('allows public IPs outside private ranges', () => {
   assert.deepEqual(ssrfValidator.validate('https://172.15.255.255/path'), Object.freeze({ allowed: true, host: '172.15.255.255', protocol: 'https' }));
 });
 
-test('rejects localhost and ::1', () => {
+test('rejects localhost, zero IP, and ::1 / IPv6 local', () => {
   assert.throws(() => ssrfValidator.validate('https://localhost/path'), { code: SSRF_BLOCKED });
   assert.throws(() => ssrfValidator.validate('https://localhost:8080/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://0.0.0.0/path'), { code: SSRF_BLOCKED });
   assert.throws(() => ssrfValidator.validate('https://[::1]/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://[::]/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://[fe80::1]/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://[fc00::1]/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://[::ffff:127.0.0.1]/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://100.64.0.1/path'), { code: SSRF_BLOCKED });
 });
 
 test('rejects link-local 169.254.x.x', () => {
@@ -45,6 +51,7 @@ test('rejects link-local 169.254.x.x', () => {
 test('rejects hosts with .local and .internal suffixes', () => {
   assert.throws(() => ssrfValidator.validate('https://foo.internal/path'), { code: SSRF_BLOCKED });
   assert.throws(() => ssrfValidator.validate('https://bar.local/path'), { code: SSRF_BLOCKED });
+  assert.throws(() => ssrfValidator.validate('https://app.localhost/path'), { code: SSRF_BLOCKED });
 });
 
 test('allows public hosts', () => {

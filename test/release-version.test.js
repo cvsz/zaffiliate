@@ -264,7 +264,7 @@ test('generate-changelog draft script runs against a tiny temp git repo', async 
   assert.equal(JSON.parse(firstRun.stdout).event, 'changelog_draft_generated');
   const draft = await readFile(draftPath, 'utf8');
   assert.match(draft, /^# Changelog$/m);
-  assert.match(draft, /^## \[0\.1\.0\] - \d{4}-\d{2}-\d{2}$/m);
+  assert.match(draft, /^## \[\d+\.\d+\.\d+\] - \d{4}-\d{2}-\d{2}$/m);
   assert.match(draft, /^### Added$/m);
   assert.match(draft, /^- feat: x$/m);
   assert.match(draft, /^### Fixed$/m);

@@ -1,6 +1,5 @@
 export const SSRF_BLOCKED = 'SSRF_BLOCKED';
-export const PRIVATE_IPV4 = /^(?:10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.)/;
-const PRIVATE_HOST_SUFFIXES = new Set(['.local', '.internal']);
+const PRIVATE_HOST_SUFFIXES = new Set(['.local', '.internal', '.localhost']);
 
 function failClosed(reason) {
   const error = new TypeError(`url validation failed: ${reason}`);
@@ -9,15 +8,49 @@ function failClosed(reason) {
 }
 
 function isPrivateIPv4(host) {
-  if (!PRIVATE_IPV4.test(host)) return false;
-  const parts = host.split('.').map(Number);
+  const parts = host.split('.');
   if (parts.length !== 4) return false;
-  return parts.every((part) => part >= 0 && part <= 255);
+  const nums = parts.map(Number);
+  if (!nums.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) return false;
+  const [a, b] = nums;
+  // 0.0.0.0/8
+  if (a === 0) return true;
+  // 10.0.0.0/8
+  if (a === 10) return true;
+  // 100.64.0.0/10 (Carrier-Grade NAT: 100.64.0.0 - 100.127.255.255)
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  // 127.0.0.0/8
+  if (a === 127) return true;
+  // 169.254.0.0/16
+  if (a === 169 && b === 254) return true;
+  // 172.16.0.0/12
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true;
+  // 198.18.0.0/15 (Benchmark)
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  return false;
 }
 
 function isPrivateHost(host) {
-  const lower = host.toLowerCase().replace(/^\[|\]$/g, '');
-  if (lower === 'localhost' || lower === '::1') return true;
+  let lower = host.toLowerCase().replace(/^\[|\]$/g, '');
+  if (lower === 'localhost' || lower === '::1' || lower === '0.0.0.0' || lower === '::') return true;
+  // IPv6 Unique Local (fc00::/7) or Link-Local (fe80::/10)
+  if (/^(?:fc|fd|fe8|fe9|fea|feb)/i.test(lower)) return true;
+  // IPv4-mapped IPv6 addresses (::ffff:127.0.0.1 or ::ffff:7f00:1 / ::ffff:a00:1 etc.)
+  if (lower.startsWith('::ffff:')) {
+    const sub = lower.slice(7);
+    if (isPrivateIPv4(sub)) return true;
+    const hexParts = sub.split(':');
+    if (hexParts.length === 2) {
+      const high = parseInt(hexParts[0], 16);
+      const low = parseInt(hexParts[1], 16);
+      if (!Number.isNaN(high) && !Number.isNaN(low)) {
+        const ip = `${(high >> 8) & 255}.${high & 255}.${(low >> 8) & 255}.${low & 255}`;
+        if (isPrivateIPv4(ip)) return true;
+      }
+    }
+  }
   if (isPrivateIPv4(lower)) return true;
   for (const suffix of PRIVATE_HOST_SUFFIXES) {
     if (lower === suffix.slice(1) || lower.endsWith(suffix)) return true;
