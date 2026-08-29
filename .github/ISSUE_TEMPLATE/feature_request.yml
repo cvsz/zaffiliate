@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose an improvement or new affiliate-commerce capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user, operator, creator, marketplace, or platform need should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe desired behavior, affected channel(s), tenant/security boundaries, and scope.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / source provenance
+      description: Link legacy source, provider docs, metrics, incidents, or migration evidence where applicable.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Include functional, test, security, observability, compatibility, and rollback requirements.
+    validations:
+      required: true
