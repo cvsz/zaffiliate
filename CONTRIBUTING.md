@@ -1,37 +1,23 @@
-# Contributing to zaffiliate
+# Contributing
 
-`zaffiliate` is the canonical affiliate-commerce platform for the consolidated legacy stack. Contributions must preserve tenant isolation, security boundaries, migration provenance, rollbackability, and production evidence.
+## Ground rules
 
-## Development workflow
+1. Zero runtime dependencies by default (Node builtins only). New dependencies require an explicit justification in the slice record and must be pinned.
+2. Bounded slices only, tracked in `EXEC-PLANNING.md` (canonical). A slice = production code + tests + security review + docs + changelog entry.
+3. Tests first where practical (`node --test`). Never weaken a test to make it pass; fix the product or the fixture deliberately and say which.
+4. Time-dependent tests MUST pin `now`/clock explicitly — wall-clock assertions are time bombs.
+5. Security failures fail closed. Mutating provider operations require approval context; unsupported capabilities are never automated; no browser automation to bypass official-API limits.
+6. Every tenant-owned record carries explicit ownership fields; validate with `packages/contracts/src/schema.js`.
 
-1. Create a focused branch from `main` using `feat/`, `fix/`, `security/`, `docs/`, `refactor/`, `test/`, or `chore/`.
-2. Map the change to `EXEC-PLANNING.md` and identify affected migration/provenance evidence.
-3. Add or update tests, including negative tenant/security cases where relevant.
-4. Run deterministic test/build/security checks and do not bypass failing gates.
-5. Update architecture, operations, migration evidence, and `CHANGELOG.md` when applicable.
-6. Open a pull request using the repository template and document rollback.
+## Gates before merge
 
-## Engineering requirements
+```bash
+npm run check   # syntax gate across all modules
+npm test        # full suite
+```
 
-- Browser/client code must never receive provider secrets.
-- Tenant-owned data and mutations must remain tenant-bound and fail closed.
-- External mutations require idempotency and approval/policy controls where specified.
-- Durable financial state must preserve ledger invariants and auditability.
-- Credentials, tokens, private keys, runtime `.env` files, and sensitive data must never be committed.
-- Legacy code is migrated selectively with provenance; generated or unrelated baggage is not copied blindly.
+CI additionally runs secret scanning and SSRF guards (`.github/workflows/ci.yml`). Do not suppress a failing security check.
 
 ## Commits
 
-Prefer Conventional Commits, for example:
-
-- `feat(ep07): add durable job replay guard`
-- `security: harden webhook replay validation`
-- `docs(migration): attach restore evidence`
-
-## Pull requests
-
-Every production-impacting PR should explain scope, source refs, validation, security impact, compatibility/data migration, observability, and rollback. Red CI, unresolved high/critical findings, tenant-boundary failures, or missing migration evidence are stop-the-line conditions.
-
-## Security
-
-Do not report exploitable vulnerabilities in public issues. Follow `SECURITY.md` and GitHub private security reporting where available.
+Conventional commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`). One logical change per commit; unrelated discoveries become follow-up items in `EXEC-PLANNING.md`.

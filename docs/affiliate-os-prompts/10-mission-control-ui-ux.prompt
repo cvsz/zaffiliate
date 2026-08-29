@@ -1,0 +1,156 @@
+MISSION CONTROL + CREATOR STUDIO + ADMIN + UI/UX MASTER PROMPT
+
+Act as principal product designer, design-system architect, frontend architect, UX researcher, accessibility specialist, data-vis engineer, growth-product designer, staff full-stack engineer.
+
+Build premium Mission Control + Creator Studio + Admin Console. Operator must know what is happening, why, what needs attention, what makes money, what fails, what happens next, and how to stop safely.
+
+PRODUCT SURFACES
+Mission Control, Creator Studio, Admin Console.
+
+NAVIGATION
+Overview
+Commerce: Opportunities, Products, Offers, Promotions, Affiliate Links
+Campaigns: Campaigns, Calendar, Experiments
+Create: AI Studio, Hook Lab, Copy Studio, Image Studio, Video Factory, Asset Library
+Publish: Publishing Queue, Scheduled, Published, Failed
+Revenue: Analytics, Attribution, Orders, Commissions, Payouts
+Automation: Workflows, Recommendations, Approvals, Policies, Kill Switches
+Integrations: TikTok, Shopee, Facebook, Instagram, YouTube
+Operations: Provider Health, Worker Health, Queues, Failures, Audit
+Settings
+Permission-aware nav.
+
+MISSION CONTROL OVERVIEW
+Primary KPIs: Net Commission, Conversions, Affiliate Clicks, Published Content, Pending Approvals, Critical Failures.
+Secondary: CTR, CVR, EPC, AI Cost, Publishing Success, Active Campaigns.
+Hierarchy: Critical Actions → KPI Strip → Revenue Trend → Campaign/Opportunity → Publishing/Automation Health → Integration Health → Activity.
+
+CRITICAL ACTION CENTER
+Publishing failure, provider disconnected, reauth, promo expiring, stale claim, approval, automation paused, budget exceeded, security warning, data lag.
+Show severity, impact, resource, reason, recommended action, detected time.
+
+SEVERITY
+INFO, SUCCESS, WARNING, DANGER, CRITICAL. Color not sole indicator.
+
+HEADER
+Org selector, environment, search, quick create, notifications, automation status, user.
+Autonomy states OFF/ASSISTED/APPROVAL_REQUIRED/AUTO_SAFE/AUTONOMOUS/PAUSED.
+
+SEARCH + COMMAND PALETTE
+Search Products, Offers, Campaigns, Content, Publications, Orders, Conversions, Links, Integrations, Audit.
+Commands Create Campaign, Generate Content, Approval Queue, Pause Automation, Sync Provider, Create Link, Failures, Search Product.
+Dangerous actions require confirmation.
+
+TENANT CONTEXT
+Visible active org. On switch clear tenant caches, cancel stale requests, reload permissions/nav.
+
+OPPORTUNITY BOARD
+Product, Provider, Price, Promotion, Commission, Trend, Score, Confidence, Risk, Time Remaining. Details show evidence/reasoning.
+
+PRODUCT EXPLORER
+Identity, images, variants, offers, price/promo/commission history, creative/campaign/performance, freshness.
+
+OFFER COMPARISON
+Provider, Merchant, Price, Promotion, Commission, Freshness, Conversion, EPC, Risk.
+
+CAMPAIGNS
+List and detail with Overview/Content/Schedule/Platforms/Performance/Experiments/Automation/Activity.
+Builder: Product/Opportunity → Objective → Audience → Platforms → Creative Strategy → Content Mix → Schedule → Policy → Review → Launch.
+Save/resume.
+
+CREATOR STUDIO
+Campaign Wizard, Brief, Hook Lab, Copy Studio, Image Studio, Video Studio, Voice, Thumbnail, Variant, Quality, Approval.
+Three-pane Copy Studio Context/Editor/Platform Preview.
+Claim Evidence panel with source/verified/expires/confidence.
+
+IMAGE STUDIO
+Template, product assets, prompt, brand, text, CTA, disclosure, ratio, preview, variants.
+
+VIDEO FACTORY
+Storyboard, Timeline, Preview, Properties; scene visual/duration/voice/caption/transition/CTA.
+Stages Brief→Script→Storyboard→Assets→Voice→Captions→Preview→QA→Approval.
+Simple affiliate-focused editor, not full NLE.
+
+PLATFORM PREVIEW
+TikTok, Reel, Facebook, Shorts/YouTube approximate preview.
+
+ASSET LIBRARY
+Images, Videos, Audio, Voiceovers, Subtitles, Thumbnails, Brand, Generated, Uploaded.
+Provenance source/model/prompt/license/usage.
+
+CONTENT CALENDAR
+Month/Week/Day/List with platform/campaign/content/status/approval. Drag reschedule revalidates constraints.
+Warnings promo expiry/provider unavailable/approval expiry/frequency/duplicates/stale claims.
+
+PUBLISHING QUEUE
+WAITING_APPROVAL, SCHEDULED, QUEUED, UPLOADING, PROCESSING, PUBLISHED, FAILED, PARTIAL.
+Failure Center across publishing/webhooks/sync/AI/media/analytics with reason/impact/retry/suggested action.
+
+APPROVAL INBOX
+Filters content/campaign/platform/risk/deadline. Preview media/caption/link/claims/disclosure/schedule/risk/confidence. Approve/Reject/Revision/Edit.
+Bulk approval only low-risk compatible content.
+
+AUTOMATION CONTROL
+Mode, workflows, pending actions, budget, kill switches, recent decisions, blocked actions.
+Structured policy editor and simulation. Workflow visualizer.
+
+RECOMMENDATIONS
+Recommendation, Evidence, Expected Impact, Confidence, Risk. Apply/Create Experiment/Dismiss/Review.
+
+EXPERIMENT DASHBOARD
+Hypothesis, variants, primary metric, sample, duration, result, confidence, guardrails. No winner before thresholds.
+
+ANALYTICS
+Revenue, Campaigns, Products, Creatives, Platforms, Funnel.
+Revenue: GTV, Pending/Approved Commission, Refunds/Reversals, Paid, AI/Content Cost, Net Contribution.
+Content funnel, Creative leaderboard with confidence.
+
+PROVIDER + WORKER HEALTH
+Provider roster with status/latency/errors/sync/token/quota and compact sparklines.
+Workers API/Scheduler/Affiliate/Content/Image/Video/Publishing/Analytics/Webhook with queue/throughput/failure/heartbeat.
+Queue dashboard Ready/Running/Retrying/DLQ/Oldest/Throughput.
+Cost dashboard LLM/Image/Video/TTS/Storage/Bandwidth by org/campaign/provider/model.
+
+AUDIT + INTEGRATIONS + ONBOARDING
+Audit actor/action/resource/time/result/reason.
+Provider connection/capabilities/token expiry/sync/publish/analytics.
+Onboarding organization→brand→provider→affiliate source→automation→campaign→content→review→publish→results.
+
+UX STATES
+Strong empty/loading/progress/error states. Long jobs expose stages.
+Responsive Desktop primary; Mobile approvals/notifications/status/analytics/kill switch.
+
+ACCESSIBILITY
+WCAG 2.2 AA where practical, keyboard/focus/semantic/screen reader/contrast/reduced motion/accessible tables/charts.
+Light/Dark/System via semantic tokens.
+
+DESIGN SYSTEM
+Tokens color/spacing/type/radius/shadow/motion/z-index/breakpoints.
+Reusable Button/Input/Select/Combobox/Dialog/Drawer/Tooltip/Tabs/Card/Metric/Table/DataGrid/Badge/Alert/Toast/Timeline/Chart/EmptyState/Skeleton/CommandPalette.
+
+TABLES
+Sort/filter/search/pagination/column visibility/saved views/bulk safe actions; server pagination for large data.
+Charts TimeSeries/Bar/Stacked/Funnel/Waterfall/Distribution with textual values and freshness.
+Confidence UI includes sample size/freshness.
+Localization English/Thai with proper typography/date/currency.
+
+SECURITY + FRONTEND
+Server auth mandatory; hide only for UX.
+Destructive actions confirmed.
+Validate untrusted provider/catalog/AI content, CSP, media URLs, no secret leakage.
+Tenant ID in cache keys; invalidate on org switch.
+
+REALTIME
+Use WebSocket/SSE/polling only where justified for publication/generation/queue/approval.
+
+PERFORMANCE
+Track LCP/INP/CLS/route/API/bundle. Lazy-load Video/Image/Analytics/Admin.
+Frontend observability and privacy-respecting UX telemetry.
+
+TESTS
+Unit, component, accessibility, visual regression, integration, E2E, responsive, permission.
+Critical E2E Login → Switch org → Campaign → Generate Draft → Approve → Schedule → Mock Publish → Analytics → Pause Automation.
+Security regression for tenant cache, unauthorized routes, XSS/URL/secret redaction.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect frontend/routes/sidebar/design system, map pages to IA, define semantic tokens, refine shell/sidebar, implement Mission Control KPI hierarchy + Critical Action Center using API data, loading/error/empty, accessibility/responsive/tenant cache tests, run tests/typecheck/lint, update docs/planning, one next slice, STOP.

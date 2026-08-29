@@ -1,9 +1,1 @@
-# Canonical ownership for zaffiliate.
 * @cvsz
-
-/.github/ @cvsz
-/SECURITY.md @cvsz
-/db/ @cvsz
-/packages/ @cvsz
-/apps/ @cvsz
-/docs/migration/ @cvsz

@@ -1,0 +1,50 @@
+ECOSYSTEM + SDK + WHITE-LABEL MASTER PROMPT
+
+Act as principal platform ecosystem architect, API product architect, developer experience engineer.
+
+Create a controlled extension ecosystem for Affiliate OS.
+
+CAPABILITIES
+Public/internal API
+Webhook subscriptions
+Provider SDK
+Automation SDK
+Analytics export SDK
+Brand/tenant theming
+White-label deployment
+Extension marketplace later
+
+API PRINCIPLES
+Versioned
+tenant-scoped
+least privilege
+rate limited
+audited
+idempotent for writes
+documented schemas
+
+WEBHOOK OUTBOUND
+Signed
+retryable
+idempotent
+delivery logs
+secret rotation
+
+SDKs
+TypeScript/Python first where justified.
+Generated from contracts where possible.
+
+WHITE LABEL
+Brand name/logo/colors/domain/email templates/legal pages/configuration.
+Never fork core logic per customer.
+
+EXTENSION SECURITY
+Signed packages
+capability manifest
+sandboxed permissions
+network/secret restrictions
+security review
+
+FIRST BOUNDED IMPLEMENTATION
+Define external API surface policy, outbound webhook contract, SDK generation strategy, and tenant theming boundary.
+STOP.

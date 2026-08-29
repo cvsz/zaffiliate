@@ -1,0 +1,117 @@
+PROVIDER INTEGRATION MASTER PROMPT — TikTok, Shopee, Meta, YouTube
+
+Act as principal integrations architect, OAuth/security engineer, affiliate-commerce engineer, platform API engineer, backend engineer, QA, SRE.
+
+Use only official APIs/SDKs/OAuth/documented webhooks/approved feeds/approved affiliate & publishing endpoints. No CAPTCHA bypass, browser automation to evade missing APIs, credential scraping, cookie theft, fake engagement, undocumented endpoint abuse, policy evasion.
+
+FIRST ACTION — VERIFY CURRENT PROVIDER CAPABILITIES
+Create docs/integrations/provider-capability-matrix.md with Provider, API/Product, capability, supported, access level, scopes, account requirements, review requirements, geographic limits, rate limits, webhooks, sandbox, publishing limits, affiliate limits, restrictions, last verified, source.
+Capabilities: AUTH, PROFILE_READ, CATALOG_READ, PRODUCT_READ, OFFER_READ, PROMOTION_READ, AFFILIATE_LINK_CREATE, ORDER_READ, COMMISSION_READ, PAYOUT_READ, IMAGE_PUBLISH, VIDEO_PUBLISH, SHORT_VIDEO_PUBLISH, POST_PUBLISH, CONTENT_STATUS_READ, ANALYTICS_READ, WEBHOOKS.
+Never proceed from memory.
+
+PROVIDER ARCHITECTURE
+Canonical ProviderAdapter with capabilities, connect, refreshCredential, disconnect, validateAccount, optional catalog/link/publish/status/analytics/webhook methods.
+No provider response objects leaking into core.
+
+CAPABILITY REGISTRY
+provider, capability, status, reason, required scopes, API version, last_verified_at.
+Statuses AVAILABLE, REQUIRES_REVIEW, APPROVAL_REQUIRED, MANUAL, UNSUPPORTED, TEMPORARILY_DISABLED.
+Runtime checks capability before action.
+
+NORMALIZED DOMAIN
+ProviderAccount, ProviderCredential, ProviderCapability, Merchant, Product, ProductVariant, Offer, Promotion, AffiliateLink, Publication, PublicationStatus, AnalyticsMetric, Conversion, Order, Commission, Refund, Payout, WebhookEvent.
+
+OAUTH
+Authorization Code + PKCE when applicable; state, nonce, exact redirects, short-lived state; bind user/org/provider/request/expiration. Prevent CSRF, code interception, account confusion, tenant switching, replay.
+
+CREDENTIAL STORAGE
+Encrypted access/refresh tokens with org/provider account, scopes, expiry, key version. Never log/display tokens.
+
+TOKEN REFRESH
+Centralized lifecycle with distributed lock. Handle expired/revoked/invalid_grant/scope removed/account disabled/provider unavailable. Revoked → REAUTH_REQUIRED.
+
+ACCOUNT HEALTH
+CONNECTED, HEALTHY, EXPIRING, REAUTH_REQUIRED, RATE_LIMITED, DEGRADED, DISABLED, ERROR.
+Track last success/error/sync, token expiry, consecutive failures.
+
+HTTP CLIENT
+Timeouts, TLS verify, request IDs, retry, rate-limit awareness, response-size limits, normalized errors, redacted logs, metrics.
+Failure categories AUTH, RATE_LIMIT, VALIDATION, PERMISSION, NOT_FOUND, TRANSIENT, PROVIDER_OUTAGE, PERMANENT, UNKNOWN.
+
+RETRY / CIRCUIT BREAKER / RATE LIMIT
+Retry transient only with exponential backoff+jitter and provider headers. Circuit CLOSED/OPEN/HALF_OPEN. Coordinate quotas by provider/app/org/account/endpoint family and priority.
+
+WEBHOOKS
+POST /api/v1/webhooks/:provider
+Size limit → signature verify → timestamp/replay → persist raw → dedupe → enqueue → quick response → async process.
+States RECEIVED, VERIFIED, QUEUED, PROCESSING, PROCESSED, IGNORED, FAILED, DEAD_LETTER.
+Idempotent.
+
+CATALOG
+Fetch → validate → normalize → dedupe → upsert → ProductUpdated.
+Stable canonical product mapping; ambiguous matches require confidence/review.
+
+AFFILIATE LINKS
+Provider-neutral AffiliateLinkService. If official creation unavailable, MANUAL. Never construct undocumented affiliate params.
+
+SAFE REDIRECT
+/go/:slug; approved verified destination only; block open redirect, javascript/data, malformed URLs, host spoofing, tenant crossing.
+
+PUBLISHING
+Normalized PublishInput and normalized result.
+Preflight format/codec/dimensions/duration/framerate/bitrate/filesize/audio/caption/title/description/thumbnail restrictions.
+States DRAFT, WAITING_APPROVAL, APPROVED, SCHEDULED, QUEUED, UPLOADING, PROCESSING, PUBLISHED, PARTIAL, REJECTED, FAILED, CANCELLED.
+Idempotency keys and reconciliation required.
+
+PARTIAL MULTI-PLATFORM
+Treat mixed success as PARTIAL; retry failed destinations only.
+
+UPDATE/DELETE CAPABILITIES
+Declare CONTENT_CREATE/UPDATE/DELETE individually; never promise unsupported editing/deletion.
+
+ANALYTICS
+Normalize impressions, views, engagements, likes, comments, shares, clicks, watch_time, completion_rate, followers, conversions.
+Source types PROVIDER_REPORTED, FIRST_PARTY, AFFILIATE_PROVIDER, ESTIMATED.
+
+CONVERSIONS
+Ingest click/order/conversion/commission/refund/payout where supported; dedupe by provider IDs.
+
+TIKTOK
+Verify current official TikTok/TikTok Shop auth/content/publishing/shop/affiliate/analytics/webhooks/region/review requirements. Implement only verified capabilities.
+
+SHOPEE
+Verify Shopee Open Platform and affiliate capabilities by market/account type. No private dashboard scraping. Manual fallback when unavailable.
+
+META
+Separate MetaOAuth, FacebookPageAdapter, InstagramProfessionalAdapter, MetaPublishingAdapter, MetaAnalyticsAdapter, MetaWebhookAdapter. Validate ownership, professional account linkage, scopes, review, token lifecycle.
+
+YOUTUBE
+GoogleOAuth, YouTubeUploadAdapter, Metadata, Analytics. Support Shorts only through current documented behavior. Track quota.
+
+MOCK MODE
+PROVIDER_MODE=mock supporting OAuth, catalog, publish success/failure, rate limit, token expiry, webhook, analytics.
+CI never requires live creds.
+
+CONTRACT TESTS
+Capability declaration, tenant isolation, normalized auth/rate-limit/transient/permanent errors, idempotent publishing, redacted logs.
+Fixtures for 401/403/404/409/422/429/5xx/timeouts/invalid JSON/schema/partial/expired/revoked/missing scope.
+
+VERSIONING
+provider_api_version, adapter_version, capability_version. Track provider deprecations and feature flags.
+
+AUDIT + OBSERVABILITY
+Audit connect/disconnect/reauthorize/scope/catalog/link/publish/delete/credential rotation/webhook failures/manual retry.
+Metrics for requests/errors/latency/rate limits/token refresh/publication/webhooks/catalog sync.
+
+MANUAL FALLBACK
+Produce compliant package: video/image, caption, title, description, hashtags, affiliate URL, disclosure, recommended settings. State READY_FOR_MANUAL_PUBLISH.
+
+APPROVAL + COMPLIANCE
+Evaluate org policy, provider capability, content risk, product category, AI confidence, disclosure. Decision AUTO_ALLOWED, APPROVAL_REQUIRED, MANUAL_REQUIRED, BLOCKED.
+Pre-publish compliance verifies disclosure, claims, restricted category, copyright, trademark, provider metadata, AI disclosure.
+
+SECURITY TESTS
+Cross-org OAuth state denied, provider account tenant isolation, encrypted tokens never returned/logged, webhook replay/signature rejected, open redirects rejected, publishing cannot use another tenant account, manual retry preserves ownership.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect repo/provider code, read exec-planning, verify docs for next slice, update capability matrix, add ProviderAdapter + capability state + mock provider, tests first, run tests/security, update architecture/security/checklist/planning, identify exactly one next task, STOP.

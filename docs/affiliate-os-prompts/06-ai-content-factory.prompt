@@ -1,0 +1,96 @@
+AI CONTENT FACTORY MASTER PROMPT — Copy • Image • Video • Voice • Viral Engine
+
+Act as Creative Director, AI Content Architect, Brand Strategist, Video Producer, Growth Marketer, and MLOps Engineer.
+
+Build a production-grade AI Content Factory that turns products into multilingual, platform-native affiliate content while staying truthful, compliant, measurable.
+
+Generate: research-backed briefs, viral hooks, scripts, captions, images, thumbnails, vertical videos, voiceovers, subtitles, CTAs, A/B variants, brand-safe publishing packages.
+Never fabricate claims, reviews, discounts, scarcity, earnings, testimonials.
+
+CREATIVE PIPELINE
+Product → Research → Creative Brief → Persona → Hooks → Script → Storyboard → Images → Voice → Video Assembly → Subtitles → CTA → Disclosure → Quality Review → Approval → Publishing Package.
+Every stage versioned.
+
+CREATIVE BRIEF
+Product, Brand, Category, Target Persona, Problem, Desired Outcome, Key Benefits, Evidence, Differentiators, Tone, Platform, Objective, CTA, Disclosure.
+
+PERSONA LIBRARY
+Budget Shopper, Beauty Enthusiast, Fitness Beginner, Busy Professional, Student, Parent, Tech Lover, Home Improver, Luxury Buyer, Creator.
+Include pain points, motivations, objections, preferred style, CTA preference.
+
+VIRAL HOOK ENGINE
+Generate 20+ hooks by Curiosity, Problem, Transformation, Comparison, Mistake, Secret, Checklist, Challenge, Story, Before/After.
+Score Scroll Potential, Clarity, Emotional Pull, Brand Fit, Compliance Risk.
+No clickbait-only optimization.
+
+SCRIPT GENERATOR
+15s, 30s, 60s, Tutorial, Comparison, Review-style, UGC-style, Storytelling, Educational.
+Structure: Hook, Problem, Insight, Solution, Demo, substantiated Social Proof, CTA, Disclosure.
+Timestamped scenes.
+
+STORYBOARD
+Scene, Duration, Visual, Voice, Caption. Editable.
+
+COPY ENGINE
+TikTok caption, Facebook post, Instagram caption, YouTube title/description, Shorts description, product summary, landing headline, email teaser.
+Languages Thai, English, Thai + English.
+Voices Premium, Minimal, Friendly, Expert, Luxury, Creator.
+
+IMAGE STUDIO
+Feed, Story, Carousel, Thumbnail, Banner, Promo, Comparison.
+Variables product, price, headline, CTA, logo, promotion, background, disclosure.
+Ratios 9:16, 1:1, 4:5, 16:9.
+
+VIDEO FACTORY
+Script → Storyboard → Assets → Voice → Captions → Timeline → Branding → Render → QA.
+1080x1920, 1080x1080, 1920x1080.
+Templates Product Demo, Top 5, Tutorial, Story, Deal Alert, Comparison.
+
+VOICEOVER
+Thai female/male, English female/male. Energetic, Calm, Premium, Friendly, Educational.
+Generate synchronized subtitles.
+
+THUMBNAIL LAB
+Variants of headline, expression, palette, CTA badge, product angle; score predicted CTR.
+
+CREATIVE VARIATION
+Campaign → hooks → thumbnails → CTAs. Preserve lineage.
+
+QUALITY GATE
+Grammar, readability, brand consistency, product accuracy, disclosure, copyright risk, unsafe claims, spam likelihood.
+Score 0-100; below threshold → revision.
+
+COMPLIANCE
+Affiliate/sponsored disclosure, medical/financial claims, before/after substantiation, trademark, copyright.
+
+SCORECARD
+Viral Score, Brand Score, Compliance Score, SEO Score, Conversion Score, Confidence.
+
+CONTENT LIBRARY
+Content ID, Campaign, Product, Persona, Platform, Language, Creative Version, Prompt Version, Model, Status, Performance.
+Search by product/campaign/hook/keyword/platform/language.
+
+BRAND SYSTEM
+Logos, fonts, colors, CTAs, intro/outro, watermarks, disclosure styles. Multiple brand profiles.
+
+PLATFORM PACKAGES
+TikTok/video+caption+hashtags
+Instagram/reel+caption+cover
+Facebook/video+post
+YouTube/shorts+title+description+thumbnail
+
+PROMPT REGISTRY
+Prompt Name, Version, Owner, Model, Input Schema, Output Schema, Status.
+No prompts hard-coded in business logic.
+
+LEARNING LOOP
+Collect views/watch time/CTR/saves/shares/clicks/conversions and feed to hook/thumbnail/CTA/persona/platform recommendations only with meaningful samples.
+
+CREATOR STUDIO UI
+Campaign Wizard, Brief Builder, Hook Lab, Script Editor, Image Studio, Video Studio, Voice Studio, Thumbnail Lab, Variant Manager, Quality Review, Approval Queue.
+
+TESTS
+Prompt schema, copy validation, image metadata, subtitle timing, video rendering, disclosure generation, brand consistency, quality scoring, variant lineage. Mock AI providers.
+
+FIRST IMPLEMENTATION SLICE
+Creative Brief schema, Persona model, Hook generator, Prompt registry, Quality scoring model, unit tests, docs, STOP.

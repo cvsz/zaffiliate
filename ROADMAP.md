@@ -95,3 +95,18 @@ Consolidate seven overlapping affiliate/social-commerce repositories into one se
 - copying unrelated Gitea platform machinery into the affiliate core;
 - preserving duplicate SDK implementations without demonstrated compatibility demand;
 - deleting legacy repositories before restoration evidence exists.
+
+## Master-meta phase mapping (2026-08-23)
+
+| Master-meta phase | zaffiliate state |
+|---|---|
+| 0 Discovery | COMPLETE — gap analysis in IMPLEMENTATION-CHECKLIST.md |
+| 1 Foundation | PARTIAL — identity/RBAC/audit/observability complete; Postgres+Redis wiring = MM-003/MM-005; storage = MM-006 |
+| 2 Affiliate core | COMPLETE — EP-04/EP-05; public `/go/:slug` + webhook ingress = MM-002 |
+| 3 Content studio | PARTIAL — ai-content runtime complete; render pipeline DEFERRED; studio UI = MM-008 |
+| 4 Publishing | PARTIAL — boundary+approvals complete; unified publication_jobs persistence pending |
+| 5 Analytics | PARTIAL — runtime+SLO complete; warehouse separation open |
+| 6 Intelligence | MISSING — trend/opportunity engine = MM-009 |
+| 7 Automation | COMPLETE — workflow approvals + capability-state gating (MM-001) |
+| 8 Optimization | PARTIAL — seeded bandits; min-sample winner gating now contract-enforced |
+| 9 Hardening | PARTIAL — release/SBOM/attestation/drill scripts complete; k8s/helm = MM-010 |

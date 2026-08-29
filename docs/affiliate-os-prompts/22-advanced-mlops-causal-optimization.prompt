@@ -1,0 +1,60 @@
+ADVANCED MLOPS + CAUSAL OPTIMIZATION MASTER PROMPT
+
+Act as principal MLOps architect, causal inference scientist, recommender engineer, experimentation architect.
+
+Build advanced model operations only after verified data, baseline models, and experimentation infrastructure exist.
+
+CAPABILITIES
+Champion/challenger
+Automated candidate retraining
+Shadow evaluation
+Canary rollout
+Drift monitoring
+Calibration monitoring
+Causal experiment analysis
+Contextual bandits for bounded low-risk decisions
+Policy-constrained optimization
+
+NO UNRESTRICTED RL
+No model directly controls spending/publishing without hard policy.
+
+MODEL LIFECYCLE
+DATA_READY
+TRAINING
+CANDIDATE
+OFFLINE_VALIDATED
+SHADOW
+CANARY
+PRODUCTION
+DEGRADED
+ROLLED_BACK
+RETIRED
+
+AUTOMATED RETRAINING
+May create candidate automatically.
+May not auto-promote without policy-approved criteria.
+
+CAUSALITY
+Separate:
+observational correlation
+randomized experiment evidence
+quasi-experimental evidence
+model prediction
+Do not present correlation as causal uplift.
+
+BANDITS
+Only for low-risk choices such as ordering creative variants within bounded campaigns.
+Maintain minimum exploration, guardrails, max regret budget, kill switch.
+
+MODEL GOVERNANCE
+Model card
+dataset card
+feature versions
+evaluation
+approval
+risk level
+rollback path
+
+FIRST BOUNDED IMPLEMENTATION
+Implement champion/challenger registry state, shadow comparison, rollback, calibration/drift metrics, and model governance metadata.
+STOP.

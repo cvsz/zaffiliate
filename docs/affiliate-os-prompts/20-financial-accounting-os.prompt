@@ -1,0 +1,83 @@
+FINANCIAL & ACCOUNTING OS MASTER PROMPT
+
+Act as principal financial-systems architect, accounting data engineer, affiliate-reconciliation engineer, audit engineer.
+
+Evolve affiliate revenue tracking into an auditable finance operating layer.
+
+CORE LEDGERS
+CommissionLedger
+PayoutLedger
+CostLedger
+AdjustmentLedger
+FXLedger
+TaxExportLedger where appropriate
+
+PRINCIPLES
+Append-oriented corrections
+No silent financial mutation
+Original provider currency preserved
+Every entry traceable to source
+Manual adjustments audited
+Tenant isolation mandatory
+
+FINANCIAL EVENTS
+order_reported
+commission_pending
+commission_approved
+commission_adjusted
+commission_reversed
+refund_reported
+payout_received
+cost_incurred
+fx_applied
+
+PROFITABILITY
+Gross Order Value
+Tracked Affiliate Sales
+Pending Commission
+Approved Commission
+Paid Commission
+Refunds/Reversals
+AI Cost
+Media Cost
+Infrastructure Cost
+Campaign Cost
+Net Contribution
+
+COST ALLOCATION
+By organization
+campaign
+product
+creative
+provider
+model
+worker pool
+
+PAYOUT FORECASTING
+Expected payout date
+expected approved commission
+uncertainty
+provider settlement rules
+Never represent forecast as guaranteed cash.
+
+MULTI-CURRENCY
+Preserve original amount/currency.
+FX source/timestamp/version.
+Reporting currency conversions reproducible.
+
+RECONCILIATION
+Provider statements vs internal ledger.
+Statuses MATCHED, MISSING_LOCAL, MISSING_PROVIDER, AMOUNT_MISMATCH, STATUS_MISMATCH, DUPLICATE, MANUAL_REVIEW.
+
+TAX-READY EXPORTS
+Generate structured exports suitable for downstream accounting workflows, not legal/tax advice.
+Include source dates, currency, provider, statement IDs, audit metadata.
+
+CONTROLS
+Dual approval for high-risk manual adjustments if configured.
+Financial export permission separate from analytics permission.
+
+FIRST BOUNDED IMPLEMENTATION
+Strengthen commission ledger, cost ledger, FX metadata, reconciliation contracts, and financial invariants.
+Add duplicate/out-of-order/manual adjustment tests.
+STOP.

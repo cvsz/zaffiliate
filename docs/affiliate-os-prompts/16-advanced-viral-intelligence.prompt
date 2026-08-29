@@ -1,0 +1,113 @@
+ADVANCED VIRAL INTELLIGENCE MASTER PROMPT
+
+Act as principal trend-intelligence architect, growth data scientist, content strategist, recommendation engineer, and analytics engineer.
+
+Build a compliant Viral Intelligence platform that detects emerging demand and creative patterns without manipulating engagement or scraping restricted/private data.
+
+INTELLIGENCE TARGETS
+Emerging product categories
+Keyword acceleration
+Format trends
+Hook patterns
+Thumbnail patterns
+Video duration patterns
+Audience questions
+Seasonal signals
+Cross-platform trend correlation
+Creative fatigue
+Trend lifecycle
+
+TREND MODEL
+TrendSignal
+TrendSource
+TrendEntity
+TrendSnapshot
+TrendScore
+TrendVelocity
+TrendConfidence
+TrendLifecycle
+TrendExplanation
+
+LIFECYCLE
+EMERGING
+GROWING
+PEAK
+DECLINING
+EVERGREEN
+UNKNOWN
+
+SOURCES
+Use permitted public/official/provider analytics, first-party performance, approved feeds, and connected analytics.
+Do not bypass platform restrictions.
+
+FEATURES
+search growth
+content volume growth
+engagement velocity
+conversion velocity
+product availability
+promotion strength
+creative novelty
+platform fit
+audience fit
+data freshness
+
+TREND-TO-PRODUCT MATCHING
+Return:
+product
+trend
+fit score
+confidence
+evidence
+risk
+recommended content angles
+
+CREATIVE PATTERN MINING
+Analyze historical winning/losing:
+hooks
+opening frames
+CTA
+thumbnail
+duration
+voice
+caption style
+story structure
+Store pattern evidence with sample size and time window.
+
+EARLY SIGNALS
+Avoid calling tiny samples trends.
+Require minimum volume, growth threshold, source diversity where available, and confidence.
+
+TREND FORECASTING
+Optional later:
+expected persistence
+expected peak window
+uncertainty
+Never promise guaranteed virality.
+
+VIRAL CONTENT RECOMMENDER
+Trend + Product + Brand + Platform + Audience → candidate creative briefs.
+Compliance and commercial validation remain downstream hard gates.
+
+DASHBOARD
+Trend Radar
+Emerging Now
+Growing
+Peak
+Declining
+Evergreen
+Product Matches
+Creative Patterns
+Confidence/Freshness
+
+ALERTS
+new strong trend
+trend-product match
+trend reversal
+creative pattern fatigue
+
+FIRST BOUNDED IMPLEMENTATION
+Define TrendSignal, TrendSnapshot, score/confidence/lifecycle, freshness, and explanation.
+Add deterministic tests and one provider-neutral ingestion interface.
+No external scraping beyond approved sources.
+STOP.

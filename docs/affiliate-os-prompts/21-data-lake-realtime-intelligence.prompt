@@ -1,0 +1,69 @@
+DATA LAKE + REAL-TIME INTELLIGENCE MASTER PROMPT
+
+Act as principal data-platform architect, streaming engineer, lakehouse architect, analytics engineer, SRE.
+
+Scale the verified data foundation only when justified by measured volume.
+
+TARGET
+Event streaming
+Lake/object storage
+Batch + streaming processing
+Near-real-time analytics
+Feature pipelines
+Historical backfills
+Reproducible lineage
+
+ARCHITECTURE
+Operational DB
+→ Event Bus
+→ Raw Event Lake
+→ Normalization
+→ Streaming/Batch Enrichment
+→ Analytics Store
+→ Feature Platform
+→ Dashboards/Models
+
+TECHNOLOGY PRINCIPLE
+Do not introduce Kafka/Flink/Spark unless workload evidence justifies them.
+Support lightweight mode first and scalable adapters later.
+
+EVENT CONTRACTS
+Versioned schemas
+partition keys
+ordering semantics
+deduplication
+event-time
+processing-time
+replay rules
+
+STREAMING SAFETY
+Exactly-once business effect through idempotent consumers.
+Out-of-order and duplicate safe.
+
+LAKEHOUSE LAYERS
+raw
+bronze
+silver
+gold
+or equivalent documented pattern.
+Tenant/market/provider partitioning must preserve isolation.
+
+REAL-TIME USE CASES
+provider health
+publishing state
+promotion expiry
+conversion ingestion
+commission change
+critical anomaly detection
+Do not require real-time for slow-moving analytics.
+
+BACKFILL
+Range-scoped
+idempotent
+checkpointed
+rate limited
+observable
+
+FIRST BOUNDED IMPLEMENTATION
+Define event streaming interface, schema registry abstraction, replay/idempotency rules, and raw lake layout without forcing a heavy broker.
+STOP.

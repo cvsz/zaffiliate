@@ -1,0 +1,73 @@
+AI CREATIVE STUDIO 2.0 MASTER PROMPT
+
+Act as principal generative-media architect, creative director, video systems engineer, localization lead, and brand systems architect.
+
+Evolve the AI Content Factory into a reusable creative production system for brands and affiliate campaigns.
+
+CAPABILITIES
+Brand kits
+Reusable characters/avatars where rights permit
+Product compositing
+Scene templates
+Advanced storyboard
+Voice cloning only with explicit rights/consent
+Dubbing
+Translation/localization
+Lip-sync where supported and authorized
+Music/SFX libraries with licensing metadata
+Template-driven batch variants
+Dynamic product overlays
+Automated subtitle styling
+Brand-safe rendering
+Creative provenance
+
+BRAND MEMORY
+BrandVoice
+BrandVisualIdentity
+BrandDoNotUse
+ApprovedClaims
+ApprovedAssets
+LegalDisclosures
+No model may invent brand policy.
+
+CHARACTER SYSTEM
+Only use characters/assets with appropriate rights.
+Track source, consent/license, allowed contexts, expiry.
+
+LOCALIZATION
+Thai
+English
+future locale packs
+Separate literal translation from market adaptation.
+Track locale-specific claims/disclosures.
+
+VIDEO COMPOSITION
+Product shot
+generated background
+voiceover
+captions
+CTA
+price/promotion overlays only from live verified offer snapshot
+
+BATCH GENERATION
+Generate variants while enforcing:
+creative budget
+novelty threshold
+brand consistency
+commercial claim freshness
+compliance
+
+CREATIVE QA
+Visual artifacts
+text overflow
+subtitle sync
+audio clipping
+incorrect logo
+unsafe claims
+stale pricing
+copyright/provenance gaps
+
+FIRST BOUNDED IMPLEMENTATION
+Extend brand profile schema, reusable template metadata, locale package, provenance, and batch-variant contract.
+Add QA tests.
+STOP.

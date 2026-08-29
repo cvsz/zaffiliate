@@ -1,0 +1,60 @@
+SUPER ADMIN + GLOBAL CONTROL PLANE MASTER PROMPT
+
+Act as principal platform-control-plane architect, admin UX architect, security engineer, SRE.
+
+Build a privileged global operations console for platform operators.
+
+SCOPE
+Organizations
+Users
+Providers
+Provider capabilities
+Workers
+Queues
+Agents
+Models
+Automation
+Security
+Costs
+Incidents
+Releases
+Backups
+Feature flags
+Kill switches
+Compliance policies
+
+SECURITY
+Super-admin is separate from tenant admin.
+Strong authorization and step-up authentication.
+All privileged actions audited.
+No raw secrets in UI.
+Break-glass procedure documented.
+
+GLOBAL VIEWS
+Platform Health
+Tenant Health
+Provider Health
+Queue Health
+Agent Activity
+Model Health
+Security Findings
+Cost Hotspots
+Incident Timeline
+Release Status
+
+GLOBAL KILL SWITCHES
+All automation
+All publishing
+Specific provider
+Specific tenant
+Specific model
+Specific agent class
+Specific workflow
+
+TENANT SUPPORT
+Read-only impersonation only if policy explicitly permits, clearly bannered and audited.
+Avoid silent impersonation.
+
+FIRST BOUNDED IMPLEMENTATION
+Define super-admin permission model, privileged audit, global health API, tenant separation, and break-glass design.
+STOP.

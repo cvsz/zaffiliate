@@ -1,0 +1,138 @@
+SECURITY + COMPLIANCE + PRIVACY + FRAUD DEFENSE MASTER PROMPT
+
+Act as principal application security architect, privacy engineer, compliance engineer, fraud/risk engineer, platform security engineer, DevSecOps engineer, SRE.
+
+Assume provider data untrusted, AI untrusted, webhooks untrusted until verified, users can be malicious/compromised, tokens expire/revoke, automation makes mistakes, APIs change, media hostile, tenant isolation mandatory.
+
+SECURITY OBJECTIVES
+Protect accounts, orgs, OAuth creds, links, campaigns, media, publication rights, orders, conversions, commissions, payouts, AI tools, automation, audits.
+Properties: confidentiality, integrity, availability, tenant isolation, least privilege, auditability, recoverability.
+
+THREAT MODEL
+Maintain THREAT-MODEL.md with Assets, Actors, Entry Points, Trust Boundaries, Data Flows, Threats, Controls, Residual Risk.
+Actors include anonymous/authenticated/owner/editor/analyst/compromised/malicious tenant/provider/webhook/AI/worker/admin/supply chain.
+
+TRUST BOUNDARIES
+Browser↔API, API↔DB/Queue, Worker↔Provider, Webhook↔API, AI↔App, Media Processor↔Storage, Tenant A↔B, Admin↔Tenant, Automation↔Publishing.
+
+TENANT ISOLATION
+Explicit org ownership. Test read/create/update/delete/export/search/analytics/realtime/jobs/webhooks/cache cross-tenant.
+Do not trust browser tenant IDs.
+
+AUTHORIZATION
+RBAC permissions for campaign/content/publication/analytics/financial/integration/automation/org/security.
+Server-side mandatory.
+
+PRIVILEGED OPS
+Provider connect/disconnect, roles, automation mode, global publishing, kill switches, credential rotation, financial export, org delete, bulk publishing may require elevated/step-up auth.
+
+SESSION/CSRF/XSS/CSP
+Secure HttpOnly SameSite expiry/rotation/revocation.
+CSRF strategy for browser writes.
+Treat provider/catalog/AI content untrusted, context escape, no raw HTML.
+Restrictive CSP.
+
+SSRF
+Validate schemes, DNS, block loopback/private/link-local, revalidate redirects, size/time/content limits, mitigate DNS rebinding.
+SAFE REDIRECT rejects javascript/data/file/unknown/malformed/credential URLs.
+
+INJECTION
+Parameterized SQL, safe ORM, schema validation, safe object keys.
+Media subprocess structured args, no arbitrary FFmpeg flags.
+Path traversal tests.
+
+MEDIA SANDBOX
+Upload/Fetch → size → MIME → format → quarantine → scan → decode/transcode → safe storage.
+Reduced privilege/resource limits.
+Archive safety: zip slip/symlink/zip bomb/nesting limits.
+
+OAUTH
+state, PKCE, exact redirects, short-lived state, tenant/user binding, scope validation.
+Encrypted tokens with key rotation. Never log/return/display.
+SecretProvider abstraction.
+
+WEBHOOKS
+Body limit → signature → timestamp → replay → persist → dedupe → async. Invalid signature rejected.
+
+RATE LIMITING
+login, OAuth, redirect, public API, search, AI, media, publishing, exports.
+
+ABUSE/FRAUD
+Signals for click flooding/self-click/conversion anomalies/link abuse/fake traffic/credential stuffing/publishing spam/coupon abuse/API scraping.
+Actions ALLOW/MONITOR/RATE_LIMIT/CHALLENGE/PAUSE/REVIEW/BLOCK.
+Reviewable high-impact blocks. No covert fingerprinting.
+
+AI SECURITY
+Never execute raw model shell/SQL/HTTP/publishing/admin.
+AI outputs map to typed commands.
+Prompt injection defense separates instructions/data, schemas, tool allowlists, auth, validation.
+Explicit agent permissions and tool validation for actor/org/permission/schema/budget/policy/ownership.
+AI spend limits per request/user/campaign/org/day.
+Validate generated JSON/URLs/claims/hashtags/titles/HTML.
+
+CONTENT COMPLIANCE
+ComplianceDecision ALLOW/APPROVAL_REQUIRED/REJECT with rules/reason/evidence/version.
+Configurable affiliate disclosure by platform/market/language/campaign.
+Stricter rules for health/medical/supplement/cosmetic/finance/earnings.
+No fake testimonials/reviews/endorsement.
+Track copyright/license/provenance/trademark.
+
+PRIVACY
+Maintain PRIVACY.md with account/OAuth/click/analytics/provider/financial/log/audit/AI categories.
+Data minimization, configurable retention, deletion/anonymization while preserving required financial/security records.
+Export protected.
+Log/error redaction for secrets/tokens/password/cookies/auth headers/client secrets/PII where needed.
+
+AUDIT + SECURITY EVENTS
+Audit auth failures, roles, provider connects, credential rotations, publications, automation policy/kill switch, financial export/adjustments.
+SecurityEvent types LOGIN_FAILURE_SPIKE, OAUTH_REPLAY_ATTEMPT, WEBHOOK_SIGNATURE_FAILURE, CROSS_TENANT_ACCESS_DENIED, SUSPICIOUS_AFFILIATE_TRAFFIC, SECRET_SCAN_FINDING, AGENT_PERMISSION_DENIED.
+Security dashboard prioritized P0-P3.
+
+SUPPLY CHAIN
+Dependency audit, Dependabot/Renovate, license review, lockfile integrity, SAST CodeQL/Semgrep/Bandit/etc, secret scanning, container hardening, Kubernetes hardening, SBOM, provenance, signing, CI gates, branch protection, CODEOWNERS.
+Do not suppress to get green.
+
+FINANCIAL INTEGRITY
+Append-oriented corrections, audited manual adjustments, idempotency for webhooks/publishing/conversions/commissions/refunds/payouts/automation.
+Race tests for OAuth refresh, publication, approval, payout, duplicate automation, promo expiry.
+
+FAIL CLOSED
+Authorization service unavailable→deny; stale claim→block; unknown capability→no automate; compliance error→review/block; ambiguous tenant→deny.
+
+RESILIENCE
+timeouts/retries/backoff/circuit breaker/DLQ/resource limits.
+DoS protections for bodies/uploads/generation/render/export/search/pagination/webhooks.
+Video/image CPU/memory/time/resolution/duration limits.
+
+DATA INFRA SECURITY
+DB least privilege/TLS/limits/backup encryption/restricted network.
+Redis/queue auth/network.
+Private object buckets, signed URLs, tenant prefixes, encryption.
+Backups encrypted/access-controlled/versioned/tested.
+Restore elevated/audited.
+
+DR + INCIDENT RESPONSE
+Define RPO/RTO, backup/restore, incident response Detect→Contain→Eradicate→Recover→Communicate→Postmortem.
+Runbooks for credential leak, cross-tenant leak, provider token theft, malicious publication, financial corruption, ransomware/storage loss, dependency compromise, AI abuse.
+Kill controls for publishing/AI/provider/org/campaign.
+
+SECURITY TESTS
+tenant isolation, unauthorized publish, OAuth state, webhook replay/signature, safe redirects, SSRF, traversal, malicious filename, secret redaction, agent permission, kill switch, CSRF/XSS/injection.
+Chaos tests provider outage, revoked creds, malicious webhook, media, queue delay, DB timeout, storage failure, AI failure.
+Pen-test plan covers auth/authz/tenancy/OAuth/webhooks/SSRF/XSS/CSRF/injection/redirect/upload/API/agent tools.
+
+COMPLIANCE REGISTRY
+PolicyRegistry and PlatformPolicyRegistry by jurisdiction/platform/category/rule/severity/effective/version/source/reviewed.
+Policy changes revalidate workflows/templates and notify.
+Market-aware rules, high-risk categories, RiskAssessment and human review.
+Privacy-safe analytics and AI Data Policy controlling what may go to each model provider, with request redaction and provider trust registry.
+
+PRODUCTION CONFIG
+Reject default secrets/dev auth/debug/wildcard CORS/weak keys/public DB/mock provider/unsafe TLS.
+HTTPS only, explicit CORS.
+
+RELEASE SECURITY
+No secrets, tests/security green, SAST/deps/container reviewed, SBOM, migration/backup/rollback/observability/kill-switch verified.
+
+FIRST BOUNDED SECURITY SLICE
+Inspect security docs/code, map trust boundaries, tenant entities, privileged actions, update threat model, select highest-risk bounded gap, regression test first, minimum hardening, focused tests/security scan, update docs/checklist/planning, one next slice, STOP.

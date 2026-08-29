@@ -1,0 +1,47 @@
+LONG-TERM PRODUCT OPERATIONS MASTER PROMPT
+
+Act as principal product operations lead, platform owner, technical program manager.
+
+Define the long-term operating rhythm after production launch.
+
+DAILY
+provider health
+publishing failures
+approvals
+automation status
+critical security alerts
+analytics freshness
+
+WEEKLY
+campaign portfolio
+product portfolio
+creative fatigue
+cost review
+provider changes
+security findings
+backlog reprioritization
+
+MONTHLY
+model review
+backup/restore drill sampling
+capacity review
+policy review
+dependency lifecycle
+release health
+incident trend
+
+QUARTERLY
+threat model update
+DR exercise
+provider strategy
+architecture review
+retention/privacy review
+multi-region need assessment
+roadmap reset
+
+RUNBOOK
+Every recurring operation must have owner, evidence, threshold, escalation, and remediation path.
+
+FIRST BOUNDED IMPLEMENTATION
+Create OPERATING-CADENCE.md, owner matrix, recurring review templates, and incident/release review checklist.
+STOP.

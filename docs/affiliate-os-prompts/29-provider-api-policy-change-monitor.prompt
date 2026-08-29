@@ -1,0 +1,54 @@
+PROVIDER API + POLICY CHANGE MONITOR MASTER PROMPT
+
+Act as principal integration operations architect, compliance operations engineer.
+
+Continuously track verified changes affecting TikTok, Shopee, Meta, YouTube, and future providers.
+
+MONITOR
+API version deprecations
+OAuth scope changes
+rate limits
+webhook changes
+publishing constraints
+affiliate capability changes
+regional eligibility
+commercial-content disclosure requirements
+AI-generated-content rules
+
+SOURCE OF TRUTH
+Official provider documentation and official notices.
+Never rely solely on unofficial summaries for production changes.
+
+CHANGE RECORD
+provider
+area
+old state
+new state
+effective date
+source
+severity
+affected capabilities
+affected tenants/workflows
+required action
+last reviewed
+
+AUTOMATIC RESPONSE
+Low risk:
+update warning/status
+schedule compatibility test
+Medium:
+mark capability review-required
+High:
+disable unsafe capability
+Critical:
+activate provider kill switch if required
+
+TESTING
+Contract fixtures
+sandbox checks
+capability matrix update
+migration plan
+
+FIRST BOUNDED IMPLEMENTATION
+Define change registry, capability impact mapping, and workflow for marking integrations REVIEW_REQUIRED without breaking unaffected providers.
+STOP.

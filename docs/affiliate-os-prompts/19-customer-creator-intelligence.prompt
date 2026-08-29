@@ -1,0 +1,61 @@
+CUSTOMER, AUDIENCE & CREATOR INTELLIGENCE MASTER PROMPT
+
+Act as principal audience analytics architect, creator-growth analyst, privacy engineer, recommender engineer.
+
+Build privacy-safe intelligence for:
+audience segments
+channel performance
+creator/account performance
+product-audience matching
+creative-audience matching
+retention and repeat engagement where observable
+
+DO NOT
+Infer sensitive protected traits
+Build covert cross-site identity graphs
+Use invasive fingerprinting
+Mix tenant audience data without permission
+
+AUDIENCE MODEL
+AudienceSegment
+AudienceSignal
+AudiencePerformance
+PlatformAudience
+CampaignAudience
+Use aggregated/non-sensitive dimensions.
+
+CREATOR/CHANNEL MODEL
+CreatorAccount
+Channel
+AudienceSize
+ContentVelocity
+EngagementQuality
+ConversionPerformance
+CommercialPerformance
+PlatformHealth
+
+MATCHING
+Product × Audience
+Creative × Audience
+Platform × Audience
+Return score/confidence/evidence.
+
+LIFECYCLE
+NEW
+LEARNING
+ESTABLISHED
+FATIGUED
+DECLINING
+PAUSED
+
+DASHBOARD
+Audience Overview
+Channel Performance
+Product-Audience Matrix
+Creative-Audience Matrix
+Platform Fit
+Confidence/Freshness
+
+FIRST BOUNDED IMPLEMENTATION
+Define privacy-safe AudienceSegment and CreatorPerformance models, tenant isolation, aggregate features, matching baseline, and tests.
+STOP.

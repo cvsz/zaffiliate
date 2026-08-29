@@ -1,34 +1,31 @@
 {
-  "schema_version": "1.0",
-  "generated_at": "2026-08-22T07:01:00+07:00",
-  "canonical_repository": "cvsz/zaffiliate",
-  "status": "snapshot-pins-complete; per-blob ledger 100% classified; mirror/bundle backups verified; restore drill passed",
-  "sources": [
-    {"repo":"cvsz/zaffhub","default_branch":"main","snapshot_sha":"f4d50e4fe6cbfc97e601e6d266c1e0bc1e9c0176","classification":"product-specification-and-roadmap","migration_action":"extract requirements; preserve provenance; deduplicate prompts"},
-    {"repo":"cvsz/ztsaff","default_branch":"main","snapshot_sha":"f4e0e25f255dff6dcfb6e2ccc475d29a1dedc97b","classification":"mixed-platform-and-affiliate-source","migration_action":"selective extraction only; quarantine tracked secrets and unrelated Gitea/platform baggage"},
-    {"repo":"cvsz/tiktok-shop-bot","default_branch":"main","snapshot_sha":"0e6128856c867172021e12d3fb570610443dcb7d","classification":"outreach-prototype","migration_action":"port dedupe/rate-limit/template semantics; repair missing utility dependency"},
-    {"repo":"cvsz/tiktok-shop-sdk","default_branch":"main","snapshot_sha":"0c53da6cbba91728401f79cda7156cc56a2cc7dd","classification":"typescript-tiktok-sdk","migration_action":"primary TikTok TypeScript contract donor; exclude generated VitePress cache"},
-    {"repo":"cvsz/tiktokshop-php","default_branch":"master","snapshot_sha":"dbbec213d9d118c443576d613571993090a843a5","classification":"php-tiktok-sdk","migration_action":"parity oracle for auth/webhook/resources; port missing behavior to canonical TypeScript adapter"},
-    {"repo":"cvsz/zlttbots","default_branch":"main","snapshot_sha":"139bde44dfa3bb3fd420a091988dafece8c70d0e","classification":"enterprise-runtime-and-affiliate-system","migration_action":"selectively port affiliate marketing, runtime resiliency, observability, security and deployment patterns"},
-    {"repo":"cvsz/zttlbots","default_branch":"main","snapshot_sha":"18b5f572d5fe5926ab3286ee98b12bd3f7669474","classification":"line-ai-billing-runtime","migration_action":"selectively port billing ledger, LLM routing/safety and security primitives; do not import channel-specific baggage blindly"}
-  ],
-  "hard_gates": {
-    "all_source_heads_pinned": true,
-    "per_blob_ledger_100_percent": true,
-    "mirror_and_bundle_backups_verified": true,
-    "restore_drill_verified": true,
-    "legacy_secret_rotation_verified": false,
-    "canonical_runtime_parity_verified": false,
-    "production_cutover_verified": false,
-    "legacy_deletion_allowed": false
-  },
-  "evidence": {
-    "blob_ledger": "docs/migration/evidence/blob-ledger.json",
-    "refs_and_github_inventory": "docs/migration/evidence/blob-ledger.json (sources[].refs, sources[].github_inventory)",
-    "legacy_manifest_bundles_sha256": "docs/migration/evidence/legacy-manifest.json",
-    "secret_history_scan": "docs/migration/evidence/secret-history-scan.json",
-    "rotation_requirements": "docs/migration/evidence/rotation-requirements.json",
-    "generator_tool": "tools/migration/build-ep00-evidence.mjs",
-    "backup_root_local": "/home/cvsz/legacy-migration-backup"
-  }
+  "records": [
+    {
+      "source_repo": "zaffhub",
+      "source_ref": "main",
+      "path": "src/index.js",
+      "blob_sha": "abc",
+      "size": 100,
+      "class": "PORT",
+      "canonical_destination": "packages/affiliate/src/index.js"
+    },
+    {
+      "source_repo": "tiktok-shop-sdk",
+      "source_ref": "main",
+      "path": "src/client.ts",
+      "blob_sha": "def",
+      "size": 200,
+      "class": "REWRITE",
+      "canonical_destination": "packages/tiktok-shop/src/client.js"
+    },
+    {
+      "source_repo": "ztsaff",
+      "source_ref": "main",
+      "path": "src/utils.php",
+      "blob_sha": "ghi",
+      "size": 50,
+      "class": "DROP-UNRELATED",
+      "canonical_destination": null
+    }
+  ]
 }

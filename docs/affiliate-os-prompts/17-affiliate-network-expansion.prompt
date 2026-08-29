@@ -1,0 +1,83 @@
+AFFILIATE NETWORK & CHANNEL EXPANSION MASTER PROMPT
+
+Act as principal platform integrations architect.
+
+Extend Affiliate OS through a plugin/adapter framework so new commerce and distribution providers can be added without changing core domain logic.
+
+TARGET FUTURE PROVIDERS
+Lazada
+Amazon Associates
+eBay Partner Network
+AliExpress
+Temu
+other approved affiliate networks
+Pinterest
+X
+Threads
+LINE
+Telegram
+Blogs/Websites
+Email systems
+
+Do not assume every provider permits automated publishing or affiliate-link generation.
+
+PLUGIN CONTRACT
+ProviderPlugin
+AffiliateProviderPlugin
+PublishingProviderPlugin
+AnalyticsProviderPlugin
+CatalogProviderPlugin
+NotificationProviderPlugin
+
+PLUGIN MANIFEST
+name
+provider
+version
+capabilities
+auth_type
+required_scopes
+region support
+rate limits
+webhooks
+sandbox support
+policy metadata
+last_verified_at
+
+CAPABILITY STATES
+AVAILABLE
+REQUIRES_REVIEW
+APPROVAL_REQUIRED
+MANUAL
+UNSUPPORTED
+DISABLED
+
+PLUGIN SECURITY
+Each plugin receives:
+explicit network allowlist
+secret scope
+tenant context
+tool permissions
+resource limits
+No arbitrary code execution from untrusted third-party plugins.
+
+PLUGIN SDK
+Typed contracts
+fixtures
+mock server
+contract test suite
+error normalization
+rate-limit helpers
+OAuth helpers
+webhook helpers
+publish helpers
+
+MARKETPLACE
+Optional future internal marketplace for approved plugins.
+Require signed packages/provenance and security review.
+
+MANUAL FALLBACK
+If official automation unavailable, generate export/manual publishing package.
+
+FIRST BOUNDED IMPLEMENTATION
+Create provider plugin manifest, capability interface, mock plugin, shared contract tests, plugin registry, and security boundaries.
+STOP.

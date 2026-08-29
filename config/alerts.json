@@ -1,0 +1,98 @@
+[
+  {
+    "name": "http_5xx_rate",
+    "severity": "warning",
+    "expression": "100 * sum by(instance) (rate(zaffiliate_http_requests_total{status=~\"5..\"}[5m])) / sum by(instance) (rate(zaffiliate_http_requests_total[5m])) > 1",
+    "threshold": 1,
+    "windowSeconds": 300,
+    "runbook": "docs/operations/upgrade-rollback.md"
+  },
+  {
+    "name": "http_p99_latency",
+    "severity": "warning",
+    "expression": "histogram_quantile(0.99, sum by(le) (rate(zaffiliate_http_request_duration_ms_bucket[5m]))) > 500",
+    "threshold": 500,
+    "windowSeconds": 300,
+    "runbook": "docs/operations/capacity-model.md"
+  },
+  {
+    "name": "readyz_false",
+    "severity": "critical",
+    "expression": "zaffiliate_readyz_up{job=\"zaffiliate-api\"} == 0",
+    "threshold": 60,
+    "windowSeconds": 120,
+    "runbook": "docs/operations/rto-rpo.md"
+  },
+  {
+    "name": "slo_budget_exhausted",
+    "severity": "warning",
+    "expression": "zaffiliate_slo_error_budget_remaining{job=\"zaffiliate-api\"} <= 0",
+    "threshold": 0,
+    "windowSeconds": 3600,
+    "runbook": "docs/SLO.md"
+  },
+  {
+    "name": "memory_rss_growth",
+    "severity": "warning",
+    "expression": "abs((zaffiliate_process_memory_rss_bytes - zaffiliate_process_memory_rss_bytes offset 1h) / zaffiliate_process_memory_rss_bytes offset 1h * 100) > 20",
+    "threshold": 20,
+    "windowSeconds": 3600,
+    "runbook": "docs/operations/capacity-model.md"
+  },
+  {
+    "name": "disk_usage",
+    "severity": "warning",
+    "expression": "100 * (zaffiliate_disk_used_bytes / zaffiliate_disk_total_bytes) > 85",
+    "threshold": 85,
+    "windowSeconds": 300,
+    "runbook": "docs/operations/backup-restore.md"
+  },
+  {
+    "name": "queue_depth_high",
+    "severity": "warning",
+    "expression": "zaffiliate_workflow_queue_depth > 5000",
+    "threshold": 5000,
+    "windowSeconds": 300,
+    "runbook": "docs/operations/capacity-model.md"
+  },
+  {
+    "name": "dead_letter_queue_not_empty",
+    "severity": "critical",
+    "expression": "zaffiliate_workflow_dead_letter_count > 0",
+    "threshold": 0,
+    "windowSeconds": 300,
+    "runbook": "docs/operations/upgrade-rollback.md"
+  },
+  {
+    "name": "approval_pending_ttl_expiry",
+    "severity": "warning",
+    "expression": "zaffiliate_workflow_approval_expired_total - zaffiliate_workflow_approval_expired_total offset 1m > 0",
+    "threshold": 0,
+    "windowSeconds": 600,
+    "runbook": "docs/operations/upgrade-rollback.md"
+  },
+  {
+    "name": "webhook_replay_detected",
+    "severity": "critical",
+    "expression": "zaffiliate_webhook_replay_blocked_total - zaffiliate_webhook_replay_blocked_total offset 5m > 0",
+    "threshold": 0,
+    "windowSeconds": 300,
+    "runbook": "docs/SECURITY.md"
+  },
+  {
+    "name": "cross_tenant_access_violation",
+    "severity": "critical",
+    "expression": "zaffiliate_security_cross_tenant_access_total - zaffiliate_security_cross_tenant_access_total offset 5m > 0",
+    "threshold": 0,
+    "windowSeconds": 300,
+    "runbook": "docs/SECURITY.md"
+  },
+  {
+    "name": "ledger_reconciliation_delta",
+    "severity": "critical",
+    "expression": "abs(zaffiliate_ledger_reconciliation_delta) != 0",
+    "threshold": 0,
+    "windowSeconds": 300,
+    "runbook": "docs/operations/backup-restore.md"
+  }
+]

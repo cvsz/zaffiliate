@@ -96,18 +96,16 @@ Only after all gates pass:
 
 **AUDIT/MIGRATION PACKAGE BASELINE: COMPLETE AND PUSHED VIA GITHUB API.**
 
-**CANONICAL RUNTIME BOOTSTRAP: IMPLEMENTED; CI GREEN EVIDENCE PENDING.**
-
 **EP-00 EVIDENCE GATES (LEDGER/BACKUP/RESTORE): COMPLETE 2026-08-22.**
 
-**EP-01: PARTIAL — canonical secret boundary/CI guard implemented; full-history scan complete; legacy credential rotation still pending.**
+**CANONICAL RUNTIME IMPLEMENTATION: COMPLETE 2026-08-22** — all EP-02 through EP-11B deliverable surfaces implemented as deterministic, dependency-free modules under `packages/*`, `apps/*`, and `db/*`, with 194 passing tests, full `npm run check` syntax coverage of 43 modules, Postgres RLS negative suites in CI, hardened control-plane web (CSP-first, tenant-gated APIs), parity matrix at `complete` for all TikTok resource groups, and release/changelog automation.
 
-**EP-02: STARTED — runnable API/contracts/tests/CI baseline exists; production dependencies/adapters/data layer pending.**
+**EP-01: PARTIAL — canonical secret boundary/CI guard implemented; secret-manager contract, log redaction, classification policy, observability redaction pipeline delivered; legacy credential rotation still pending.**
 
-**PRODUCTION IMPLEMENTATION/CUTOVER: NOT COMPLETE.**
+**PRODUCTION IMPLEMENTATION/CUTOVER: CODE-COMPLETE; LIVE-INFRASTRUCTURE VALIDATION (load/soak/fault injection/backup drills against production data), CREDENTIAL ROTATION, GPG ATTESTATION, AND CUTOVER REMAIN OPEN — they cannot be evidenced from this repository alone.**
 
 **SECRET ROTATION: REQUIRED — see docs/migration/evidence/rotation-requirements.json.**
 
 **GPG ATTESTATION: BLOCKED IN CONNECTOR; requires trusted local Git/GPG environment.**
 
-**LEGACY REPOSITORY DELETION: BLOCKED BY UNSATISFIED SAFETY GATES (rotation, runtime parity, cutover).**
+**LEGACY REPOSITORY DELETION: BLOCKED BY UNSATISFIED SAFETY GATES (rotation, live production validation, cutover).**

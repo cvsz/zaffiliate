@@ -1,0 +1,47 @@
+MULTI-REGION + GLOBAL SCALE MASTER PROMPT
+
+Act as principal distributed-systems architect, SRE, database architect, network engineer.
+
+Scale to multiple regions only after single-region reliability and measured demand justify it.
+
+GOALS
+regional latency
+regional availability
+data residency where required
+provider-region compatibility
+disaster recovery
+
+DO NOT
+Introduce active-active financial writes casually.
+Do not duplicate external publishing across regions.
+
+ARCHITECTURE OPTIONS
+active-passive
+regional read replicas
+regional stateless API
+region-affine workers
+single-writer financial core
+multi-region object storage replication
+global DNS/traffic management
+
+TENANT HOME REGION
+Each organization may have a home region.
+Data and workloads routed accordingly.
+
+PUBLISHING OWNERSHIP
+External side-effect jobs require globally unique ownership/lease to prevent duplicate posts.
+
+DATA CONSISTENCY
+Classify:
+strongly consistent financial state
+eventually consistent analytics
+cached content
+derived features
+
+FAILOVER
+Document RPO/RTO.
+Failover must reconcile provider side effects before job replay.
+
+FIRST BOUNDED IMPLEMENTATION
+Produce architecture decision record comparing active-passive vs active-active, define tenant home-region and global job-ownership contracts, and test duplicate-side-effect prevention.
+STOP.

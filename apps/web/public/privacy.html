@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Privacy Policy — zaffiliate</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/tokens.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="legal">
+    <header class="legal-brand">
+      <img src="/icon.svg" alt="zaffiliate logo" width="40" height="40" />
+      <span>zaffiliate — Affiliate Automation OS</span>
+    </header>
+    <h1>Privacy Policy</h1>
+    <p class="legal-updated">Last updated: 2026-08-26 · Applies to the zaffiliate service at zaffiliate.zeaz.dev and its TikTok Shop integration.</p>
+
+    <h2 id="who">1. Who we are</h2>
+    <p>zaffiliate is a self-hosted affiliate commerce automation platform operated by the zaffiliate project owner ("we", "us"). Merchants and creators connect marketplace accounts (today: TikTok Shop sandbox and production programs) so affiliate collaboration data, content publishing and commission tracking can be automated under their control.</p>
+
+    <h2 id="data">2. Data we process</h2>
+    <ul>
+      <li><strong>Account identifiers</strong>: your user id, login subject, and workspace (tenant) membership created by your operator.</li>
+      <li><strong>TikTok Shop connection data</strong>: seller/open-id, shop name and region, granted scopes (currently <code>seller.affiliate_collaboration.read</code>, <code>seller.affiliate_collaboration.write</code>), and OAuth access/refresh tokens. Tokens are stored server-side only, referenced through our secret manager; they are never delivered to browsers or client bundles.</li>
+      <li><strong>Affiliate commerce data</strong>: products, offers with price snapshots, affiliate links, clicks, orders/conversions, commissions and refunds reported by connected platforms.</li>
+      <li><strong>Click attribution pseudonyms</strong>: redirect clicks record a salted SHA-256 hash of IP + user-agent. Raw IP addresses are not stored in attribution records.</li>
+      <li><strong>Operational records</strong>: audit events of administrative and autonomous actions, workflow/publication job state, webhook delivery payloads needed for reconciliation.</li>
+      <li><strong>Generated content</strong>: briefs, hooks, scripts and copy produced for your campaigns, including provenance metadata.</li>
+    </ul>
+
+    <h2 id="use">3. Why we process it</h2>
+    <ul>
+      <li>To provide the service you (or your operator) configured: catalog sync, link generation, publishing automation, analytics and payouts reconciliation.</li>
+      <li>To enforce security: tenant isolation, rate limiting, webhook signature verification and replay protection, tamper-evident audit logging.</li>
+      <li>To comply with platform requirements, including TikTok Shop app review and developer policies.</li>
+    </ul>
+    <p>We do not sell personal data, and we do not use marketplace data for advertising outside the service.</p>
+
+    <h2 id="tiktok">4. TikTok Shop integration specifics</h2>
+    <p>When a seller connects a TikTok Shop, we request only the scopes listed above and only use them to deliver affiliate features the seller enabled. Access can be revoked at any time:</p>
+    <ul>
+      <li>In-app: Connections → Disconnect (calls the platform revocation and deletes stored tokens and the account link immediately).</li>
+      <li>API: <code>POST /api/v1/oauth/tiktokshop/disconnect</code> with your user identity.</li>
+      <li>Platform-side: removing authorization in TikTok Shop settings causes our refresh lifecycle to mark the connection REAUTH_REQUIRED and stop all data pulls for that shop.</li>
+    </ul>
+
+    <h2 id="retention">5. Retention and deletion</h2>
+    <p>Business records are kept while your workspace is active. Audit events are append-only and retained per the operations retention policy to preserve integrity. On verified deletion request we: disconnect all platform links, delete stored tokens, delete workspace business data, and retain only the minimum audit entries required for security/compliance, pseudonymized where possible.</p>
+
+    <h2 id="security">6. Security</h2>
+    <p>Tenant isolation is enforced at the application and database layers (row-level security). Secrets are held in a server-side secret manager and redacted from logs. Transport is HTTPS end-to-end. See SECURITY.md and THREAT-MODEL.md in the source repository for controls and residual risks.</p>
+
+    <h2 id="contact">7. Contact</h2>
+    <p>Privacy questions, export or deletion requests: <a href="mailto:privacy@zeaz.dev">privacy@zeaz.dev</a>. General support: <a href="mailto:support@zeaz.dev">support@zeaz.dev</a>.</p>
+
+    <footer class="legal-footer">
+      <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="mailto:support@zeaz.dev">Contact</a>
+    </footer>
+  </main>
+</body>
+</html>

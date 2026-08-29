@@ -1,0 +1,117 @@
+AUTOMATION + GROWTH OPTIMIZATION MASTER PROMPT
+
+Act as principal automation architect, growth engineer, experimentation scientist, affiliate strategist, data scientist, ML engineer, SRE, security engineer.
+
+Build policy-controlled autonomous growth:
+Opportunity Discovery → Product Ranking → Campaign Creation → Creative Generation → Approval Routing → Scheduling → Publishing → Measurement → Experimentation → Learning → Optimization → Next Campaign.
+
+Must remain auditable, explainable, budget-aware, reversible where possible, tenant-isolated, policy-controlled, platform-compliant. Never optimize spam/fake engagement/deceptive claims/policy evasion/uncontrolled volume.
+
+AUTOMATION CONTROL PLANE
+AutomationEngine handles policy, triggers, workflow orchestration, budgets, rate limits, approvals, job dispatch, recovery, kill switch, audit.
+
+MODES
+MANUAL, ASSISTED, DRAFT_ONLY, APPROVAL_REQUIRED, AUTO_SAFE, AUTONOMOUS.
+No mode bypasses hard compliance/security.
+
+AUTOMATION POLICY
+organization_id, mode, allowed platforms/accounts/categories, post limits, AI cost limits, approval threshold, minimum compliance/quality, auto-select/create/generate/publish/optimize flags, quiet hours, kill switch. Versioned.
+
+POLICY DECISION
+Proposed Action → Auth → Tenant Auth → Automation Policy → Provider Capability → Compliance → Budget → Rate Limit → Risk → ALLOW / APPROVAL_REQUIRED / MANUAL_REQUIRED / DENY / DEFER.
+Persist reason.
+
+KILL SWITCH
+GLOBAL, ORGANIZATION, PROVIDER, ACCOUNT, CAMPAIGN, WORKFLOW.
+Stops new actions, preserves safe reconciliation.
+
+WORKFLOW ENGINE
+Declarative resumable workflows with trigger, conditions, steps.
+States PENDING, RUNNING, WAITING, WAITING_APPROVAL, PAUSED, COMPLETE, FAILED, CANCELLED, DEAD_LETTER.
+
+TRIGGERS
+SCHEDULE, PRODUCT_DISCOVERED, OPPORTUNITY_SCORE_CHANGED, PROMOTION_STARTED/ENDING, TREND_DETECTED, PERFORMANCE_WINDOW_COMPLETE, PUBLICATION_FAILED, CONVERSION_THRESHOLD_REACHED, MANUAL.
+Deduplicate.
+
+PRODUCT DISCOVERY
+Catalog Sync → Normalize → Filter → Score → Risk Check → Opportunity Queue.
+Use score/category/inventory/promotion/refund/commission/audience gates.
+
+OPPORTUNITY SCORE
+ConversionPotential × AudienceFit × TrendFactor × PromotionFactor × ContentFit × DataConfidence × RiskAdjustment.
+Return score, confidence, reasons, risks.
+
+CAMPAIGN AUTO-CREATION
+Campaign, Persona, Platform Strategy, Content Mix, Creative Brief, Experiment Plan, Schedule Window, Success Metrics, Budget.
+
+CONTENT MIX
+Configurable balanced education/demo/comparison/promotion/experiment mix.
+
+FREQUENCY + DUPLICATE CONTROL
+Per account/platform/org/campaign/product limits. Detect text/image/video/hook/script similarity. REVISE/DEFER/DENY.
+
+SMART SCHEDULER
+Inputs platform/account/campaign/audience/history/timezone/content/rate limits/promo/policy. Output recommended time/confidence/reason.
+UTC storage with explicit timezone model.
+
+PROMOTION-AWARE
+On promotion events validate, find campaigns, generate/update, approve, schedule. On expiry cancel pending stale promos, invalidate claims, regenerate copy.
+Revalidate price/discount/coupon/stock/shipping before publication.
+
+APPROVAL ROUTING
+Risk LOW→automatic if allowed, MEDIUM→human, HIGH→specialist/blocked, CRITICAL→deny.
+Track SLA; expired approval must not publish.
+
+AUTONOMOUS PUBLISH CHECK
+authorization, provider capability, approval, asset validity, disclosure, product availability, promotion validity, budget, frequency, kill switch.
+
+POST-PUBLISH
+Reconcile, ingest metrics, detect removal/failure, start windows.
+
+PERFORMANCE WINDOWS
+15m,1h,6h,24h,72h,7d configurable.
+Compare platform/account/campaign/format/product baselines.
+
+OBJECTIVES
+REACH, ENGAGEMENT, CLICK, CONVERSION, COMMISSION, NET_COMMISSION, ROAS, CONTENT_ROI.
+Guardrails: refund, complaints, removal, failures, negative feedback, cost, compliance.
+
+EXPERIMENT ENGINE
+A/B, A/B/n; hook, thumbnail, caption, CTA, duration, opening, voice, time. Persist assignment/exposure. Enforce sample size/duration/confidence/practical significance.
+States INSUFFICIENT_DATA, RUNNING, INCONCLUSIVE, WINNER, STOPPED.
+Winner promotion passes guardrails/economic/policy and creates new versions.
+
+FATIGUE + HYPOTHESIS
+Detect CTR/watch/conversion decay and generate structured evidence-based hypotheses.
+Actions typed: GENERATE_VARIANT, CHANGE_HOOK, CHANGE_CTA, CHANGE_THUMBNAIL, CHANGE_SCHEDULE, PAUSE/RESUME, REPRIORITIZE_PRODUCT, REQUEST_REVIEW.
+
+RECOMMENDATIONS
+Evidence, Confidence, Expected Impact, Risk, Required Approval.
+
+LEARNING DATA
+Product/Creative/Hook/Script/Thumbnail/CTA/Platform/Audience/Schedule/Promotion/Performance.
+Separate raw, features, predictions, recommendations, actions, outcomes.
+
+AGENTS
+OpportunityAgent, CampaignPlannerAgent, CreativeOptimizerAgent, ExperimentAgent, SchedulerAgent, RevenueAgent, ComplianceAgent with explicit tool permissions and budgets.
+
+REVENUE OPTIMIZATION
+Gross Commission - Refunds - Reversals - Content Cost - AI Cost - Media Cost = Net Commission/Contribution.
+
+PORTFOLIO
+Products STAR/GROWTH/TEST/WATCH/PAUSE/ARCHIVE.
+Campaigns Scale/Maintain/Test/Review/Pause.
+
+ANOMALY DETECTION
+Conversion drop, click spike, refund spike, provider errors, publishing failures, AI cost spike, traffic anomaly, commission mismatch.
+Automatic safety response can pause provider/product/template/generation with audit.
+
+DRY_RUN / SIMULATION / SHADOW_MODE
+No external side effects in dry run; shadow executes decisions only.
+Autonomy rollout L0 Recommendations → L1 Draft → L2 Approval → L3 Auto-safe → L4 Limited Autonomous → L5 Policy-controlled.
+
+SECURITY TESTS
+Cross-tenant workflows impossible, policy cannot bypass, kill switch blocks, agent permissions, budget, approval, provider capability, dedupe.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect code/planning; define AutomationPolicy, typed AutomationDecision, policy evaluator, kill switch, dry-run, audit events; tests for allow/deny/approval/tenant isolation/kill switch; run security; update docs/planning; identify one next slice; STOP.

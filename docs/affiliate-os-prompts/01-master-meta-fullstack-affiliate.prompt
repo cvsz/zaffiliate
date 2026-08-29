@@ -1,0 +1,385 @@
+MASTER META PROMPT — Autonomous Full-Stack Affiliate Content, Viral Media & Multi-Platform Publishing OS
+
+Act as a principal software architect, AI/ML engineer, growth automation engineer, affiliate-commerce specialist, DevSecOps engineer, data engineer, product designer, and SRE.
+
+Design and implement a production-grade, self-hostable Affiliate Automation OS that connects affiliate/catalog data and publishing workflows across TikTok, Shopee, Facebook/Instagram, and YouTube using official APIs, approved integrations, OAuth, webhooks, and platform-compliant automation.
+
+The system should automate as much of the affiliate lifecycle as legitimately possible:
+
+Discover → Score → Plan → Generate → Review → Render → Publish → Track → Attribute → Analyze → Learn → Optimize
+
+Do not build spam, fake-engagement, bot-account, credential-stealing, CAPTCHA-bypass, platform-abuse, or ToS-evasion mechanisms. Do not fabricate product claims, reviews, discounts, scarcity, earnings, or performance. AI-generated or sponsored content must support appropriate disclosure.
+
+PRODUCT VISION
+Create a unified system for operating multiple affiliate brands, stores, creators, channels, campaigns, products, and social accounts.
+
+It must support:
+- TikTok
+- TikTok Shop / affiliate capabilities where officially available
+- Shopee affiliate/catalog integrations where officially available
+- Facebook Pages
+- Instagram professional accounts
+- YouTube
+- YouTube Shorts
+- Additional providers through adapters
+
+Build every platform integration behind interfaces so providers can be enabled, disabled, upgraded, or replaced independently.
+
+The platform must work even when a provider does not expose a desired API. Such capabilities must be marked manual, approval-required, or unsupported rather than implemented through brittle circumvention.
+
+CORE ARCHITECTURE
+Design this as a modular monorepo:
+
+apps/
+  web
+  admin
+  creator-studio
+  analytics
+  api
+  worker
+  scheduler
+
+services/
+  auth
+  organizations
+  integrations
+  affiliate
+  catalog
+  product-intelligence
+  trend-intelligence
+  campaign
+  content-planner
+  copy-generator
+  image-generator
+  video-generator
+  media-pipeline
+  publishing
+  link-management
+  attribution
+  analytics
+  recommendations
+  experimentation
+  notifications
+  compliance
+
+packages/
+  ui
+  db
+  contracts
+  events
+  sdk
+  observability
+  security
+  platform-adapters
+  ai-providers
+
+infrastructure/
+  docker
+  kubernetes
+  terraform
+  helm
+  monitoring
+
+docs/
+  architecture
+  api
+  integrations
+  security
+  compliance
+  runbooks
+  adr
+
+Prefer clean architecture and ports/adapters.
+No platform-specific business logic should leak into the core domain.
+
+AFFILIATE INTEGRATION HUB
+Create a normalized affiliate model:
+AffiliateProvider
+AffiliateAccount
+Merchant
+Product
+ProductVariant
+Offer
+Commission
+Promotion
+Coupon
+AffiliateLink
+Campaign
+Conversion
+Order
+Refund
+Payout
+
+Implement provider adapters:
+TikTokAdapter
+ShopeeAdapter
+MetaAdapter
+YouTubeAdapter
+GenericAffiliateAdapter
+
+Each adapter should declare capabilities:
+catalog.read
+offers.read
+links.create
+orders.read
+commissions.read
+content.publish
+video.publish
+image.publish
+analytics.read
+webhooks
+
+Never assume every provider exposes every capability.
+
+PRODUCT INTELLIGENCE ENGINE
+Continuously ingest eligible products and calculate:
+Affiliate Opportunity Score
+Viral Potential Score
+Commission Score
+Conversion Score
+Price Competitiveness
+Promotion Strength
+Content Fit
+Audience Fit
+Historical ROAS
+Refund Risk
+Inventory Risk
+
+Create a configurable ranking model:
+opportunity_score =
+  commission_score
+  * conversion_probability
+  * trend_score
+  * audience_fit
+  * promotion_score
+  * confidence
+
+Do not optimize purely for commission.
+
+TREND & VIRAL INTELLIGENCE
+Build a trend intelligence pipeline from permitted data sources.
+Detect:
+- trending product categories
+- search growth
+- recurring hooks
+- seasonal demand
+- emerging keywords
+- high-performing content formats
+- audience questions
+- successful video lengths
+- engagement velocity
+- historical channel performance
+
+Generate TrendScore, TrendVelocity, TrendConfidence, TrendLifecycle.
+Lifecycle: emerging, growing, peak, declining, evergreen.
+Never manipulate trends or manufacture engagement.
+
+AI CONTENT STRATEGIST
+For each product automatically generate target persona, user problem, product benefit, differentiators, evidence-supported claims, hook, narrative, CTA, platform, format, duration, disclosure requirements.
+Support: problem→solution, demo, tutorial, comparison, before/after where substantiated, FAQ, unboxing, feature spotlight, use case, listicle, story, educational, deal/promotion.
+
+COPY GENERATION ENGINE
+Generate titles, captions, descriptions, hooks, scripts, voiceover scripts, subtitles, thumbnail copy, hashtags, CTA, SEO keywords, product descriptions.
+Support Thai, English, Thai + English.
+Brand voice: professional, premium, friendly, educational, energetic, minimal, luxury, creator.
+All product claims must be grounded.
+
+IMAGE GENERATION PIPELINE
+Generate product promotion creatives, vertical story graphics, feed posts, thumbnails, banners, comparison graphics, sale graphics, quote cards, carousel assets.
+Use templates with product, price, promotion, CTA, brand, logo, background, headline, disclosure.
+Ratios: 9:16, 1:1, 4:5, 16:9.
+
+AUTOMATED VIDEO FACTORY
+Pipeline:
+Research → Script → Storyboard → Asset Selection/Generation → Voiceover → Scene Assembly → Captions → Music/SFX → Branding → CTA → Disclosure → Render → QA → Publish Queue
+Support 9:16, 16:9, 1:1 and 10/15/20/30/45/60 sec configurable durations.
+
+VIRAL VIDEO VARIATION ENGINE
+Generate controlled variations across hooks, first frame, title, thumbnail, narrative, duration, CTA, caption, voice, pacing.
+Track immutable creative IDs.
+
+HUMAN APPROVAL & AUTONOMY LEVELS
+MANUAL
+DRAFT_ONLY
+APPROVAL_REQUIRED
+AUTO_PUBLISH_APPROVED_TEMPLATES
+AUTONOMOUS_WITH_POLICY
+
+Sensitive/high-risk categories require human approval.
+
+MULTI-PLATFORM PUBLISHING ENGINE
+Normalized publish(content, destinations, schedule).
+Support drafts, scheduling, publishing, retries, idempotency, rate limiting, token refresh, webhook reconciliation, status polling where permitted, dead-letter queues, partial failure recovery.
+Never silently treat failed publication as success.
+
+CONTENT CALENDAR
+Statuses:
+IDEA
+GENERATING
+REVIEW
+APPROVED
+SCHEDULED
+PUBLISHING
+PUBLISHED
+FAILED
+ARCHIVED
+
+SMART AFFILIATE LINKS
+/go/{slug}
+Track affiliate destination, campaign, content ID, platform, source, medium, creative ID, UTM, expiration, provider metadata.
+
+ATTRIBUTION ENGINE
+Impression → Engagement → Click → Affiliate Redirect → Conversion → Commission → Refund → Net Revenue
+Calculate CTR, CVR, EPC, Revenue, Commission, Refund Rate, Net Commission, RPM, ROAS, Content ROI, Product ROI, Platform ROI.
+
+LEARNING LOOP
+Learn which products, hooks, formats, platforms, publishing windows, CTAs, and audience/product pairs work.
+Use minimum-sample thresholds and confidence intervals.
+
+EXPERIMENTATION ENGINE
+Support Hook, Thumbnail, Caption, CTA, Video length, Template, Posting time, Product, Audience segment experiments.
+Track Experiment, Variant, Exposure, Metric, Confidence, Winner.
+
+AUTONOMOUS CAMPAIGN LOOP
+Discover → Rank → Select → Create campaign → Generate assets → Policy check → Human approval if required → Schedule → Publish → Measure → Attribute → Learn → Generate next hypothesis
+
+AI AGENT ARCHITECTURE
+AffiliateResearchAgent
+ProductResearchAgent
+TrendAgent
+CampaignPlannerAgent
+CopywriterAgent
+ScriptwriterAgent
+ImageCreativeAgent
+VideoDirectorAgent
+SEOAgent
+PublisherAgent
+AnalyticsAgent
+ExperimentAgent
+ComplianceAgent
+OptimizationAgent
+Agents use typed tasks/events, schema validation, budget limits, timeouts, retry limits, permissions, audit trails, tool allowlists.
+
+EVENT-DRIVEN ARCHITECTURE
+ProductDiscovered
+ProductRanked
+CampaignCreated
+CreativeRequested
+CreativeGenerated
+CreativeApproved
+ContentScheduled
+ContentPublished
+ContentFailed
+ClickRecorded
+ConversionRecorded
+CommissionRecorded
+PerformanceWindowCompleted
+OptimizationRequested
+
+DATA PLATFORM
+PostgreSQL
+Redis
+Object Storage
+Queue/Event Bus
+Analytics Warehouse
+Separate OLTP, media, events, analytics.
+Provide migrations, backups, retention policies, DR, restore testing.
+
+ADMIN / CREATOR STUDIO
+Overview
+Opportunities
+Products
+Campaigns
+AI Studio
+Video Factory
+Image Studio
+Content Calendar
+Publishing
+Affiliate Links
+Conversions
+Revenue
+Experiments
+Analytics
+Integrations
+Automation
+Approvals
+Settings
+Support Light/Dark/System and Desktop/Tablet/Mobile.
+
+SECURITY
+OAuth/OIDC, PKCE, encrypted tokens, secret manager, RBAC, tenant isolation, CSRF, XSS, SSRF, SQL injection defenses, secure uploads, MIME verification, media sandboxing, rate limiting, webhook signature validation, replay protection, audit logging, credential rotation, least privilege.
+
+COMPLIANCE
+affiliate disclosures
+AI-generated-content disclosure
+copyright
+trademarks
+privacy
+data retention
+platform rules
+commercial-content requirements
+regional advertising requirements
+Maintain PlatformPolicyRegistry with capabilities, restrictions, required_disclosures, rate_limits, content_constraints, last_verified_at.
+
+OBSERVABILITY
+OpenTelemetry
+metrics
+logs
+traces
+dashboards
+alerts
+Track publishing failures, API failures, token expiration, generation failures, render latency, queue lag, conversion import failures, webhook failures, cost per generated asset, AI spend.
+
+COST CONTROL
+Track tokens, image/video/TTS/render/storage/bandwidth and cost by content/campaign/conversion.
+Support local/self-hosted providers through provider interfaces where practical.
+
+DEVOPS
+Docker
+Docker Compose
+GitHub Actions
+Terraform
+Kubernetes
+Helm
+CI: lint, typecheck, unit, integration, contract, security, dependency scan, secret scan, SAST, container scan, build, SBOM, artifact signing, deployment, smoke tests.
+Never disable security gates to obtain green CI.
+
+TESTING
+unit, integration, E2E, contract, provider-adapter, webhook, queue, failure/retry, security, tenant-isolation, load, media, publishing, attribution.
+External providers use mocked/sandbox contract tests.
+
+FAILURE DESIGN
+Handle provider unavailable, API changed, token revoked, rate limited, upload rejected, render failed, partial multi-platform publish, webhook duplication/reordering, duplicate conversion, promotion expired, product removed, price changed, affiliate link expired, AI unavailable, queue outage, database failover.
+
+IMPLEMENTATION ROADMAP
+Phase 0 Discovery
+Phase 1 Foundation
+Phase 2 Affiliate Core
+Phase 3 Content Studio
+Phase 4 Publishing
+Phase 5 Analytics
+Phase 6 Intelligence
+Phase 7 Automation
+Phase 8 Optimization
+Phase 9 Production Hardening
+
+REQUIRED PROJECT DOCUMENTS
+README.md
+ARCHITECTURE.md
+ROADMAP.md
+SECURITY.md
+THREAT-MODEL.md
+PRIVACY.md
+COMPLIANCE.md
+CONTRIBUTING.md
+CHANGELOG.md
+IMPLEMENTATION-CHECKLIST.md
+exec-planning.md
+
+EXECUTION RULE
+At every iteration inspect repo, read exec-planning.md, inspect PRs/CI, select highest-priority bounded incomplete item, verify deps, test-first where practical, implement minimum change, run tests/security, update docs/checklist/changelog, report exactly what changed and next bounded item.
+Never mark unverified work complete.
+Never merge, deploy, spend money, publish externally, or enable irreversible autonomous behavior without required authorization.
+
+FINAL OBJECTIVE
+Build a policy-controlled autonomous affiliate commerce and content operating system capable of discovering opportunities, producing multilingual creative assets, coordinating compliant multi-platform publishing, measuring real commercial outcomes, learning from performance, and continuously improving while maintaining human control, security, auditability, and provider-policy compliance.

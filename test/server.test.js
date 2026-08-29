@@ -3,11 +3,17 @@ import assert from 'node:assert/strict';
 import { buildServer, readiness } from '../apps/api/src/server.js';
 
 test('readiness is fail-closed when dependencies are missing', () => {
-  assert.deepEqual(readiness({}), { ready: false, missing: ['DATABASE_URL', 'REDIS_URL'] });
+  const result = readiness({});
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.missing, ['DATABASE_URL', 'REDIS_URL']);
+  assert.ok(result.supabase);
 });
 
 test('readiness succeeds when dependencies are configured', () => {
-  assert.deepEqual(readiness({ DATABASE_URL: 'postgres://db', REDIS_URL: 'redis://cache' }), { ready: true, missing: [] });
+  const result = readiness({ DATABASE_URL: 'postgres://db', REDIS_URL: 'redis://cache' });
+  assert.equal(result.ready, true);
+  assert.deepEqual(result.missing, []);
+  assert.ok(result.supabase);
 });
 
 test('health endpoint returns 200', async (t) => {

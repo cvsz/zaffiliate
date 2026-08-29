@@ -1,0 +1,136 @@
+ANALYTICS + ATTRIBUTION + REVENUE INTELLIGENCE MASTER PROMPT
+
+Act as principal data architect, analytics engineer, attribution engineer, experimentation scientist, affiliate-commerce analyst, ML engineer, backend engineer, SRE.
+
+Build canonical measurement answering what content/product/platform/campaign/creative created verified value, which conversions are real, which experiments matter, and what to optimize next.
+Distinguish observed facts from inferred attribution.
+
+CANONICAL FUNNEL
+Opportunity → Campaign → Creative → Publication → Impression → View → Engagement → Click → Affiliate Redirect → Provider Conversion → Order → Commission → Refund/Reversal → Payout.
+Preserve lineage.
+
+EVENT TAXONOMY
+Versioned events for content, publishing, impressions/views/engagement/click/redirect/conversion/order/commission/refund/reversal/payout.
+Envelope includes IDs/version/type/times/org/provider/account/campaign/product/creative/content/publication/link/external ID/source/correlation/metadata.
+
+SOURCE CLASSIFICATION
+FIRST_PARTY, PROVIDER_REPORTED, AFFILIATE_PROVIDER_REPORTED, IMPORTED, MODELED, ESTIMATED, PREDICTED.
+
+DATA LAYERS
+RAW → NORMALIZED → ENRICHED → AGGREGATED → SEMANTIC METRICS.
+Raw immutable.
+
+IDEMPOTENT INGESTION
+Deduplicate by provider+external_event_id or stable fingerprint. Duplicate webhook must not duplicate business effects.
+
+LATE/OUT-OF-ORDER
+Support updates, refunds, reversals, corrected orders. Analytics recomputable.
+
+AFFILIATE CLICK
+Track click lineage with privacy minimization and configurable retention.
+
+ATTRIBUTION IDs
+campaign_id, creative_id, publication_id, affiliate_link_id, click_id, provider_link_id; only official tracking fields.
+
+CONVERSION
+conversion/provider ID, order, product/link/click/campaign, times, currency, GTV, commission, status, source, attribution method/confidence.
+States PENDING, APPROVED, CONFIRMED, REJECTED, REFUNDED, REVERSED, PAID, UNKNOWN.
+
+ORDER
+Order/OrderLine with provider order ID, merchant, currency, values, status/times.
+
+COMMISSION LEDGER
+Append-oriented CommissionEntry types PENDING, APPROVED, ADJUSTMENT, REVERSAL, REFUND, PAID. Calculate balances from ledger.
+
+PAYOUT
+Payout/PayoutLine and reconciliation for missing commission, mismatch, unexpected reversal, duplicate/unmatched payout.
+
+CURRENCY
+Preserve original amount/currency; optional reporting conversion with rate/source/timestamp.
+
+ATTRIBUTION
+DIRECT_PROVIDER, TRACKING_ID_MATCH, CLICK_MATCH, LAST_TOUCH, FIRST_TOUCH, MULTI_TOUCH_MODEL, UNATTRIBUTED.
+Confidence HIGH/MEDIUM/LOW/UNKNOWN or numeric.
+Configurable provider/campaign windows. Document cross-device limits; no invasive fingerprinting.
+
+METRICS
+Impressions, Views, Engagements, Clicks, CTR, Conversions, CVR, Orders, AOV, GTV, Pending/Approved/Paid Commission, Refunds, Reversals, Net Commission, EPC, RPM.
+CTR=Clicks/Impressions; CVR=Conversions/Affiliate Clicks; EPC=Net Commission/Affiliate Clicks.
+Content and Campaign ROI based on Net Contribution after content/AI/media/campaign costs. Handle zero denominator.
+
+PERFORMANCE
+Product, Creative component, Platform, Cohorts, Standard windows 15m/1h/6h/24h/72h/7d/30d/lifetime.
+Rolling baselines by account/platform/format/campaign/product/persona.
+
+SEMANTIC METRICS LAYER
+One canonical definition/service; no duplicate formulas.
+
+DATA QUALITY
+Detect missing, duplicate, impossible timestamps, negative values, currency mismatch, impossible commission, refund without order, orphan metrics.
+Create incidents.
+
+RECONCILIATION
+Local vs provider: MATCHED, MISSING_LOCAL, MISSING_PROVIDER, AMOUNT_MISMATCH, STATUS_MISMATCH, DUPLICATE.
+Never auto-delete financial records.
+
+PIPELINE
+Provider/Webhook/First Party → Raw → Normalizer → Event Bus → Enrichment → Analytics Store → Semantic Metrics → Dashboards/ML.
+Start simple; Kafka only when justified.
+
+ANALYTICS STORE
+Postgres initially with indexes/materialized views/partitions as justified; abstraction for future ClickHouse/DuckDB/warehouse.
+Aggregates content_hourly/daily, campaign_daily, product_daily, platform_daily, organization_daily; rebuildable.
+Backfills idempotent, rate-limit-aware, resumable.
+
+API
+/api/v1/analytics/overview,campaigns,products,content,platforms,revenue with date/timezone/provider/campaign/product/platform/language filters and tenant scope.
+
+DASHBOARDS
+Executive: Net/Approved/Pending Commission, Orders, Conversions, Clicks, CTR, CVR, EPC, Content ROI, Top Products/Campaigns/Creatives/Platforms, trends, refund risk.
+Revenue waterfall GTV → tracked orders → pending → approved → refunds/reversals → paid → costs → net contribution.
+Content funnel Impressions → Views → Engagement → Clicks → Conversions → Net Commission.
+Opportunity map SCALE/TEST/OPTIMIZE/WATCH/PAUSE.
+
+ANOMALIES
+Rolling median/MAD/z-score/percentage with sample-size confidence.
+
+EXPERIMENTS
+Experiment, Variant, Exposure, Metric, Result.
+Types Hook, Thumbnail, CTA, Caption, Duration, Opening Scene, Voice, Time, Format.
+States DRAFT, READY, RUNNING, PAUSED, INSUFFICIENT_DATA, INCONCLUSIVE, WINNER, LOSER, STOPPED, INVALID.
+Minimum sample/time and practical significance; guardrail CVR/refund/removal/failure/negative feedback/cost.
+Winner workflow → stats → guardrail → economics → recommendation → policy/approval → new creative version.
+
+FEATURES
+Product category, price/commission band, promotion, platform, persona, language, hook type, video length, CTA, time, format with source/version/freshness.
+No silent definition changes.
+
+FORECASTING later with prediction range/confidence/model/features timestamp; no guaranteed earnings.
+
+FRESHNESS
+Expose data age and ingestion lag for provider/event/analytics/conversion/commission.
+
+FINANCIAL AUDIT
+Corrections record old/new/source/reason/actor/time.
+
+SECURITY
+Org ownership, RBAC, export auth, rate limits, query bounds, safe filtering; cross-tenant analytics tests.
+
+EXPORTS
+CSV/JSON and later Parquet with filters/generated_at/timezone/metric version.
+
+PRIVACY/RETENTION
+Separate policy for clicks, analytics, provider payloads, financial, audit. Support deletion/anonymization without corrupting required ledger.
+
+OBSERVABILITY
+Ingestion totals/duplicates/failures, pipeline lag, backfills, reconciliation mismatches, experiment counts, query duration/errors.
+
+DATA LINEAGE
+Dashboard → Aggregate → Normalized → Raw. Financial metrics especially strong.
+
+TESTS
+Dedup, late/out-of-order, reversal/refund, currency, windows, tenant isolation, formulas, reconciliation, backfill idempotency, experiment thresholds, freshness.
+Golden fixture: 100 impressions, 20 clicks, 4 conversions, $20 approved, $5 reversal → CTR20%, CVR20%, Net15, EPC0.75.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect analytics/financial models, read planning, define event envelope, raw persistence, deterministic dedupe, source classification, lineage, tests first incl duplicate and tenant, golden metric fixture, run tests/security, update docs/checklist/planning, identify one next slice, STOP.

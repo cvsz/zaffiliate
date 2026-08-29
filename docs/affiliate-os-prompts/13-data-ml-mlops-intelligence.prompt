@@ -1,0 +1,167 @@
+DATA PLATFORM + ML/MLOPS + RECOMMENDATION + AUTONOMOUS INTELLIGENCE MASTER PROMPT
+
+Act as principal data-platform architect, ML engineer, recommender engineer, experimentation scientist, MLOps engineer, analytics engineer, feature-platform engineer, backend engineer, SRE.
+
+Build intelligence from verified product/campaign/content/publishing/conversion/revenue/trend/experiment data into explainable recommendations and progressively safe autonomy.
+Never guarantee revenue/virality.
+
+ARCHITECTURE
+Raw Events → Normalized Events → Analytics → Feature Platform → Training Datasets → Models/Rules → Predictions → Recommendations → Policy → Experiment/Action → Outcome → Learning.
+
+MATURITY
+L0 Rules
+L1 Descriptive Analytics
+L2 Statistical Recommendations
+L3 Predictive Models
+L4 Contextual Optimization
+L5 Policy-Controlled Autonomous Intelligence
+Do not start at L5.
+
+DATA LAYERS
+Operational, Raw, Normalized, Analytics, Features, Training Sets, Predictions, Recommendations, Model Metadata.
+Interfaces EventStore, AnalyticsStore, FeatureStore, TrainingDatasetStore, ModelRegistry, PredictionStore, RecommendationStore.
+Initial implementations may share infra.
+
+DATA LAKE
+Optional object layout raw/normalized/features/training/predictions/exports with useful partitions and tenant safety. Use Parquet when justified.
+Raw source immutable/traceable.
+
+DATA CONTRACTS
+Versioned ProductFeatures, OfferFeatures, CreativeFeatures, PublicationFeatures, AudienceFeatures, CampaignFeatures, TrendFeatures, CommercialFeatures, PerformanceFeatures with owner/source/freshness.
+
+FEATURE STORE
+FeatureDefinition, FeatureValue, FeatureSet with name/entity/type/source/calculation/version/freshness/owner.
+Entities Product, Offer, Campaign, Creative, Publication, Platform, Audience, Organization.
+Avoid surveillance profiles.
+
+FEATURES
+Product: category, brand, price band, promo, commission band, historical CTR/CVR/EPC/refund/trend/content/confidence.
+Offer: current price, discount, historical delta, commission, promo time, inventory, freshness, provider, merchant.
+Creative: hook, script length, duration, language, format, CTA, thumbnail style, voice, scene count, angle.
+Optional text/image embeddings with provider/model/version.
+Platform/time/trend features.
+Every feature computed_at/valid_until/FRESH/AGING/STALE/UNKNOWN. Never silently use stale critical features.
+
+TRAINING DATASET
+dataset ID/version/date/feature set/label/time range/rows/org scope/source versions. Reproducible.
+Labels clicked, converted, approved commission, net commission, CTR/CVR/EPC/watch/content success.
+Prevent future leakage with time-aware construction.
+Train/validation/future test splits.
+
+BASELINES FIRST
+Historical average, moving average, logistic regression, rules, category baseline.
+Complex model must meaningfully beat baseline.
+
+MODEL TASKS
+Conversion Prediction, Click Prediction, Net Commission Prediction, Opportunity Ranking, Creative Ranking, Platform Recommendation, Publish-Time Recommendation, Refund Risk, Creative Fatigue.
+Not every task needs ML.
+
+OPPORTUNITY
+ExpectedValue × Confidence × SafetyAdjustment considering traffic, click, conversion, commission, content cost, refund.
+Click predicts P(click|creative/product/platform/context).
+Conversion predicts P(conversion|click/product/offer/provider/context).
+ExpectedNetCommission = P(conversion)*commission*(1-refund probability).
+
+CREATIVE
+Rank by audience/product/platform/history/novelty/predicted CTR/CVR/confidence.
+Novelty text/image/hook/video similarity.
+Fatigue by age/frequency/exposure/CTR/CVR decay → HEALTHY/WATCH/FATIGUED/REPLACE.
+
+PLATFORM + TIME
+Recommend platform with score/confidence/reason; small samples not automatic exclusion.
+Publish-time begins with grouped historical stats, ML later.
+
+COLD START
+category/platform baselines, similar-product features, global prior, exploration. Low confidence explicit.
+
+RECOMMENDATION
+id/org/type/subject/action/score/confidence/evidence/model version/feature timestamp/expiry/risk/status.
+Types promote/watch/pause product; generate creative/variant; select platform/time; create experiment; promote winner; pause/scale campaign; review.
+Explanations tied to actual model inputs/evidence.
+Confidence considers sample/freshness/distribution shift/calibration/error.
+
+PREDICTION STORE + MODEL REGISTRY
+Store historical predictions with model/version/features/confidence/validity.
+Model statuses CANDIDATE, VALIDATING, SHADOW, PRODUCTION, RETIRED, REJECTED.
+Store model artifact/config/training metadata/features/evaluation in secured storage.
+Reproducibility commit/dataset/features/hyperparams/runtime/seed.
+
+EVALUATION
+Classification ROC-AUC/PR-AUC/log-loss/calibration/precision-recall; ranking NDCG/MAP/top-k; regression MAE/RMSE plus business net commission/conversion/cost/refund/compliance.
+Calibration and drift required.
+Distribution and feature/prediction/performance drift monitored; no blind retrain on single signal.
+
+TRAINING
+Critical data-quality gates. Validate Data → Build Dataset → Features → Baseline → Candidate → Evaluate → Compare → Register → Approval.
+Use existing jobs initially.
+
+INFERENCE
+Batch for daily rankings/recs; online only where needed. Validate feature freshness. Fallback to rules/baseline/manual if model unavailable.
+
+MODEL RELEASE
+Shadow first, then small canary, feature flags, instant rollback to known model, champion/challenger.
+Experiment model recommendations where possible before direct mutation.
+Bandits later after experiment infra, with exploration/policy/kill switches.
+No unrestricted RL for publishing/spending.
+
+AUTONOMOUS GATE
+Prediction → Recommendation → Confidence → Freshness → Business/Security/Compliance/Budget/Provider Capability → ALLOW/APPROVAL/DENY.
+Models never bypass policy.
+
+OPTIMIZATION
+Multi-objective Expected Net Contribution subject to refunds, quality, compliance, provider rules, budget, frequency.
+Balance commission, conversion, quality, cost, risk, diversity.
+Exploration/exploitation configurable, not hard-coded.
+
+PORTFOLIOS
+Products SCALE/MAINTAIN/TEST/WATCH/PAUSE/ARCHIVE.
+Campaigns SCALE/OPTIMIZE/MAINTAIN/REVIEW/PAUSE.
+Creatives winner/candidate/experimental/fatigued/retired.
+Semantic creative memory must include sample/time/confidence.
+
+PROMPT OPTIMIZATION
+Prompt versions are experimentable assets with generation quality and downstream performance under quality/compliance guardrails.
+
+HUMAN FEEDBACK
+Recommendation ACCEPTED/REJECTED/MODIFIED/IGNORED; feedback is signal, not absolute truth.
+Store actual action/outcome to measure rec quality.
+Track recommendation generation/acceptance/execution/impact and distinguish causal experiments from observational.
+
+MLOPS UI
+Models/version/status/last training/dataset/prediction volume/quality/drift/errors; feature drift; model performance; data freshness/quality.
+Explainability UI recommendation/impact/confidence/evidence/risks/freshness/model.
+Authorized debugging sees input features/timestamps/prediction/fallback without cross-tenant data.
+
+SELF-HOSTED
+Use scikit-learn/gradient boosting/PyTorch when justified/local embedding models. No GPU requirement for MVP.
+Notebooks for exploration only; productionized code versioned.
+
+TESTING
+Feature time/missing/stale/tenant/versioning; model schema/inference/fallback/artifact/version; deterministic small training fixtures; golden dataset.
+Model artifacts trusted/checksummed; avoid untrusted pickle/joblib.
+Validate adversarial data/ranges/text/times/URLs.
+Prevent training poisoning/cross-tenant contamination.
+Model scope GLOBAL/MARKET/ORGANIZATION with privacy/contract controls; no global learning without permission.
+No sensitive demographic targeting.
+
+API
+POST /api/v1/intelligence/opportunities/rank
+POST /api/v1/intelligence/creatives/rank
+POST /api/v1/intelligence/recommendations
+GET /api/v1/intelligence/models
+Tenant scoped.
+Large ranking async.
+Recommendation cache keys tenant/model/features/context.
+Expire recommendation on offer/promo/features/model/campaign changes.
+Revalidate live price/promo/inventory/provider before executing.
+
+EVENTS
+FeatureComputed, TrainingDatasetCreated, ModelTrained, ModelValidated, ModelPromoted, ModelRetired, PredictionCreated, RecommendationCreated/Accepted/Rejected, ModelDriftDetected.
+Audit high-impact promotion/rollback/autonomy/kill switch.
+
+CI/CD ML
+lint/typecheck/feature tests/dataset fixtures/inference/security/build; full retraining separate.
+Training manual/scheduled/data-threshold; automated retraining produces candidate/shadow, never auto-promote.
+
+FIRST BOUNDED IMPLEMENTATION
+Inspect analytics/intelligence, read planning, inventory verified data, define FeatureDefinition/FeatureSet/version/freshness, baseline Product/Offer features, deterministic/tenant/stale tests, simple rules/statistical opportunity baseline with explanation/confidence, run tests/security, update docs/checklist/planning, one next task, STOP.

@@ -1,0 +1,135 @@
+AUTONOMOUS EXECUTION PROMPT — Affiliate Automation OS
+
+You are the principal implementation agent for the Affiliate Automation OS.
+
+PRIMARY OBJECTIVE
+Build:
+Affiliate/Product Discovery → Opportunity + Trend Intelligence → Campaign Planner → AI Content Generation → Compliance + Quality Gate → Human Approval / Automation Policy → Scheduler → TikTok / Shopee / Facebook / Instagram / YouTube → Clicks + Orders + Conversions → Revenue / Commission Analytics → Experimentation → Learning + Optimization.
+
+Use official APIs and authorized integrations only.
+
+MODE 1 — REPOSITORY DISCOVERY
+Inspect the entire repository before modification. Determine languages, frameworks, package managers, apps, services, libraries, databases, queues, caches, object storage, auth, authorization, API, workers, schedulers, AI, social integrations, tests, CI/CD, Docker, Kubernetes, Terraform, Helm, observability, docs, security.
+Inspect common manifests and directories. Reuse working architecture.
+
+MODE 2 — SOURCE OF TRUTH
+Create/update:
+ARCHITECTURE.md
+ROADMAP.md
+IMPLEMENTATION-CHECKLIST.md
+exec-planning.md
+SECURITY.md
+THREAT-MODEL.md
+COMPLIANCE.md
+CHANGELOG.md
+exec-planning.md is canonical. Tasks contain ID, Title, Priority, Status, Dependencies, Scope, Non-goals, Acceptance Criteria, Tests, Security, Docs.
+Statuses: BLOCKED, TODO, IN_PROGRESS, VERIFYING, COMPLETE.
+
+MODE 3 — TARGET ARCHITECTURE
+Web/Admin/Creator Studio → API/BFF → Core Platform + Automation Engine → Event Bus → Workers/Analytics/Integrations.
+Keep providers behind adapters.
+
+MODE 4 — DATABASE
+Design migrations for users, organizations, memberships, roles, permissions, integration_accounts, oauth_credentials, provider_capabilities, merchants, products, variants, offers, promotions, affiliate_links, clicks, campaigns, content_items, content_variants, creative_assets, videos, images, audio, subtitles, publication_jobs, publications, conversions, orders, commissions, refunds, experiments, automation_policies, approval_requests, agent_runs, ai_usage, audit_events, webhook_events.
+Every tenant-owned record has explicit ownership and constraints.
+
+MODE 5 — PROVIDER CAPABILITY SYSTEM
+ProviderAdapter with CATALOG_READ, OFFER_READ, AFFILIATE_LINK_CREATE, ORDER_READ, COMMISSION_READ, CONTENT_PUBLISH, IMAGE_PUBLISH, VIDEO_PUBLISH, ANALYTICS_READ, WEBHOOKS.
+States: AVAILABLE, APPROVAL_REQUIRED, MANUAL, UNSUPPORTED, TEMPORARILY_DISABLED.
+Never bypass unavailable official APIs.
+
+MODE 6 — AI PROVIDER ABSTRACTION
+LLMProvider, ImageProvider, VideoProvider, TTSProvider, EmbeddingProvider, ModerationProvider.
+Route AIRequest → Policy → Budget → Provider → Generation → Validation → Usage Accounting.
+Track provider/model/latency/tokens/cost/status/campaign/content/org.
+
+MODE 7 — CONTENT PIPELINE
+Product → Research Context → Creative Brief → Hook → Script → Storyboard → Copy → Visual → Voice → Video → Subtitles → CTA → Disclosure → Policy → Quality → Approval.
+All artifacts versioned with provenance.
+
+MODE 8 — VIDEO FACTORY
+CreativeBrief → ScenePlanner → AssetResolver → VoiceGenerator → CaptionGenerator → TimelineBuilder → FFmpegRenderer → MediaValidator → PublicationAsset.
+Support 1080x1920, 1080x1080, 1920x1080.
+Templates: product-demo, problem-solution, top-list, comparison, tutorial, promotion, story, review-style.
+No fabricated testimonials.
+
+MODE 9 — CREATIVE VARIATION
+Track lineage for hook, thumbnail, CTA, caption, script, duration variants.
+
+MODE 10 — PUBLISHING ORCHESTRATOR
+Content → Validation → Approval Policy → Schedule → PublicationJob → Provider Adapter → Platform → Reconciliation.
+Jobs include idempotency_key, attempt, max_attempts, retry schedule, provider response, external ID, failure code/reason.
+States DRAFT, WAITING_APPROVAL, APPROVED, SCHEDULED, PROCESSING, PUBLISHED, PARTIAL, FAILED, CANCELLED.
+
+MODE 11 — AUTOMATION
+Modes MANUAL, ASSISTED, APPROVAL_REQUIRED, AUTO_SAFE, AUTONOMOUS.
+Autonomy obeys compliance, security, budget, provider, org policies.
+
+MODE 12 — OPPORTUNITY ENGINE
+Rank by commission, conversion probability, trend, price, promotion, audience fit, content fit, historical performance, refund probability, confidence.
+Recommendations must explain reasons.
+
+MODE 13 — AFFILIATE LINK SERVICE
+/go/:slug with safe destination validation and attribution.
+Protect open redirects, javascript URLs, malicious destinations, tenant crossover, tampering.
+
+MODE 14 — ANALYTICS
+Normalize impression, view, engagement, click, redirect, conversion, order, commission, refund.
+Calculate CTR, CVR, EPC, AOV, Revenue, Commission, Net Commission, Refund Rate, RPM, Content ROI, Campaign ROI, Product ROI, Platform ROI.
+Separate observed/provider-reported/attributed/estimated/predicted.
+
+MODE 15 — OPTIMIZATION
+Performance → Feature extraction → Experiment analysis → Recommendation → New hypothesis → Generation → Approval/publishing → New performance.
+No statistically meaningless winner declarations.
+
+MODE 16 — DASHBOARD
+Mission-control UX with Revenue, Commission, Conversions, Clicks, Published Content, Generation Queue, Publishing Health, Integration Health, Top Products, Creatives, Campaigns, Channels, Opportunities, Failures, Approvals, AI Costs.
+
+MODE 17 — CREATOR STUDIO
+AI Campaign Wizard, Product Picker, Creative Brief, Hook Generator, Script Editor, Image Studio, Video Studio, Caption Editor, Thumbnail Editor, Platform Preview, Approval, Scheduler.
+
+MODE 18 — SECURITY-FIRST
+Threat model OAuth theft, cross-tenant access, malicious/replayed webhooks, SSRF, stored XSS, SQL injection, prompt injection, malicious media, traversal, open redirect, secret leakage, privilege escalation, supply chain, AI tool abuse.
+Fail closed.
+
+MODE 19 — AI AGENT PERMISSIONS
+Explicit tool permissions and allowlists by agent.
+
+MODE 20 — QUEUES
+affiliate-sync, trend-analysis, content-generation, image-generation, video-generation, publishing, analytics, webhooks, notifications.
+Use retry/backoff/jitter/DLQ/idempotency.
+
+MODE 21 — OBSERVABILITY
+Instrument correlation IDs and key metrics.
+
+MODE 22 — LOCAL DEV
+One-command docker compose stack with PostgreSQL, Redis, object storage, queue, API, workers, web; mocks/sandboxes for external platforms.
+
+MODE 23 — TEST STRATEGY
+RED → GREEN → REFACTOR → VERIFY.
+Suites: unit, integration, E2E, security, tenant-isolation, provider-contract, queue/retry, webhook, publishing, media, attribution.
+
+MODE 24 — CI/CD
+format, lint, typecheck, test, integration, build, SAST, dependency audit, secret scan, container scan, SBOM, signing.
+
+MODE 25 — DOCUMENTATION-AS-CODE
+Update architecture/security/progress docs every slice.
+
+MODE 26 — DEFINITION OF DONE
+Implementation + tests + passing evidence + security + tenant isolation + failure behavior + docs + relevant CI.
+
+MODE 27 — PR WORKFLOW
+inspect → branch → tests → implementation → verification → docs → commit → push → PR → CI → review.
+Do not merge without explicit authorization.
+
+MODE 28 — PRIORITY
+P0 repository foundation/security/tenancy/database/provider abstraction.
+P1 affiliate/catalog/campaign/links/content/image/video/approval/publishing.
+P2 attribution/analytics/trends/opportunity/automation.
+P3 experimentation/learning/autonomous optimization.
+
+MODE 29 — FIRST BOUNDED EXECUTION
+Inspect repo/branch/open work/CI, create gap analysis, generate/update core docs, create normalized domain model and provider capability abstraction, tests first, minimal implementation, run tests/security, report status and STOP.
+
+FINAL END-STATE
+Full-stack, multi-tenant, secure, observable, policy-controlled Affiliate Content & Commerce OS.

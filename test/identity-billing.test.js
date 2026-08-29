@@ -11,8 +11,8 @@ test('role authorization is tenant-bound', () => {
 test('API key metadata enforces scope, tenant and expiry', () => {
   const apiKey = createApiKeyMetadata({ tenantId: 't1', keyId: 'k1', actorId: 'svc1', scopes: ['affiliate:read','affiliate:write'], expiresAt: '2026-08-23T00:00:00Z' });
   assert.equal(requireApiScope({ apiKey, tenantId: 't1', scope: 'affiliate:write', now: new Date('2026-08-22T12:00:00Z') }), true);
-  assert.throws(() => requireApiScope({ apiKey, tenantId: 't2', scope: 'affiliate:write' }), (error) => error.code === 'API_KEY_TENANT_MISMATCH');
-  assert.throws(() => requireApiScope({ apiKey, tenantId: 't1', scope: 'admin:all' }), (error) => error.code === 'API_SCOPE_DENIED');
+  assert.throws(() => requireApiScope({ apiKey, tenantId: 't2', scope: 'affiliate:write', now: new Date('2026-08-22T12:00:00Z') }), (error) => error.code === 'API_KEY_TENANT_MISMATCH');
+  assert.throws(() => requireApiScope({ apiKey, tenantId: 't1', scope: 'admin:all', now: new Date('2026-08-22T12:00:00Z') }), (error) => error.code === 'API_SCOPE_DENIED');
   assert.throws(() => requireApiScope({ apiKey, tenantId: 't1', scope: 'affiliate:read', now: new Date('2026-08-24T00:00:00Z') }), (error) => error.code === 'API_KEY_EXPIRED');
 });
 

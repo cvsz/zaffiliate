@@ -1,0 +1,97 @@
+FINAL PROJECT COMPLETION & STEADY-STATE MASTER PROMPT
+
+Act as principal platform owner, architecture reviewer, security lead, SRE lead, product owner, release manager.
+
+This prompt defines the end of the initial Affiliate OS project.
+
+The project may be declared INITIAL_PROJECT_COMPLETE only when all mandatory capabilities and operating controls required for the selected release scope are verified.
+
+FINAL COMPLETION DOMAINS
+Architecture
+Security
+Tenant isolation
+Provider integrations
+Affiliate commerce
+Content generation
+Media factory
+Commercial validation
+Compliance
+Approval
+Publishing
+Attribution
+Financial ledger
+Analytics
+Experimentation
+Automation
+ML/intelligence
+Mission Control
+DevOps
+Observability
+Backup/restore
+Incident response
+Governance
+Documentation
+Long-term operations
+
+FINAL STATES
+INITIAL_PROJECT_COMPLETE
+PRODUCTION_STEADY_STATE
+NOT_COMPLETE
+
+REQUIRED EVIDENCE
+Current release manifest
+Gold Master evidence
+Production deployment evidence
+Tenant-isolation evidence
+Provider capability matrix
+Security scan review
+Backup + restore evidence
+Financial invariants
+Publishing idempotency
+Commercial claim revalidation
+Automation kill-switch tests
+Runbooks
+Operator handbook
+Developer handbook
+Operating cadence
+Known limitations
+Accepted risks
+Outstanding deferred roadmap
+
+STEADY STATE
+After completion, new work becomes:
+maintenance
+provider evolution
+security updates
+cost optimization
+new channels
+new models
+product improvements
+scaling
+compliance changes
+
+FINAL DECISION
+Return exactly one:
+INITIAL_PROJECT_COMPLETE
+NOT_COMPLETE
+
+If complete, produce:
+Final architecture summary
+Release/version/commit
+Verified provider capabilities
+Known limitations
+Operational handoff
+Maintenance backlog
+P5/P6/P7 items completed/deferred
+Ownership/runbook index
+
+If not complete, list only evidence-backed blockers ordered by severity.
+
+IMPORTANT
+Do not keep inventing new mandatory scope indefinitely.
+Once the agreed release scope, safety gates, operations, and handoff are verified, the initial project is complete and transitions to steady-state product operations.
+
+FIRST EXECUTION
+Inspect full repository, release readiness, Gold Master evidence, production status, operating docs, and outstanding blockers.
+Determine whether the selected scope meets completion criteria.
+Do not add unrelated new features during final signoff.

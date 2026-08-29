@@ -1,0 +1,411 @@
+MASTER EXECUTION PLANNING PROMPT — Generate and maintain exec-planning.md
+
+Act as principal architect, technical program manager, staff full-stack engineer, AI/ML engineer, DevSecOps engineer, data engineer, growth automation engineer, and SRE for the Affiliate Automation OS.
+
+Create and maintain canonical exec-planning.md and execute incrementally.
+
+EXECUTION CONTRACT
+Each item:
+ID, Title, Priority, Status, Dependencies, Owner, Scope, Non-goals, Acceptance Criteria, Tests, Security, Observability, Documentation, Verification Evidence.
+Statuses TODO, IN_PROGRESS, BLOCKED, VERIFYING, COMPLETE, DEFERRED.
+Never mark COMPLETE without evidence.
+
+PRIORITY MODEL
+P0 architecture/security/data foundations
+P1 commercially useful MVP
+P2 automation + analytics
+P3 intelligence + optimization
+P4 scale/advanced autonomy
+
+MASTER BACKLOG
+P0 PLATFORM FOUNDATION
+AFF-001 Repository assessment
+AFF-002 Architecture baseline
+AFF-003 Monorepo/workspace foundation
+AFF-004 Configuration system
+AFF-005 PostgreSQL foundation
+AFF-006 Database migrations
+AFF-007 Authentication
+AFF-008 Organizations/tenancy
+AFF-009 RBAC
+AFF-010 Audit logging
+AFF-011 Secret management
+AFF-012 Redis
+AFF-013 Job queue
+AFF-014 Object storage
+AFF-015 Event contracts
+AFF-016 API conventions
+AFF-017 Error model
+AFF-018 Input validation
+AFF-019 Observability
+AFF-020 Security baseline
+AFF-021 Threat model
+AFF-022 CI
+AFF-023 Dependency security
+AFF-024 Secret scanning
+AFF-025 SAST
+AFF-026 Container security
+AFF-027 SBOM
+AFF-028 Docker Compose development environment
+AFF-029 Backup/restore baseline
+AFF-030 Documentation baseline
+
+P0 INTEGRATION FOUNDATION
+AFF-031 Provider abstraction
+AFF-032 Provider capability registry
+AFF-033 OAuth integration framework
+AFF-034 Encrypted credential storage
+AFF-035 Token refresh
+AFF-036 Webhook framework
+AFF-037 Webhook signature verification
+AFF-038 Webhook replay protection
+AFF-039 Provider rate-limit handling
+AFF-040 Provider retry policies
+AFF-041 Provider circuit breakers
+AFF-042 Integration health monitoring
+AFF-043 Provider contract tests
+
+P1 AFFILIATE DOMAIN
+AFF-050 Merchant
+AFF-051 Product
+AFF-052 Product variant
+AFF-053 Offer
+AFF-054 Promotion
+AFF-055 Commission
+AFF-056 Catalog ingestion
+AFF-057 Catalog normalization
+AFF-058 Product deduplication
+AFF-059 Product synchronization
+AFF-060 Affiliate link model
+AFF-061 Link generator
+AFF-062 Safe redirect
+AFF-063 Click tracking
+AFF-064 Conversion
+AFF-065 Order
+AFF-066 Refund
+AFF-067 Payout
+
+P1 PLATFORM ADAPTERS
+AFF-070 TikTok capability discovery
+AFF-071 TikTok OAuth
+AFF-072 TikTok catalog/affiliate adapter
+AFF-073 TikTok publishing adapter
+AFF-080 Shopee discovery
+AFF-081 Shopee auth
+AFF-082 Shopee affiliate/catalog
+AFF-083 Shopee conversion/commission
+AFF-090 Meta discovery
+AFF-091 Meta OAuth
+AFF-092 Facebook Page
+AFF-093 Instagram
+AFF-094 Meta publishing
+AFF-100 YouTube discovery
+AFF-101 Google OAuth
+AFF-102 YouTube publishing
+AFF-103 Shorts
+AFF-104 Analytics
+
+P1 CAMPAIGN
+AFF-110 Campaign model
+AFF-111 Campaign-product
+AFF-112 Lifecycle
+AFF-113 Budget
+AFF-114 Audience
+AFF-115 Brand voice
+AFF-116 Content strategy
+AFF-117 Clone
+AFF-118 Archive
+
+P1 AI FOUNDATION
+AFF-120 AI provider abstraction
+AFF-121 LLM
+AFF-122 Image
+AFF-123 TTS
+AFF-124 Video
+AFF-125 Embedding
+AFF-126 Moderation
+AFF-127 Fallback
+AFF-128 Budget controls
+AFF-129 Usage accounting
+AFF-130 Prompt registry
+AFF-131 Prompt versioning
+AFF-132 Provenance
+
+P1 CONTENT ENGINE
+AFF-140 Creative brief
+AFF-141 Persona
+AFF-142 Hook
+AFF-143 Script
+AFF-144 Caption
+AFF-145 Title
+AFF-146 Description
+AFF-147 CTA
+AFF-148 Hashtag
+AFF-149 SEO
+AFF-150 Disclosure
+AFF-151 Thai
+AFF-152 English
+AFF-153 TH/EN
+AFF-154 Quality validator
+AFF-155 Claims validator
+AFF-156 Versioning
+
+P1 IMAGE FACTORY
+AFF-160 Template
+AFF-161 Product creative
+AFF-162 Thumbnail
+AFF-163 Promotion creative
+AFF-164 Carousel
+AFF-165 Brand overlays
+AFF-166 Disclosure overlays
+AFF-167 Validation
+AFF-168 Optimization
+
+P1 VIDEO FACTORY
+AFF-170 Storyboard
+AFF-171 Scene planner
+AFF-172 Asset resolver
+AFF-173 Voiceover
+AFF-174 Subtitles
+AFF-175 Timeline
+AFF-176 FFmpeg
+AFF-177 Vertical
+AFF-178 Square
+AFF-179 Landscape
+AFF-180 QA
+AFF-181 Audio normalization
+AFF-182 Branding
+AFF-183 CTA scenes
+AFF-184 Disclosures
+AFF-185 Provenance
+
+P1 CREATIVE VARIATION
+AFF-190 lineage
+AFF-191 Hook variants
+AFF-192 Thumbnail variants
+AFF-193 CTA variants
+AFF-194 Caption variants
+AFF-195 Script variants
+AFF-196 Duration variants
+
+P1 APPROVAL
+AFF-200 model
+AFF-201 inbox
+AFF-202 preview
+AFF-203 approve
+AFF-204 reject
+AFF-205 revision
+AFF-206 audit
+AFF-207 high-risk policy
+
+P1 PUBLISHING
+AFF-210 model
+AFF-211 job
+AFF-212 scheduler
+AFF-213 targeting
+AFF-214 idempotency
+AFF-215 retry
+AFF-216 partial handling
+AFF-217 reconciliation
+AFF-218 failed recovery
+AFF-219 DLQ
+AFF-220 audit
+
+P1 CONTENT CALENDAR
+AFF-230 API
+AFF-231 UI
+AFF-232 reschedule
+AFF-233 platform filter
+AFF-234 campaign filter
+AFF-235 health
+AFF-236 duplicate detection
+
+P2 ATTRIBUTION
+AFF-250 impressions
+AFF-251 engagements
+AFF-252 clicks
+AFF-253 conversions
+AFF-254 order reconciliation
+AFF-255 commission reconciliation
+AFF-256 refund reconciliation
+AFF-257 attribution windows
+AFF-258 confidence
+
+P2 ANALYTICS
+AFF-260 event pipeline
+AFF-261 revenue
+AFF-262 commission
+AFF-263 CTR
+AFF-264 CVR
+AFF-265 EPC
+AFF-266 AOV
+AFF-267 RPM
+AFF-268 Content ROI
+AFF-269 Campaign ROI
+AFF-270 Product ROI
+AFF-271 Platform ROI
+AFF-272 Refund analytics
+
+P2 MISSION CONTROL
+AFF-280 Overview
+AFF-281 Revenue dashboard
+AFF-282 Campaign dashboard
+AFF-283 Product dashboard
+AFF-284 Content dashboard
+AFF-285 Integration health
+AFF-286 Publishing health
+AFF-287 Worker health
+AFF-288 AI cost
+AFF-289 Approval queue
+AFF-290 Failure center
+
+P2 TREND
+AFF-300 ingestion
+AFF-301 keyword
+AFF-302 product
+AFF-303 category
+AFF-304 velocity
+AFF-305 confidence
+AFF-306 lifecycle
+AFF-307 product matching
+
+P2 OPPORTUNITY
+AFF-310 Commission score
+AFF-311 Conversion score
+AFF-312 Trend score
+AFF-313 Audience fit
+AFF-314 Content fit
+AFF-315 Promotion score
+AFF-316 Refund risk
+AFF-317 Inventory risk
+AFF-318 Confidence
+AFF-319 Opportunity score
+AFF-320 explanation
+
+P2 AUTOMATION
+AFF-330 Policy
+AFF-331 Discovery automation
+AFF-332 Ranking automation
+AFF-333 Campaign generation
+AFF-334 Creative generation
+AFF-335 Approval routing
+AFF-336 Publishing automation
+AFF-337 Analytics automation
+AFF-338 Optimization trigger
+AFF-339 Kill switch
+
+P3 EXPERIMENTATION
+AFF-350 Experiment model
+AFF-351 Assignment
+AFF-352 Hook
+AFF-353 Thumbnail
+AFF-354 CTA
+AFF-355 Caption
+AFF-356 Duration
+AFF-357 Posting time
+AFF-358 Statistics
+AFF-359 Winner
+
+P3 LEARNING
+AFF-370 Feature store
+AFF-371 Product features
+AFF-372 Creative features
+AFF-373 Audience features
+AFF-374 Platform features
+AFF-375 Feedback
+AFF-376 Prediction
+AFF-377 Evaluation
+AFF-378 Model registry
+
+P3 AUTONOMOUS OPTIMIZATION
+AFF-390 Policies
+AFF-391 Next hypothesis
+AFF-392 Creative replacement
+AFF-393 Campaign reprioritization
+AFF-394 Product reprioritization
+AFF-395 Posting time optimization
+AFF-396 Budget-aware generation
+AFF-397 Confidence thresholds
+AFF-398 Human escalation
+AFF-399 Kill switch
+
+P3 MULTI-AGENT
+AFF-410 Runtime
+AFF-411 Contracts
+AFF-412 Research
+AFF-413 Trend
+AFF-414 Campaign
+AFF-415 Copy
+AFF-416 Image
+AFF-417 Video
+AFF-418 Compliance
+AFF-419 Publishing
+AFF-420 Analytics
+AFF-421 Optimization
+AFF-422 Permission system
+AFF-423 Budget
+AFF-424 Audit
+
+P4 SCALE
+AFF-450 Horizontal workers
+AFF-451 Queue partitioning
+AFF-452 DB scaling
+AFF-453 Read replicas
+AFF-454 Object lifecycle
+AFF-455 Warehouse
+AFF-456 Event streaming
+AFF-457 CDN
+AFF-458 Multi-region
+AFF-459 DR
+
+P4 OPERATIONS
+AFF-470 SLI/SLO
+AFF-471 Alerting
+AFF-472 Incident response
+AFF-473 Runbooks
+AFF-474 Backup validation
+AFF-475 Restore drill
+AFF-476 Load testing
+AFF-477 Chaos
+AFF-478 Capacity
+AFF-479 Cost
+
+P4 SUPPLY CHAIN
+AFF-480 Dependency pinning
+AFF-481 Dependabot/Renovate
+AFF-482 CodeQL/SAST
+AFF-483 Secret scan
+AFF-484 Container scan
+AFF-485 SBOM
+AFF-486 Signing
+AFF-487 Provenance
+AFF-488 Branch protection
+AFF-489 Release security
+
+MASTER SECURITY GATES
+auth, authorization, tenant isolation, CSRF, XSS, SQL injection prevention, SSRF, safe redirects, webhooks, encrypted creds, least privilege, rate limits, audit, secure media, prompt/tool isolation.
+
+MASTER TEST MATRIX
+Unit, Integration, API, DB, Provider Contract, OAuth, Webhook, Queue, Retry, Idempotency, Tenant Isolation, Security, Media, AI, Publishing, Attribution, Analytics, E2E, Load, Backup/Restore.
+
+DEFINITION OF DONE
+Code, tests, passing verification, lint/typecheck/security, tenant isolation, failure behavior, observability, docs, migration review, CI evidence.
+
+AUTONOMOUS EXECUTION LOOP
+Inspect repo/branch/PR/CI → read exec-planning → choose highest priority bounded unblocked item → verify deps → mark IN_PROGRESS → tests first → implement minimum → focused tests → regression/security → docs → evidence → COMPLETE/BLOCKED/VERIFYING → report exact next item → STOP.
+
+PROVIDER VERIFICATION
+Before implementing TikTok, Shopee, Meta, YouTube, verify current official docs, permissions, eligibility, rate limits, webhooks, publishing limits, regional limits, affiliate capability, last_verified_at. Never invent API support.
+
+RELEASE MILESTONES
+M0 Secure Foundation
+M1 Affiliate MVP
+M2 Content Factory
+M3 Multi-Platform Publisher
+M4 Revenue Intelligence
+M5 Automation
+M6 Optimization
+M7 Production
+
+FIRST EXECUTION
+Inspect repo/git/open work/CI, inventory architecture, compare against plan, update exec-planning/checklist/roadmap/architecture/security/threat-model, determine highest-priority bounded P0 task, implement it tests-first where practical, verify, update evidence, report next item, STOP.

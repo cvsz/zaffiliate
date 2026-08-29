@@ -1,31 +1,64 @@
-# zaffiliate Implementation Checklist
+# zaffiliate Gap Analysis vs Master Meta Architecture
 
-## Repository standards
+Updated: 2026-08-25 · Evidence base: `npm test` 503 tests — 501 pass, 0 fail, 2 gated skips; `npm run check` clean; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
 
-- [x] Canonical architecture, security, operations, roadmap and execution plan exist.
-- [x] CODEOWNERS, PR template, issue forms and dependency automation exist.
-- [x] CI, CodeQL and dependency review workflows exist.
-- [x] Development, release and ADR guidance exist.
+## Classification legend
 
-## Product/runtime
+COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 
-- [x] Tenant contracts and Postgres RLS baseline.
-- [x] TikTok adapter foundation and multi-channel capability boundary.
-- [x] Affiliate lifecycle, outreach, durable workflow, billing, AI, analytics and web/admin baselines.
-- [x] Observability, metrics and release evidence pipeline.
+## Capability matrix
 
-## Production completion gates
+| # | Capability (master meta §) | Status | Evidence / gap |
+|---|---|---|---|
+| 1 | Monorepo + zero-dep runtime (§2) | COMPLETE | single-package ESM monorepo, `node --test`, CI in `.github/workflows/ci.yml` |
+| 2 | Tenancy, RBAC, audit chain (§24) | COMPLETE | `packages/contracts/src/{tenancy,grants,audit}.js`, RLS tests `db/tests/rls.sql`, escalation audit |
+| 3 | Identity: sessions, API keys, plans, ledger (§24) | COMPLETE | `packages/identity-billing/*`; time-bomb test fixed this slice |
+| 4 | OAuth/OIDC browser flow, PKCE, JWKS | PARTIAL | JWKS RS256 verifier + OAuth2 authorization-code flow with PKCE S256, token store w/ rotation+REAUTH_REQUIRED revocation lifecycle, authorize/callback routes over real HTTP (GM-B4); remaining: production provider registration + consent UI |
+| 5 | Affiliate lifecycle P→O→L→click→conversion→commission (§3) | COMPLETE | `packages/affiliate-core/*`, immutable minor-unit snapshots, outbox |
+| 6 | Provider adapters TikTok/Shopee/Lazada/Meta/YouTube/LINE (§3) | PARTIAL | TikTok full SDK (`packages/tiktok-shop`); Shopee/Lazada signed clients; Meta/YT = publishing boundary only; no catalog/order reads for Meta/YT |
+| 7 | Provider capability states manual/approval-required/unsupported (§1) | COMPLETE (this slice) | `packages/adapters/src/provider-registry.js` + `test/provider-capability.test.js` (10 tests) |
+| 8 | Normalized domain model w/ validation (§3) | COMPLETE (this slice) | `packages/contracts/src/schema.js` + `test/domain-schema.test.js` (14 tests) |
+| 9 | Webhook ingress + durable events (§30) | COMPLETE | ingress live + canonical envelopes; canonical envelopes durably persisted to live analytics_events (MM-003-lite evidence); replay-dedupe clock-mixing defect fixed in GM-001 with frozen-clock regressions (injectable store clock) |
 
-- [ ] 100% per-blob migration ledger classification for all seven legacy snapshots.
-- [ ] Verified mirror and git-bundle backups for every legacy repository.
-- [ ] SHA-256 backup/ref manifest and clean restore drill.
-- [ ] Legacy credential rotation/revocation and historical secret scan closure.
-- [ ] Provider-specific parity and live sandbox/controlled integration evidence.
-- [ ] Load/soak/fault-injection evidence against SLO/error budgets.
-- [ ] Production backup/restore and incident/runbook exercises.
-- [ ] Reversible canary/cutover with business/webhook/billing reconciliation.
-- [ ] Observation period completed without unresolved regression.
-- [ ] Trusted-local GPG release attestation.
-- [ ] Explicit owner approval before permanent legacy-repository deletion.
+| 10 | Workflow engine: grants, DLQ, approvals, reconciliation (§18) | COMPLETE | `packages/workflow/*` |
+| 11 | Outreach engine (consent, quiet hours, budgets) (§11) | COMPLETE | `packages/outreach/*` |
+| 12 | AI content runtime: providers, budgets, moderation, agents (§7) | PARTIAL | `packages/ai-content/*` has LLM/image/video/voice interfaces, bandit experiments; no real provider bindings (BLOCKED on credentials), no FFmpeg render (DEFERRED) |
+| 13 | Video factory / media pipeline (§9) | DEFERRED | interfaces only; rendering architecture not started |
+| 14 | Publishing orchestrator w/ publication_jobs state machine (§12) | PARTIAL | durable `publication_jobs` table (migration 005, RLS) + fail-closed repo: idempotent create, transition map w/ optimistic guard + retry budget, skip-locked exactly-once claim; restart-survival proven live on PG. HTTP orchestrator surface still pending |
+| 15 | Link service `/go/:slug` + click attribution (§14) | COMPLETE | `GET /go/:slug` in apps/api: tenant-gated, HTTPS re-validated, expiry-aware, hashed-visitor attribution (MM-002 evidence) |
+| 16 | Analytics: metrics, SLO, anomaly (§15) | PARTIAL | `packages/analytics` + `/metrics` + SLO eval; warehouse/OLAP separation absent |
+| 17 | Trend & opportunity scoring engine (§4–5) | MISSING | no trend ingestion or opportunity scoring module |
+| 40 | Event bus + storage foundation (MM-005-lite/MM-006/SEC-008-lite) | PARTIAL | bus w/ retry+DLQ; media validation + local driver + signed URLs + SigV4 S3 driver live (write BLOCKED on bucket permissions — provider-side); Redis streams publisher live w/ memory fallback |
 
-A checkbox may be marked complete only when evidence is linked or committed. `EXEC-PLANNING.md` remains the authoritative execution contract.
+| 41 | JWKS/OIDC verification (MM-004 foundation) | PARTIAL | RS256/JWKS client + verifier live and tested; browser authorize flow + PKCE endpoints remain |
+| 39 | Intelligence foundation (ML-001..005/020..024/MLOPS-001..007/OPT-001..004) | COMPLETE for INTEL-0..2 scope | full loop live: features -> baseline ranker -> recommendations/predictions -> evaluation/explanation -> decision gate (policy+capability+commercial truth) -> audited outcomes. INTEL-3+ (shadow w/ real paired data, trained models) awaits production data |
+| 38 | CSRF gate on web mutations (SEC-005b/§8) | COMPLETE | x-zaff-csrf + JSON content-type + Origin/host match on /api/workflow/approve, fail-closed 403s w/ regression suite |
+| 37 | Ingress protection (SEC-021/022) | PARTIAL | keyed rate limiter + typed SecurityEvent recorder live on public routes; distributed store (Redis) + remaining event emitters pending |
+| 36 | Mission Control UI foundation (UI-001/005/020-022) | PARTIAL | design tokens + severity system + /api/ui/overview KPI hierarchy + Critical Action Center live; remaining surfaces (revenue trend, integration/worker health panels) next |
+| 35 | Offer intelligence foundation (COM-001..004+freshness) | PARTIAL | commerce.js: offer/price-snapshot/promotion models, freshness gate, stale-claim BLOCK engine, golden scenario — ingestion pipeline + claim binding/extraction next (COM-020+, COM-040+) |
+| 34 | Measurement layer (DATA-001/002/003) | PARTIAL | canonical envelope + source classes + lineage + dedup + raw store + golden-metric fixtures landed; normalization/enrichment pipeline, attribution windows, commission ledger & reconciliation = next DATA slices |
+| 33 | Automation policy plane (AUTO-001/002/003/007) | PARTIAL | packages/automation: policy model, typed decisions, evaluator chain, 6-scope kill switches, dry-run, audited denials — durable workflow state + shadow mode pending (AUTO-005/008) |
+| 17b | Content Factory foundation (AFF-130/140/141/142/154) | COMPLETE | factory.js: persona library, evidence-gated briefs, scored hook engine w/ fail-closed claim rejection, versioned prompt registry, quality gate w/ hard compliance stops — evidence in EXEC-PLANNING.md |
+| 18 | Experimentation beyond seeded bandits (§17) | PARTIAL | bandit variant selection exists; min-sample winner gating added to contracts schema this slice |
+| 19 | Postgres persistence of runtimes (§21) | PARTIAL | analytics_events + publication_jobs durability PROVEN live end-to-end; remaining: offer/campaign store wiring (AFF-013 remainder) |
+| 20 | Redis durable events (§20) | PARTIAL | in-memory outbox everywhere; compose provides Redis; streams bus not ported |
+| 21 | Object storage / media assets (§9) | MISSING | no storage adapter package |
+| 22 | Control-plane web SPA (§22–23) | PARTIAL | CSP-first surfaces for nav/audit/billing/workflow/outreach/analytics + approval endpoint; creator-studio/AI-studio views absent |
+| 23 | Observability (§26) | COMPLETE | structured JSON logs w/ redaction, spans, MetricsRegistry, `/metrics`, alert/dashboard configs |
+| 24 | Release engineering / SBOM / attestation (§28) | COMPLETE | `scripts/generate-{release-manifest,changelog,sbom}.mjs`, gpg attest, smoke/soak/load/fault-inject scripts |
+| 25 | CI security gates (§28) | COMPLETE | secret scan + SSRF guards + syntax check + tests (`.github/workflows/ci.yml`) |
+| 26 | Docker/compose local stack (§28) | COMPLETE | hardened `compose.yaml` + Dockerfile (read-only, no-new-privileges) |
+| 27 | Kubernetes/Terraform/Helm (§28) | MISSING | not present; deploy currently via compose |
+| 28 | Live platform credentials (all adapters) | BLOCKED | sandbox/production creds not provisioned in env; all live calls blocked, mocks used |
+
+## Priority order (next bounded items)
+
+1. ~~**GM-001 closure**: push slice, record green CI run as release evidence~~ CLOSED (run 32871141615)
+2. ~~**GM blocker B3**: durable PublicationJob persistence~~ CLOSED (GM-002, live PG evidence)
+3. ~~**GM blocker B5**: restore rehearsal + per-migration rollback classification~~ CLOSED (GM-B5, `passed:true` evidence + `db/migrations/ROLLBACK.md`)
+4. ~~**GM blocker B4**: OAuth/OIDC browser flow + token refresh~~ CLOSED (GM-B4, PKCE + refresh lifecycle)
+5. ~~**GM blocker B9**: full-chain multi-tenant golden E2E over HTTP~~ CLOSED (GM-B9 suite)
+6. ~~**GM blocker B6**: Redis-backed distributed rate-limit store~~ CLOSED (GM-B6, zero-dep injectable-client pattern)
+7. ~~**GM blocker B8**: performance/load baselines~~ CLOSED (GM-B8, dist/perf-baselines.json)
+8. ~~**GM blocker B10**: operator/developer handbooks~~ CLOSED (docs/operator + docs/developer)
+9. **External (maintainer)**: B2 provider credentials · B7 Supabase S3 write permissions (probed 2026-08-26: still read-only)
