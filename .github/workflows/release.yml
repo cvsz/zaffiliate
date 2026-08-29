@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -21,28 +22,30 @@ jobs:
       - run: npm test
       - run: npm run release:manifest
       - run: node scripts/generate-sbom.mjs
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: docker/build-push-action@v5
         with:
           context: .
-          tags: zaffiliate:${{ github.ref_name }}
-          push: false
-          load: true
-      - run: docker inspect --format='{{.Config.User}}' zaffiliate:${{ github.ref_name }}
-      - uses: actions/upload-artifact@v7
-        with:
-          name: release-artifacts
-          path: |
-            dist/release-manifest.json
-            dist/sbom.json
-            dist/release-manifest.sha256
-          retention-days: 90
-    # GPG signing and deployment steps would be injected here.
-    # Required secrets:
-    #   GPG_PRIVATE_KEY: ASCII-armored private key
-    #   GPG_PASSPHRASE: key passphrase
-    #   GH_TOKEN: for signed push
-    # Example:
-    #   - run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-    #   - run: node scripts/gpg-attest.mjs --commit --key=${{ secrets.GPG_KEY_ID }} --push
-    #   - run: gpg --detach-sign --armor dist/sbom.json
-    #   - run: gpg --detach-sign --armor dist/release-manifest.json
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:latest
+            zaffiliate:${{ github.ref_name }}
+          push: true
+          load: false
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            dist/release-manifest.json \
+            dist/sbom.json \
+            dist/release-manifest.sha256 \
+            --title "zaffiliate ${{ github.ref_name }}" \
+            --generate-notes

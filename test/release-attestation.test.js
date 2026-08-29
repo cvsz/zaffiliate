@@ -50,14 +50,14 @@ test('release.yml is a valid workflow file with required keys', async () => {
   assert.ok(content.includes("on:\n  push:\n    tags:\n      - 'v*'"));
   assert.ok(content.includes('uses: actions/checkout@v7'));
   assert.ok(content.includes('uses: actions/setup-node@v7'));
-  assert.ok(content.includes('uses: actions/upload-artifact@v7'));
+  assert.ok(content.includes('uses: docker/login-action@v3'));
   assert.ok(content.includes('uses: docker/build-push-action@v5'));
   assert.ok(content.includes('npm ci'));
   assert.ok(content.includes('npm run check'));
   assert.ok(content.includes('npm test'));
   assert.ok(content.includes('npm run release:manifest'));
   assert.ok(content.includes('node scripts/generate-sbom.mjs'));
-  assert.ok(content.includes('docker inspect'));
+  assert.ok(content.includes('gh release create'));
 });
 
 test('gpg-attest.mjs exits 2 when gpg is unavailable', { timeout: 10000 }, async () => {
