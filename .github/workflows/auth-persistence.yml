@@ -1,0 +1,75 @@
+name: Auth Persistence
+
+on:
+  pull_request:
+    paths:
+      - 'db/migrations/008_local_auth_recovery.sql'
+      - 'db/tests/auth-persistence.sql'
+      - 'db/tests/bootstrap-role.sql'
+      - 'packages/db/src/auth-repo.js'
+      - 'packages/security/src/passwords.js'
+      - 'apps/api/src/auth-service.js'
+      - 'apps/api/src/auth-api.js'
+      - 'apps/api/src/production-server.js'
+      - 'test/passwords.test.js'
+      - 'test/local-auth-service.test.js'
+      - 'test/production-auth-api.test.js'
+      - '.github/workflows/auth-persistence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'db/migrations/008_local_auth_recovery.sql'
+      - 'packages/db/src/auth-repo.js'
+      - 'packages/security/src/passwords.js'
+      - 'apps/api/src/auth-service.js'
+      - 'apps/api/src/auth-api.js'
+      - 'apps/api/src/production-server.js'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: zaffiliate_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d zaffiliate_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: zaffiliate_test
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Deterministic install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Apply auth prerequisite migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/006_tenants_rls_force.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/008_local_auth_recovery.sql
+      - name: Create application test role
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
+      - name: Verify auth persistence RLS
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/auth-persistence.sql
+      - name: Verify auth service and API contracts
+        run: node --test test/passwords.test.js test/local-auth-service.test.js test/production-auth-api.test.js
