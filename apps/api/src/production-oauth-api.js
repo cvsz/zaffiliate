@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { OAuthTokenError } from '../../../packages/security/src/oauth.js';
 import { encryptSecret, decryptSecret } from '../../../packages/security/src/secret-envelope.js';
 
 const OAUTH_PREFIX = '/api/v1/oauth/';
@@ -43,6 +42,29 @@ function pendingAad(tenant, provider, hash) {
 
 function tokenAad(tenant, userId, provider, kind) {
   return `zaffiliate:oauth:token:${tenant}:${userId}:${provider}:${kind}`;
+}
+
+function pendingSecretPayload(authorization) {
+  return JSON.stringify({
+    version: 1,
+    codeVerifier: String(authorization.codeVerifier ?? ''),
+    nonce: authorization.nonce == null ? null : String(authorization.nonce)
+  });
+}
+
+function decodePendingSecret(value) {
+  const plaintext = String(value ?? '');
+  try {
+    const parsed = JSON.parse(plaintext);
+    if (parsed?.version === 1 && typeof parsed.codeVerifier === 'string' && parsed.codeVerifier) {
+      const nonce = typeof parsed.nonce === 'string' && parsed.nonce ? parsed.nonce : null;
+      return { codeVerifier: parsed.codeVerifier, nonce };
+    }
+  } catch {
+    // Backward compatibility for pending generic-OAuth rows created before the
+    // encrypted payload was versioned to carry an OIDC nonce.
+  }
+  return plaintext ? { codeVerifier: plaintext, nonce: null } : null;
 }
 
 async function limited(rateLimiter, key) {
@@ -122,7 +144,7 @@ export function createProductionOAuthApi({
           const authorization = entry.flow.createAuthorization();
           const boundState = `${scopedTenant}.${authorization.state}`;
           const hash = stateHash(boundState);
-          const verifierCiphertext = encryptSecret(authorization.codeVerifier, {
+          const verifierCiphertext = encryptSecret(pendingSecretPayload(authorization), {
             key: encryptionKey,
             aad: pendingAad(scopedTenant, provider, hash)
           });
@@ -184,12 +206,13 @@ export function createProductionOAuthApi({
           return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
         }
 
-        let codeVerifier;
+        let pendingSecret;
         try {
-          codeVerifier = decryptSecret(pending.codeVerifierCiphertext, {
+          pendingSecret = decodePendingSecret(decryptSecret(pending.codeVerifierCiphertext, {
             key: encryptionKey,
             aad: pendingAad(bound.tenantId, provider, hash)
-          });
+          }));
+          if (!pendingSecret) throw new Error('missing pending secret');
         } catch {
           return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
         }
@@ -197,17 +220,25 @@ export function createProductionOAuthApi({
         let tokens;
         try {
           tokens = await entry.flow.exchangeCode({
-            authorization: { state: bound.state, codeVerifier, expiresAt: new Date(pending.expiresAt).getTime() },
+            authorization: { state: bound.state, codeVerifier: pendingSecret.codeVerifier, expiresAt: new Date(pending.expiresAt).getTime() },
             code
           });
-        } catch (error) {
-          const reason = error instanceof OAuthTokenError ? error.reason : 'exchange_failed';
-          return { status: 502, body: { error: { code: 'OAUTH_EXCHANGE_FAILED', message: reason } }, headers: { 'cache-control': 'no-store' } };
+        } catch {
+          return { status: 502, body: { error: { code: 'OAUTH_EXCHANGE_FAILED', message: 'oauth provider token exchange failed' } }, headers: { 'cache-control': 'no-store' } };
         }
 
         let issuerSubject = null;
-        if (typeof entry.resolveSubject === 'function') issuerSubject = await entry.resolveSubject(tokens);
-        else issuerSubject = tokens.providerAccountId;
+        try {
+          if (typeof entry.verifyIdentity === 'function') {
+            issuerSubject = await entry.verifyIdentity({ tokens, nonce: pendingSecret.nonce });
+          } else if (typeof entry.resolveSubject === 'function') {
+            issuerSubject = await entry.resolveSubject(tokens);
+          } else {
+            issuerSubject = tokens.providerAccountId;
+          }
+        } catch {
+          return { status: 502, body: { error: { code: 'OAUTH_IDENTITY_VERIFICATION_FAILED', message: 'oauth provider identity verification failed' } }, headers: { 'cache-control': 'no-store' } };
+        }
         issuerSubject = String(issuerSubject ?? '').trim();
         if (!issuerSubject || issuerSubject.length > 1024) {
           return { status: 502, body: { error: { code: 'OAUTH_SUBJECT_MISSING', message: 'provider did not return a usable account subject' } }, headers: { 'cache-control': 'no-store' } };
