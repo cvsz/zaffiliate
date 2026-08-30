@@ -4,3 +4,4 @@ export { createPublicationJobsRepo, PublicationTransitionError } from './publica
 export { createAffiliateCoreRepo } from './affiliate-core-repo.js';
 export { createAuthRepo } from './auth-repo.js';
 export { createOAuthRepo } from './oauth-repo.js';
+export { createOAuthLoginRepo, oauthIdentityHash } from './oauth-login-repo.js';

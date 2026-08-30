@@ -74,6 +74,12 @@ function providerFetch({ fetchImpl, allowedUrl, label }) {
   };
 }
 
+function verifiedEmail(claims) {
+  const email = String(claims?.email ?? '').trim().toLowerCase();
+  if (!email || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
+}
+
 export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globalThis.fetch, clock = () => Date.now() } = {}) {
   if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
   if (typeof clock !== 'function') throw new TypeError('clock must be a function');
@@ -134,6 +140,7 @@ export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globa
   });
 
   let verifyIdentity = null;
+  let verifyIdentityClaims = null;
   if (jwksUri) {
     const jwksFetch = providerFetch({ fetchImpl, allowedUrl: jwksUri, label: 'oauth jwks request' });
     const jwksClient = createJwksClient({
@@ -148,7 +155,7 @@ export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globa
         return document;
       }
     });
-    verifyIdentity = async ({ tokens, nonce }) => {
+    verifyIdentityClaims = async ({ tokens, nonce }) => {
       if (!tokens?.idToken || !nonce) {
         const error = new Error('OIDC identity token or nonce missing');
         error.code = 'OIDC_ID_TOKEN_INVALID';
@@ -170,9 +177,22 @@ export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globa
         error.code = 'OIDC_ID_TOKEN_INVALID';
         throw error;
       }
-      return subject;
+      return Object.freeze({
+        subject,
+        email: verifiedEmail(claims),
+        emailVerified: claims.email_verified === true
+      });
     };
+    verifyIdentity = async (input) => (await verifyIdentityClaims(input)).subject;
   }
 
-  return new Map([[provider, Object.freeze({ provider, issuer, flow, ...(verifyIdentity ? { verifyIdentity } : {}) })]]);
+  return new Map([[
+    provider,
+    Object.freeze({
+      provider,
+      issuer,
+      flow,
+      ...(verifyIdentity ? { verifyIdentity, verifyIdentityClaims } : {})
+    })
+  ]]);
 }

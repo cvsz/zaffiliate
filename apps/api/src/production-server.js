@@ -6,7 +6,7 @@ import { createLocalAuthApi } from './auth-api.js';
 import { createLocalAuthService, createNoopRecoverySender } from './auth-service.js';
 import { createProductionOAuthApi } from './production-oauth-api.js';
 import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
-import { createDbClient, createAuthRepo, createOAuthRepo } from '../../../packages/db/src/index.js';
+import { createDbClient, createAuthRepo, createOAuthRepo, createOAuthLoginRepo } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
 
@@ -29,6 +29,7 @@ export function createProductionServer({
   localAuthService = null,
   oauthRegistry = null,
   oauthRepository = null,
+  oauthLoginRepository = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
   db = null
 } = {}) {
@@ -44,6 +45,7 @@ export function createProductionServer({
   const oauthApi = createProductionOAuthApi({
     registry: providerRegistry,
     repo: oauthRepository ?? createOAuthRepo({ db: database }),
+    loginRepo: oauthLoginRepository ?? createOAuthLoginRepo({ db: database }),
     localAuthService: authService,
     encryptionKey: env.ENCRYPTION_KEY,
     rateLimiter

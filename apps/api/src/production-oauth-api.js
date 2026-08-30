@@ -1,7 +1,9 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { encryptSecret, decryptSecret } from '../../../packages/security/src/secret-envelope.js';
+import { SESSION_TTL_MS } from './auth-service.js';
 
 const OAUTH_PREFIX = '/api/v1/oauth/';
+const LOGIN_STATE_PREFIX = 'login.';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 function bearerToken(headers = {}) {
@@ -36,8 +38,20 @@ function parseBoundState(value) {
   return { tenantId: boundTenant, state };
 }
 
+function parseLoginState(value) {
+  const state = String(value ?? '');
+  if (!state.startsWith(LOGIN_STATE_PREFIX) || state.length > 512) return null;
+  const randomState = state.slice(LOGIN_STATE_PREFIX.length);
+  if (!/^[A-Za-z0-9_-]{16,256}$/.test(randomState)) return null;
+  return { state };
+}
+
 function pendingAad(tenant, provider, hash) {
   return `zaffiliate:oauth:pending:${tenant}:${provider}:${hash}`;
+}
+
+function loginPendingAad(provider, hash) {
+  return `zaffiliate:oauth:login:${provider}:${hash}`;
 }
 
 function tokenAad(tenant, userId, provider, kind) {
@@ -67,6 +81,19 @@ function decodePendingSecret(value) {
   return plaintext ? { codeVerifier: plaintext, nonce: null } : null;
 }
 
+function syntheticIdentityEmail(issuer, subject) {
+  const tag = createHash('sha256').update(`${issuer}\0${subject}`, 'utf8').digest('hex').slice(0, 24);
+  return `oidc-${tag}@oidc.invalid`;
+}
+
+function loginToken() {
+  return `zs_${randomBytes(32).toString('base64url')}`;
+}
+
+function personalTenantSlug(provider) {
+  return `oidc-${provider}-${randomBytes(6).toString('hex')}`;
+}
+
 async function limited(rateLimiter, key) {
   const verdict = await rateLimiter.tryAcquire(key);
   if (verdict.allowed) return null;
@@ -93,6 +120,7 @@ function failure(error) {
 export function createProductionOAuthApi({
   registry,
   repo,
+  loginRepo = null,
   localAuthService,
   encryptionKey,
   rateLimiter,
@@ -100,6 +128,11 @@ export function createProductionOAuthApi({
 } = {}) {
   if (!(registry instanceof Map)) throw new TypeError('oauth registry must be a Map');
   if (!repo || typeof repo.createPendingAuthorization !== 'function') throw new TypeError('oauth repo is required');
+  if (loginRepo !== null && (
+    typeof loginRepo.createPendingLogin !== 'function' ||
+    typeof loginRepo.consumePendingLogin !== 'function' ||
+    typeof loginRepo.completeOidcLogin !== 'function'
+  )) throw new TypeError('oauth login repo is invalid');
   if (!localAuthService || typeof localAuthService.getSession !== 'function') throw new TypeError('local auth service is required');
   if (!rateLimiter || typeof rateLimiter.tryAcquire !== 'function') throw new TypeError('rateLimiter is required');
   if (typeof clock !== 'function') throw new TypeError('clock must be a function');
@@ -115,10 +148,124 @@ export function createProductionOAuthApi({
     return localAuthService.getSession({ tenantId: scopedTenant, token });
   }
 
+  async function handleLoginStart({ req, entry, provider, issuer, ip }) {
+    if (String(req.method ?? 'GET').toUpperCase() !== 'GET') {
+      return { status: 405, body: { error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } } };
+    }
+    if (!loginRepo || typeof entry.verifyIdentityClaims !== 'function') {
+      return { status: 503, body: { error: { code: 'OIDC_LOGIN_NOT_CONFIGURED', message: 'verified OIDC login is not configured' } }, headers: { 'cache-control': 'no-store' } };
+    }
+    const throttled = await limited(rateLimiter, `oauth:login:${provider}:${ip}`);
+    if (throttled) return throttled;
+    const authorization = entry.flow.createAuthorization();
+    if (!authorization.nonce) {
+      return { status: 500, body: { error: { code: 'OAUTH_MISCONFIGURED', message: 'OIDC login requires a nonce-enabled flow' } }, headers: { 'cache-control': 'no-store' } };
+    }
+    const state = `${LOGIN_STATE_PREFIX}${authorization.state}`;
+    const hash = stateHash(state);
+    const authorizationCiphertext = encryptSecret(pendingSecretPayload(authorization), {
+      key: encryptionKey,
+      aad: loginPendingAad(provider, hash)
+    });
+    await loginRepo.createPendingLogin({
+      provider,
+      issuer,
+      stateHash: hash,
+      authorizationCiphertext,
+      expiresAt: new Date(authorization.expiresAt)
+    });
+    const authorizeUrl = new URL(authorization.url);
+    authorizeUrl.searchParams.set('state', state);
+    return {
+      status: 302,
+      body: { authorizeUrl: authorizeUrl.toString(), expiresAt: authorization.expiresAt },
+      headers: { location: authorizeUrl.toString(), 'cache-control': 'no-store' }
+    };
+  }
+
+  async function handleLoginCallback({ entry, provider, issuer, state, code, ip }) {
+    if (!loginRepo || typeof entry.verifyIdentityClaims !== 'function') {
+      return { status: 503, body: { error: { code: 'OIDC_LOGIN_NOT_CONFIGURED', message: 'verified OIDC login is not configured' } }, headers: { 'cache-control': 'no-store' } };
+    }
+    const parsed = parseLoginState(state);
+    if (!parsed || !code || code.length > 4096) {
+      return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
+    }
+    const throttled = await limited(rateLimiter, `oauth:login-callback:${provider}:${ip}`);
+    if (throttled) return throttled;
+    const hash = stateHash(parsed.state);
+    const pending = await loginRepo.consumePendingLogin({ provider, stateHash: hash });
+    if (!pending || pending.provider !== provider || String(pending.issuer) !== issuer) {
+      return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
+    }
+
+    let pendingSecret;
+    try {
+      pendingSecret = decodePendingSecret(decryptSecret(pending.authorizationCiphertext, {
+        key: encryptionKey,
+        aad: loginPendingAad(provider, hash)
+      }));
+      if (!pendingSecret?.codeVerifier || !pendingSecret?.nonce) throw new Error('missing OIDC pending secret');
+    } catch {
+      return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
+    }
+
+    let tokens;
+    try {
+      tokens = await entry.flow.exchangeCode({
+        authorization: {
+          state: parsed.state,
+          codeVerifier: pendingSecret.codeVerifier,
+          expiresAt: new Date(pending.expiresAt).getTime()
+        },
+        code
+      });
+    } catch {
+      return { status: 502, body: { error: { code: 'OAUTH_EXCHANGE_FAILED', message: 'oauth provider token exchange failed' } }, headers: { 'cache-control': 'no-store' } };
+    }
+
+    let identity;
+    try {
+      identity = await entry.verifyIdentityClaims({ tokens, nonce: pendingSecret.nonce });
+    } catch {
+      return { status: 401, body: { error: { code: 'OIDC_ID_TOKEN_INVALID', message: 'OIDC identity token verification failed' } }, headers: { 'cache-control': 'no-store' } };
+    }
+    const issuerSubject = String(identity?.subject ?? '').trim();
+    if (!issuerSubject || issuerSubject.length > 1024) {
+      return { status: 401, body: { error: { code: 'OIDC_ID_TOKEN_INVALID', message: 'OIDC identity token verification failed' } }, headers: { 'cache-control': 'no-store' } };
+    }
+    const email = identity.email ?? syntheticIdentityEmail(issuer, issuerSubject);
+    const rawToken = loginToken();
+    const expiresAt = new Date(clock() + SESSION_TTL_MS);
+    const result = await loginRepo.completeOidcLogin({
+      provider,
+      issuer,
+      issuerSubject,
+      email,
+      emailVerified: Boolean(identity.email && identity.emailVerified),
+      newTenantId: randomUUID(),
+      newTenantSlug: personalTenantSlug(provider),
+      newTenantName: 'personal',
+      newUserId: `usr_${randomUUID()}`,
+      tokenHash: stateHash(rawToken),
+      expiresAt
+    });
+    return {
+      status: 200,
+      body: {
+        token: rawToken,
+        expiresAt: expiresAt.toISOString(),
+        registered: Boolean(result.registered),
+        user: result.user
+      },
+      headers: { 'cache-control': 'no-store' }
+    };
+  }
+
   return Object.freeze({
     async handle({ req, pathname, tenantHeader = '' } = {}) {
       if (!String(pathname ?? '').startsWith(OAUTH_PREFIX)) return null;
-      const match = /^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/(authorize|callback|disconnect)$/.exec(String(pathname));
+      const match = /^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/(authorize|login|callback|disconnect)$/.exec(String(pathname));
       if (!match) return { status: 404, body: { error: { code: 'OAUTH_ROUTE_NOT_FOUND', message: 'oauth route not found' } } };
       const provider = match[1];
       const action = match[2];
@@ -133,6 +280,8 @@ export function createProductionOAuthApi({
       const url = new URL(req.url || '/', 'http://localhost');
 
       try {
+        if (action === 'login') return await handleLoginStart({ req, entry, provider, issuer, ip });
+
         if (action === 'authorize') {
           if (String(req.method ?? 'GET').toUpperCase() !== 'GET') return { status: 405, body: { error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } } };
           const scopedTenant = tenantId(tenantHeader);
@@ -194,6 +343,9 @@ export function createProductionOAuthApi({
         if (String(req.method ?? 'GET').toUpperCase() !== 'GET') return { status: 405, body: { error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } } };
         const state = String(url.searchParams.get('state') ?? '');
         const code = String(url.searchParams.get('code') ?? '');
+        if (parseLoginState(state)) {
+          return await handleLoginCallback({ entry, provider, issuer, state, code, ip });
+        }
         const bound = parseBoundState(state);
         if (!bound || !code || code.length > 4096) {
           return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };

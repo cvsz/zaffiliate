@@ -62,6 +62,12 @@ BEGIN
   IF to_regclass('public.oauth_provider_tokens') IS NOT NULL THEN
     GRANT SELECT, INSERT, UPDATE, DELETE ON oauth_provider_tokens TO zaffiliate_app_test;
   END IF;
+  IF to_regclass('public.oauth_login_authorizations') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON oauth_login_authorizations TO zaffiliate_app_test;
+  END IF;
+  IF to_regclass('public.oauth_identity_directory') IS NOT NULL THEN
+    GRANT SELECT ON oauth_identity_directory TO zaffiliate_app_test;
+  END IF;
 END $$;
 
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO zaffiliate_app_test;
