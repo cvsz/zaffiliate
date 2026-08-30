@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS oauth_pending_authorizations (
   issuer text NOT NULL,
   state_hash text NOT NULL UNIQUE,
   code_verifier_ciphertext text NOT NULL,
-  subject_hint text,
   expires_at timestamptz NOT NULL,
   consumed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
