@@ -3,6 +3,7 @@ import { LocalAuthError } from './auth-service.js';
 
 const AUTH_PREFIX = '/api/v1/auth/';
 const MAX_BODY_BYTES = 16 * 1024;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function bearerToken(headers = {}) {
   const value = String(headers.authorization ?? '');
@@ -26,6 +27,7 @@ async function readJson(req) {
 function requireTenant(tenantId) {
   const value = String(tenantId ?? '').trim();
   if (!value) throw new LocalAuthError(400, 'TENANT_HEADER_REQUIRED', 'x-tenant-id header is required');
+  if (!UUID_PATTERN.test(value)) throw new LocalAuthError(400, 'TENANT_ID_INVALID', 'x-tenant-id must be a UUID');
   return value;
 }
 
