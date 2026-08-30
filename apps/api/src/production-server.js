@@ -9,7 +9,7 @@ import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
 import { createProductionAuthorization, isProtectedBusinessPath } from './production-authorization.js';
 import { createDbClient, createAuthRepo, createOAuthRepo } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
-import { setRequestPrincipal } from '../../../packages/security/src/request-principal.js';
+import { runWithRequestPrincipal } from '../../../packages/security/src/request-principal.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
 
 function sendJson(res, result) {
@@ -66,8 +66,7 @@ export function createProductionServer({
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
         if (!decision.allowed) return sendJson(res, decision.result);
-        setRequestPrincipal(req, decision.principal);
-        inner.emit('request', req, res);
+        runWithRequestPrincipal(decision.principal, () => inner.emit('request', req, res));
         return;
       }
 
