@@ -1,15 +1,21 @@
-const principals = new WeakMap();
+import { AsyncLocalStorage } from 'node:async_hooks';
 
-export function setRequestPrincipal(request, principal) {
-  if (!request || (typeof request !== 'object' && typeof request !== 'function')) throw new TypeError('request object is required');
+const storage = new AsyncLocalStorage();
+
+function normalizedPrincipal(principal) {
   if (!principal || typeof principal !== 'object') throw new TypeError('principal object is required');
-  principals.set(request, Object.freeze({
-    tenantId: String(principal.tenantId ?? ''),
-    userId: String(principal.userId ?? ''),
-    role: String(principal.role ?? '')
-  }));
+  const tenantId = String(principal.tenantId ?? '').trim();
+  const userId = String(principal.userId ?? '').trim();
+  const role = String(principal.role ?? '').trim().toLowerCase();
+  if (!tenantId || !userId || !role) throw new TypeError('principal tenantId, userId and role are required');
+  return Object.freeze({ tenantId, userId, role });
 }
 
-export function getRequestPrincipal(request) {
-  return principals.get(request) ?? null;
+export function runWithRequestPrincipal(principal, fn) {
+  if (typeof fn !== 'function') throw new TypeError('principal callback is required');
+  return storage.run(normalizedPrincipal(principal), fn);
+}
+
+export function getRequestPrincipal() {
+  return storage.getStore() ?? null;
 }
