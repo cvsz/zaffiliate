@@ -10,7 +10,8 @@ import { loadConfig } from '../../../packages/config/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createSecurityEventRecorder } from '../../../packages/security/src/security-events.js';
 import { OAuthTokenError } from '../../../packages/security/src/oauth.js';
-import { resolveRedirect, ingestWebhook } from './business.js';
+import { resolveRedirectAsync, ingestWebhookAsync } from './business-async.js';
+import { createAffiliateRuntimeForEnv } from './runtime-factory.js';
 import { createFeatureApi } from './features-api.js';
 import { createCommerceStore } from '../../../packages/affiliate-core/src/commerce.js';
 import { createEventStore } from '../../../packages/analytics/src/events.js';
@@ -276,7 +277,7 @@ export function buildServer({
         events.record({ type: 'RATE_LIMITED', severity: 'LOW', resource: limitKey, reason: `redirect burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
         return throttled('/go/:slug');
       }
-      const decision = resolveRedirect({ runtime, tenantId, slug: decodeURIComponent(goMatch[1]), now: Date.now(), visitorHash });
+      const decision = await resolveRedirectAsync({ runtime, tenantId, slug: decodeURIComponent(goMatch[1]), now: Date.now(), visitorHash });
       if (decision.status === 302) {
         res.setHeader('location', decision.location);
         res.setHeader('cache-control', 'no-store');
@@ -311,7 +312,7 @@ export function buildServer({
             events.record({ type: 'RATE_LIMITED', severity: 'MEDIUM', resource: limitKey, reason: `webhook burst exceeded (retry in ${limit.retryAfterMs}ms)`, tenantId });
             return json(429, '/webhooks/:platform', { error: { code: 'RATE_LIMITED', message: 'too many requests', request_id: context.requestId } }, false, { 'retry-after': String(Math.ceil(limit.retryAfterMs / 1000) || 1) });
           }
-          const result = ingestWebhook({
+          const result = await ingestWebhookAsync({
             runtime,
             guard: webhookGuard,
             secrets: webhookSecrets,
@@ -341,7 +342,8 @@ export function buildServer({
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const logger = createLogger();
-  const server = buildServer({ logger });
+  const runtime = createAffiliateRuntimeForEnv({ env: process.env, logger });
+  const server = buildServer({ logger, runtime });
   const supabase = createSupabaseClient();
   if (supabase) {
     logger.info('supabase_configured', { url: process.env.SUPABASE_URL });
@@ -352,4 +354,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     logger.info('server_started', { port });
   });
 }
-
