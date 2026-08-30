@@ -13,8 +13,11 @@ on:
       - 'apps/api/src/production-oauth-api.js'
       - 'apps/api/src/production-server.js'
       - 'test/oauth-flow.test.js'
+      - 'test/oauth-runtime-factory.test.js'
+      - 'test/oauth-subject-normalization.test.js'
       - 'test/secret-envelope.test.js'
       - 'test/production-oauth-api.test.js'
+      - 'test/production-oauth-wiring.test.js'
       - '.github/workflows/oauth-persistence.yml'
   push:
     branches: [main]
@@ -75,4 +78,11 @@ jobs:
       - name: Verify OAuth persistence RLS and single-use state
         run: psql -v ON_ERROR_STOP=1 -f db/tests/oauth-persistence.sql
       - name: Verify OAuth crypto and production API contracts
-        run: node --test test/secret-envelope.test.js test/production-oauth-api.test.js test/oauth-flow.test.js
+        run: >-
+          node --test
+          test/secret-envelope.test.js
+          test/oauth-runtime-factory.test.js
+          test/oauth-subject-normalization.test.js
+          test/production-oauth-api.test.js
+          test/production-oauth-wiring.test.js
+          test/oauth-flow.test.js
