@@ -18,8 +18,10 @@ function row(result) {
   return result?.rows?.[0] ?? null;
 }
 
-function affected(result) {
-  return Number(result?.rowCount ?? 0);
+function boundedLimit(value, fallback = 50, max = 100) {
+  const number = Number(value ?? fallback);
+  if (!Number.isSafeInteger(number) || number < 1) return fallback;
+  return Math.min(number, max);
 }
 
 export function createAuthRepo({ db } = {}) {
@@ -90,6 +92,38 @@ export function createAuthRepo({ db } = {}) {
        WHERE u.tenant_id = $1 AND u.user_id = $2`,
       [scopedTenantId, required(userId, 'userId')]
     )));
+  }
+
+  async function listUsers(tenantId, { limit = 50 } = {}) {
+    return withTenant(tenantId, async (tx, scopedTenantId) => {
+      const result = await tx.query(
+        `SELECT u.tenant_id AS "tenantId", u.user_id AS "userId", u.email,
+                u.email_verified AS "emailVerified", u.created_at AS "createdAt", m.role
+         FROM local_auth_users u
+         JOIN tenant_memberships m ON m.tenant_id = u.tenant_id AND m.user_id = u.user_id
+         WHERE u.tenant_id = $1
+         ORDER BY u.created_at ASC, u.user_id ASC
+         LIMIT $2`,
+        [scopedTenantId, boundedLimit(limit)]
+      );
+      return result?.rows ?? [];
+    });
+  }
+
+  async function listAuditEvents(tenantId, { limit = 50 } = {}) {
+    return withTenant(tenantId, async (tx, scopedTenantId) => {
+      const result = await tx.query(
+        `SELECT id, tenant_id AS "tenantId", actor_id AS "actorId", request_id AS "requestId",
+                action, resource_type AS "resourceType", resource_id AS "resourceId",
+                outcome, reason, occurred_at AS "occurredAt", payload
+         FROM audit_events
+         WHERE tenant_id = $1
+         ORDER BY occurred_at DESC, id DESC
+         LIMIT $2`,
+        [scopedTenantId, boundedLimit(limit)]
+      );
+      return result?.rows ?? [];
+    });
   }
 
   async function createSession({ tenantId, userId, tokenHash, expiresAt }) {
@@ -252,6 +286,8 @@ export function createAuthRepo({ db } = {}) {
     createTenantOwner,
     findCredentialsByEmail,
     findUserById,
+    listUsers,
+    listAuditEvents,
     createSession,
     findSessionByHash,
     revokeSession,
