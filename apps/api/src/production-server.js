@@ -4,7 +4,9 @@ import { buildServer } from './server.js';
 import { createAffiliateRuntimeForEnv } from './runtime-factory.js';
 import { createLocalAuthApi } from './auth-api.js';
 import { createLocalAuthService, createNoopRecoverySender } from './auth-service.js';
-import { createDbClient, createAuthRepo } from '../../../packages/db/src/index.js';
+import { createProductionOAuthApi } from './production-oauth-api.js';
+import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
+import { createDbClient, createAuthRepo, createOAuthRepo } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
 
@@ -25,6 +27,8 @@ export function createProductionServer({
   logger = createLogger(),
   runtime = null,
   localAuthService = null,
+  oauthRegistry = null,
+  oauthRepository = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
   db = null
 } = {}) {
@@ -36,24 +40,43 @@ export function createProductionServer({
     sender: createNoopRecoverySender({ logger })
   });
   const authApi = createLocalAuthApi({ service: authService, rateLimiter });
+  const providerRegistry = oauthRegistry ?? createOAuthRegistryForEnv({ env });
+  const oauthApi = createProductionOAuthApi({
+    registry: providerRegistry,
+    repo: oauthRepository ?? createOAuthRepo({ db: database }),
+    localAuthService: authService,
+    encryptionKey: env.ENCRYPTION_KEY,
+    rateLimiter
+  });
 
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
-    if (!pathname.startsWith('/api/v1/auth/')) {
+    const isAuth = pathname.startsWith('/api/v1/auth/');
+    const isOAuth = pathname.startsWith('/api/v1/oauth/');
+    if (!isAuth && !isOAuth) {
       inner.emit('request', req, res);
       return;
     }
     try {
-      const result = await authApi.handle({
-        req,
-        pathname,
-        tenantId: String(req.headers['x-tenant-id'] ?? '').trim()
-      });
+      const result = isAuth
+        ? await authApi.handle({
+          req,
+          pathname,
+          tenantId: String(req.headers['x-tenant-id'] ?? '').trim()
+        })
+        : await oauthApi.handle({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      logger.error('auth_request_failed', { message: String(error?.message ?? error) });
-      return sendJson(res, { status: 500, body: { error: { code: 'AUTH_INTERNAL', message: 'unexpected authentication failure' } } });
+      logger.error(isOAuth ? 'oauth_request_failed' : 'auth_request_failed', { message: String(error?.message ?? error) });
+      return sendJson(res, {
+        status: 500,
+        body: { error: { code: isOAuth ? 'OAUTH_INTERNAL' : 'AUTH_INTERNAL', message: 'unexpected authentication failure' } }
+      });
     }
   });
 
