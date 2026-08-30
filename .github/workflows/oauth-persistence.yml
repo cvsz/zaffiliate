@@ -1,0 +1,88 @@
+name: OAuth Persistence
+
+on:
+  pull_request:
+    paths:
+      - 'db/migrations/009_oauth_identity_persistence.sql'
+      - 'db/tests/oauth-persistence.sql'
+      - 'db/tests/bootstrap-role.sql'
+      - 'packages/db/src/oauth-repo.js'
+      - 'packages/security/src/oauth.js'
+      - 'packages/security/src/secret-envelope.js'
+      - 'apps/api/src/oauth-runtime-factory.js'
+      - 'apps/api/src/production-oauth-api.js'
+      - 'apps/api/src/production-server.js'
+      - 'test/oauth-flow.test.js'
+      - 'test/oauth-runtime-factory.test.js'
+      - 'test/oauth-subject-normalization.test.js'
+      - 'test/secret-envelope.test.js'
+      - 'test/production-oauth-api.test.js'
+      - 'test/production-oauth-wiring.test.js'
+      - '.github/workflows/oauth-persistence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'db/migrations/009_oauth_identity_persistence.sql'
+      - 'packages/db/src/oauth-repo.js'
+      - 'packages/security/src/oauth.js'
+      - 'packages/security/src/secret-envelope.js'
+      - 'apps/api/src/oauth-runtime-factory.js'
+      - 'apps/api/src/production-oauth-api.js'
+      - 'apps/api/src/production-server.js'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-oauth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: zaffiliate_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d zaffiliate_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: zaffiliate_test
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Deterministic install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Apply OAuth prerequisite migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/006_tenants_rls_force.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/008_local_auth_recovery.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/009_oauth_identity_persistence.sql
+      - name: Create application test role
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
+      - name: Verify OAuth persistence RLS and single-use state
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/oauth-persistence.sql
+      - name: Verify OAuth crypto and production API contracts
+        run: >-
+          node --test
+          test/secret-envelope.test.js
+          test/oauth-runtime-factory.test.js
+          test/oauth-subject-normalization.test.js
+          test/production-oauth-api.test.js
+          test/production-oauth-wiring.test.js
+          test/oauth-flow.test.js
