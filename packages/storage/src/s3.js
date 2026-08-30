@@ -1,5 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
 import { assertValidObjectKey } from './index.js';
+import { assertMediaContentMatches } from './content-validation.js';
 
 function sha256Hex(data) {
   return createHash('sha256').update(data).digest('hex');
@@ -58,8 +59,11 @@ export function createS3Driver({ endpoint, bucket, accessKeyId, secretAccessKey,
 
   async function put(key, body, contentType, { now = new Date() } = {}) {
     if (!Buffer.isBuffer(body)) throw new TypeError('body must be a Buffer');
+    assertValidObjectKey(key);
+    const validated = assertMediaContentMatches(body, contentType);
     const { url, options } = signedRequest('PUT', key, body, { now });
-    options.headers['content-type'] = contentType ?? 'application/octet-stream';
+    options.headers['content-type'] = validated.detectedMime;
+    options.body = body;
     const response = await doFetch(url, options);
     if (!response.ok) throw new Error(`s3 put failed with ${response.status}`);
     return { stored: true, key, bytes: body.length, etag: response.headers?.get?.('etag') ?? null };
