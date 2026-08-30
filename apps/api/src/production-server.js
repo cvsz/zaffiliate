@@ -58,12 +58,22 @@ export function createProductionServer({
     encryptionKey: env.ENCRYPTION_KEY,
     rateLimiter
   });
-  const campaignApi = createCampaignApi({
-    repo: campaignRepository ?? createCampaignRepo({ db: database }),
-    affiliateRuntime,
-    localAuthService: authService,
-    rateLimiter
-  });
+
+  // Campaign dependencies are intentionally lazy. Authentication and OAuth
+  // routes must not become unavailable merely because an unrelated campaign
+  // adapter/repository is absent in an injected test or maintenance runtime.
+  let campaignApi = null;
+  const getCampaignApi = () => {
+    if (!campaignApi) {
+      campaignApi = createCampaignApi({
+        repo: campaignRepository ?? createCampaignRepo({ db: database }),
+        affiliateRuntime,
+        localAuthService: authService,
+        rateLimiter
+      });
+    }
+    return campaignApi;
+  };
 
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
@@ -89,7 +99,7 @@ export function createProductionServer({
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
       } else {
-        result = await campaignApi.handle({
+        result = await getCampaignApi().handle({
           req,
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
