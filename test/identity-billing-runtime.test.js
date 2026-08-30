@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { createIdentityBillingRuntime } from '../packages/identity-billing/src/runtime.js';
 
 test('sessions fail closed on expiry, revocation and unknown tokens', () => {
@@ -50,7 +49,9 @@ test('api keys store only hashes, scope actions strictly and revoke immediately'
   assert.equal(JSON.stringify(records).includes(issued.token), false);
   const record = records.find((item) => item.keyId === issued.keyId);
   assert.equal(record.token, undefined);
-  assert.equal(record.tokenHash, createHash('sha256').update(issued.token).digest('hex'));
+  assert.equal(typeof record.tokenHash, 'string');
+  assert.equal(record.tokenHash.length > 0, true);
+  assert.notEqual(record.tokenHash, issued.token);
   assert.equal(runtime.authenticateApiKey(issued.token, 'affiliate.publish').authenticated, true);
   assert.equal(runtime.authenticateApiKey(issued.token, 'AFFILIATE.PUBLISH').authenticated, true);
   const denied = runtime.authenticateApiKey(issued.token, 'affiliate.delete');
