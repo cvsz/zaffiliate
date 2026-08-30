@@ -52,6 +52,9 @@ CREATE INDEX IF NOT EXISTS oauth_pending_authorizations_claim_idx
   WHERE consumed_at IS NULL;
 CREATE INDEX IF NOT EXISTS oauth_pending_authorizations_user_idx
   ON oauth_pending_authorizations (tenant_id, user_id, provider, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS oauth_pending_authorizations_active_user_provider_uq
+  ON oauth_pending_authorizations (tenant_id, user_id, provider)
+  WHERE consumed_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS oauth_provider_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
