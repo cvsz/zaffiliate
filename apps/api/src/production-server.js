@@ -6,8 +6,10 @@ import { createLocalAuthApi } from './auth-api.js';
 import { createLocalAuthService, createNoopRecoverySender } from './auth-service.js';
 import { createProductionOAuthApi } from './production-oauth-api.js';
 import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
+import { createProductionAuthorization, isProtectedBusinessPath } from './production-authorization.js';
 import { createDbClient, createAuthRepo, createOAuthRepo } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
+import { setRequestPrincipal } from '../../../packages/security/src/request-principal.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
 
 function sendJson(res, result) {
@@ -40,6 +42,7 @@ export function createProductionServer({
     sender: createNoopRecoverySender({ logger })
   });
   const authApi = createLocalAuthApi({ service: authService, rateLimiter });
+  const authorization = createProductionAuthorization({ localAuthService: authService });
   const providerRegistry = oauthRegistry ?? createOAuthRegistryForEnv({ env });
   const oauthApi = createProductionOAuthApi({
     registry: providerRegistry,
@@ -53,11 +56,26 @@ export function createProductionServer({
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     const isAuth = pathname.startsWith('/api/v1/auth/');
     const isOAuth = pathname.startsWith('/api/v1/oauth/');
-    if (!isAuth && !isOAuth) {
-      inner.emit('request', req, res);
-      return;
-    }
+    const isBusiness = isProtectedBusinessPath(pathname);
+
     try {
+      if (isBusiness) {
+        const decision = await authorization.authorize({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
+        if (!decision.allowed) return sendJson(res, decision.result);
+        setRequestPrincipal(req, decision.principal);
+        inner.emit('request', req, res);
+        return;
+      }
+
+      if (!isAuth && !isOAuth) {
+        inner.emit('request', req, res);
+        return;
+      }
+
       const result = isAuth
         ? await authApi.handle({
           req,
@@ -72,10 +90,11 @@ export function createProductionServer({
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      logger.error(isOAuth ? 'oauth_request_failed' : 'auth_request_failed', { message: String(error?.message ?? error) });
+      const scope = isOAuth ? 'oauth' : isBusiness ? 'authorization' : 'auth';
+      logger.error(`${scope}_request_failed`, { message: String(error?.message ?? error) });
       return sendJson(res, {
         status: 500,
-        body: { error: { code: isOAuth ? 'OAUTH_INTERNAL' : 'AUTH_INTERNAL', message: 'unexpected authentication failure' } }
+        body: { error: { code: scope === 'oauth' ? 'OAUTH_INTERNAL' : scope === 'authorization' ? 'AUTHZ_INTERNAL' : 'AUTH_INTERNAL', message: 'unexpected authentication failure' } }
       });
     }
   });
@@ -96,5 +115,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const logger = createLogger();
   const server = createProductionServer({ env: process.env, logger });
   const port = Number(process.env.PORT || 8080);
-  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth' }));
+  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth+rbac' }));
 }
