@@ -7,12 +7,14 @@ import { createLocalAuthService, createNoopRecoverySender } from './auth-service
 import { createProductionOAuthApi } from './production-oauth-api.js';
 import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
 import { createCampaignApi } from './campaign-api.js';
+import { createConversionApi } from './conversion-api.js';
 import {
   createDbClient,
   createAuthRepo,
   createOAuthRepo,
   createOAuthLoginRepo,
-  createCampaignRepo
+  createCampaignRepo,
+  createConversionReconciliationRepo
 } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
@@ -38,6 +40,7 @@ export function createProductionServer({
   oauthRepository = null,
   oauthLoginRepository = null,
   campaignRepository = null,
+  conversionRepository = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
   db = null
 } = {}) {
@@ -59,9 +62,9 @@ export function createProductionServer({
     rateLimiter
   });
 
-  // Campaign dependencies are intentionally lazy. Authentication and OAuth
-  // routes must not become unavailable merely because an unrelated campaign
-  // adapter/repository is absent in an injected test or maintenance runtime.
+  // Feature-specific database boundaries are intentionally lazy. Authentication
+  // and OAuth must remain available if an unrelated operator surface is absent
+  // in an injected test or maintenance runtime.
   let campaignApi = null;
   const getCampaignApi = () => {
     if (!campaignApi) {
@@ -75,12 +78,25 @@ export function createProductionServer({
     return campaignApi;
   };
 
+  let conversionApi = null;
+  const getConversionApi = () => {
+    if (!conversionApi) {
+      conversionApi = createConversionApi({
+        repo: conversionRepository ?? createConversionReconciliationRepo({ db: database }),
+        localAuthService: authService,
+        rateLimiter
+      });
+    }
+    return conversionApi;
+  };
+
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     const isAuth = pathname.startsWith('/api/v1/auth/');
     const isOAuth = pathname.startsWith('/api/v1/oauth/');
     const isCampaign = pathname === '/api/v1/campaigns' || pathname.startsWith('/api/v1/campaigns/');
-    if (!isAuth && !isOAuth && !isCampaign) {
+    const isConversion = pathname === '/api/v1/conversions' || pathname.startsWith('/api/v1/conversions/');
+    if (!isAuth && !isOAuth && !isCampaign && !isConversion) {
       inner.emit('request', req, res);
       return;
     }
@@ -98,8 +114,14 @@ export function createProductionServer({
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
-      } else {
+      } else if (isCampaign) {
         result = await getCampaignApi().handle({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
+      } else {
+        result = await getConversionApi().handle({
           req,
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
@@ -108,7 +130,7 @@ export function createProductionServer({
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : 'auth';
+      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : 'auth';
       logger.error(`${surface}_request_failed`, { message: String(error?.message ?? error) });
       return sendJson(res, {
         status: 500,
@@ -133,5 +155,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const logger = createLogger();
   const server = createProductionServer({ env: process.env, logger });
   const port = Number(process.env.PORT || 8080);
-  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true }));
+  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true }));
 }
