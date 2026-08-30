@@ -30,8 +30,8 @@ CREATE INDEX IF NOT EXISTS oauth_login_authorizations_claim_idx
   WHERE consumed_at IS NULL;
 
 -- Global identity lookup is required before tenant context exists. The key is a
--- SHA-256 digest of issuer + NUL + subject, not the raw provider subject. The
--- canonical tenant-scoped identity remains auth_user_identities under FORCE RLS.
+-- SHA-256 digest of issuer + NUL byte + subject, not the raw provider subject.
+-- The canonical tenant-scoped identity remains auth_user_identities under FORCE RLS.
 CREATE TABLE IF NOT EXISTS oauth_identity_directory (
   identity_hash text PRIMARY KEY,
   tenant_id uuid NOT NULL,
@@ -48,10 +48,17 @@ CREATE TABLE IF NOT EXISTS oauth_identity_directory (
 CREATE INDEX IF NOT EXISTS oauth_identity_directory_user_idx
   ON oauth_identity_directory (tenant_id, user_id);
 
--- Backfill identities linked before standalone OIDC login existed.
+-- PostgreSQL text cannot contain a NUL character. Build the digest input as
+-- bytea so it matches Node's UTF-8 issuer + 0x00 + UTF-8 subject hash exactly.
 INSERT INTO oauth_identity_directory (identity_hash, tenant_id, user_id)
 SELECT
-  encode(digest(issuer || chr(0) || issuer_subject, 'sha256'), 'hex'),
+  encode(
+    digest(
+      convert_to(issuer, 'UTF8') || decode('00', 'hex') || convert_to(issuer_subject, 'UTF8'),
+      'sha256'
+    ),
+    'hex'
+  ),
   tenant_id,
   user_id
 FROM auth_user_identities
@@ -70,7 +77,13 @@ DECLARE
   digest_value text;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    digest_value := encode(digest(OLD.issuer || chr(0) || OLD.issuer_subject, 'sha256'), 'hex');
+    digest_value := encode(
+      digest(
+        convert_to(OLD.issuer, 'UTF8') || decode('00', 'hex') || convert_to(OLD.issuer_subject, 'UTF8'),
+        'sha256'
+      ),
+      'hex'
+    );
     DELETE FROM public.oauth_identity_directory
     WHERE identity_hash = digest_value
       AND tenant_id = OLD.tenant_id
@@ -78,7 +91,13 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  digest_value := encode(digest(NEW.issuer || chr(0) || NEW.issuer_subject, 'sha256'), 'hex');
+  digest_value := encode(
+    digest(
+      convert_to(NEW.issuer, 'UTF8') || decode('00', 'hex') || convert_to(NEW.issuer_subject, 'UTF8'),
+      'sha256'
+    ),
+    'hex'
+  );
   INSERT INTO public.oauth_identity_directory (identity_hash, tenant_id, user_id)
   VALUES (digest_value, NEW.tenant_id, NEW.user_id)
   ON CONFLICT (identity_hash) DO NOTHING;
