@@ -25,7 +25,7 @@ export function validateMediaUpload({ filename, declaredMime, sizeBytes, body = 
 
   const base = String(filename ?? '').split(/[\\/]/).pop() ?? '';
   if (!base || base.startsWith('.')) issues.push('filename must have a visible non-hidden basename');
-  if (/\0/.test(String(filename))) issues.push('filename contains null bytes');
+  if (String(filename ?? '').includes(String.fromCharCode(0))) issues.push('filename contains null bytes');
 
   if (body != null) {
     if (!Buffer.isBuffer(body)) issues.push('body must be a Buffer when provided');
@@ -64,7 +64,7 @@ export function assertValidObjectKey(key) {
   const invalid =
     !normalized ||
     normalized.length > MAX_OBJECT_KEY_LENGTH ||
-    normalized.includes('\0') ||
+    normalized.includes(String.fromCharCode(0)) ||
     normalized.includes('\\') ||
     normalized.startsWith('/') ||
     /^[A-Za-z]:/.test(normalized) ||
@@ -124,9 +124,11 @@ export function verifyObjectUrlSignature(url, { secret, now = Date.now() } = {})
     if (!parsed.pathname.startsWith('/storage/')) return { valid: false, reason: 'invalid storage path' };
     const key = assertValidObjectKey(decodeURIComponent(parsed.pathname.slice('/storage/'.length)));
     const expiresAt = Number(parsed.searchParams.get('expires'));
+    const currentTime = Number(now);
     const signature = parsed.searchParams.get('signature') ?? '';
     if (!Number.isFinite(expiresAt)) return { valid: false, reason: 'missing expiry' };
-    if (expiresAt < Number(now)) return { valid: false, reason: 'expired' };
+    if (!Number.isFinite(currentTime) || currentTime <= 0) return { valid: false, reason: 'invalid current time' };
+    if (expiresAt < currentTime) return { valid: false, reason: 'expired' };
     if (!/^[a-f0-9]{32}$/.test(signature)) return { valid: false, reason: 'signature mismatch' };
     const expected = createHmac('sha256', requireSecret(secret)).update(`${key}:${expiresAt}`).digest('hex').slice(0, 32);
     const expectedBytes = Buffer.from(expected, 'hex');
