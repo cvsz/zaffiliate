@@ -75,6 +75,18 @@ test('durable consumer creates a group and ACKs successful delivery', async () =
   assert.equal(result[0].status, 'acked');
   assert.ok(client.commands.some((command) => command.cmd === 'XGROUP'));
   assert.ok(client.commands.some((command) => command.cmd === 'XACK'));
+  const read = client.commands.find((command) => command.cmd === 'XREADGROUP');
+  assert.equal(read.args.includes('BLOCK'), false, 'default consumeOnce must not issue Redis BLOCK 0');
+});
+
+test('durable consumer only sends BLOCK when a positive timeout is requested', async () => {
+  const client = fakeRedis();
+  client.queueRead(null);
+  const consumer = createDurableStreamConsumer({ client, stream: 'affiliate-events', group: 'g', consumer: 'c' });
+  await consumer.consumeOnce(async () => {}, { blockMs: 250 });
+  const read = client.commands.find((command) => command.cmd === 'XREADGROUP');
+  const blockIndex = read.args.indexOf('BLOCK');
+  assert.equal(read.args[blockIndex + 1], 250);
 });
 
 test('durable consumer leaves retriable failures pending then sends exhausted messages to DLQ', async () => {
