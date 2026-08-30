@@ -53,6 +53,22 @@ function publicUser(user) {
   });
 }
 
+function publicAuditEvent(event) {
+  return Object.freeze({
+    id: event.id,
+    tenantId: event.tenantId,
+    actorId: event.actorId,
+    requestId: event.requestId ?? null,
+    action: event.action,
+    resourceType: event.resourceType,
+    resourceId: event.resourceId,
+    outcome: event.outcome,
+    reason: event.reason,
+    occurredAt: event.occurredAt,
+    payload: event.payload && typeof event.payload === 'object' ? event.payload : {}
+  });
+}
+
 export function createNoopRecoverySender({ logger = null } = {}) {
   const info = typeof logger?.info === 'function' ? logger.info.bind(logger) : () => {};
   return Object.freeze({
@@ -140,6 +156,18 @@ export function createLocalAuthService({ repo, clock = Date.now, sender = create
     return Object.freeze({ revoked: Boolean(revoked) });
   }
 
+  async function listTenantUsers({ tenantId, limit = 50 } = {}) {
+    if (typeof repo.listUsers !== 'function') throw new Error('user listing is unavailable');
+    const users = await repo.listUsers(tenantId, { limit });
+    return Object.freeze(users.map(publicUser));
+  }
+
+  async function listAuditEvents({ tenantId, limit = 50 } = {}) {
+    if (typeof repo.listAuditEvents !== 'function') throw new Error('audit listing is unavailable');
+    const events = await repo.listAuditEvents(tenantId, { limit });
+    return Object.freeze(events.map(publicAuditEvent));
+  }
+
   async function requestPasswordReset({ tenantId, email } = {}) {
     let normalizedEmail;
     try { normalizedEmail = normalizeEmail(email); }
@@ -217,6 +245,8 @@ export function createLocalAuthService({ repo, clock = Date.now, sender = create
     login,
     getSession,
     logout,
+    listTenantUsers,
+    listAuditEvents,
     requestPasswordReset,
     resetPassword,
     requestEmailVerification,
