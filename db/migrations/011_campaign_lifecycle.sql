@@ -43,7 +43,7 @@ BEGIN
       ADD CONSTRAINT affiliate_links_campaign_tenant_fk
       FOREIGN KEY (tenant_id, campaign_id)
       REFERENCES campaigns(tenant_id, id)
-      ON DELETE SET NULL;
+      ON DELETE SET NULL (campaign_id);
   END IF;
 END $$;
 
