@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { createIdentityBillingRuntime } from '../packages/identity-billing/src/runtime.js';
 
 test('sessions fail closed on expiry, revocation and unknown tokens', () => {
@@ -45,20 +44,25 @@ test('external identities are unique per issuer and subject and passwords are ne
 test('api keys store only hashes, scope actions strictly and revoke immediately', () => {
   const runtime = createIdentityBillingRuntime();
   const issued = runtime.issueApiKey({ tenantId: 't1', actorId: 'svc-core', scopes: ['Affiliate:Read'], actions: ['affiliate.publish'] });
-  assert.match(issued.token, /^za_[A-Za-z0-9_-]{32}$/);
+  assert.match(issued.token, /^za_[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{32}$/);
   const records = runtime._hooks.rawApiKeyRecords();
   assert.equal(JSON.stringify(records).includes(issued.token), false);
   const record = records.find((item) => item.keyId === issued.keyId);
   assert.equal(record.token, undefined);
-  assert.equal(record.tokenHash, createHash('sha256').update(issued.token).digest('hex'));
+  assert.match(record.tokenHash, /^pbkdf2_sha256\$600000\$[A-Za-z0-9_-]{22}\$[A-Za-z0-9_-]{43}$/);
+  assert.equal(record.tokenHash.includes(issued.token), false);
   assert.equal(runtime.authenticateApiKey(issued.token, 'affiliate.publish').authenticated, true);
   assert.equal(runtime.authenticateApiKey(issued.token, 'AFFILIATE.PUBLISH').authenticated, true);
   const denied = runtime.authenticateApiKey(issued.token, 'affiliate.delete');
   assert.equal(denied.authenticated, false);
   assert.equal(denied.reason, 'action_denied');
-  const unknown = runtime.authenticateApiKey(`za_${'a'.repeat(32)}`, 'affiliate.publish');
+  const unknown = runtime.authenticateApiKey(`za_${'a'.repeat(16)}.${'b'.repeat(32)}`, 'affiliate.publish');
   assert.equal(unknown.authenticated, false);
   assert.equal(unknown.reason, 'unknown_key');
+  const [selector] = issued.token.slice(3).split('.');
+  const forged = runtime.authenticateApiKey(`za_${selector}.${'z'.repeat(32)}`, 'affiliate.publish');
+  assert.equal(forged.authenticated, false);
+  assert.equal(forged.reason, 'unknown_key');
   runtime.revokeApiKey(issued.keyId);
   const revoked = runtime.authenticateApiKey(issued.token, 'affiliate.publish');
   assert.equal(revoked.authenticated, false);

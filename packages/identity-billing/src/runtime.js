@@ -1,4 +1,8 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+
+const API_KEY_KDF_ITERATIONS = 600_000;
+const API_KEY_KDF_BYTES = 32;
+const API_KEY_KDF_DIGEST = 'sha256';
 
 function required(value, name) {
   const normalized = String(value ?? '').trim();
@@ -38,8 +42,28 @@ function normalizedList(values, name) {
   return normalized;
 }
 
-function sha256Hex(value) {
-  return createHash('sha256').update(String(value)).digest('hex');
+function deriveSecret(value, salt = randomBytes(16), iterations = API_KEY_KDF_ITERATIONS) {
+  const secret = required(value, 'secret');
+  const derived = pbkdf2Sync(secret, salt, iterations, API_KEY_KDF_BYTES, API_KEY_KDF_DIGEST);
+  return `pbkdf2_${API_KEY_KDF_DIGEST}$${iterations}$${salt.toString('base64url')}$${derived.toString('base64url')}`;
+}
+
+function verifyDerivedSecret(value, encoded) {
+  const parts = String(encoded ?? '').split('$');
+  if (parts.length !== 4 || parts[0] !== `pbkdf2_${API_KEY_KDF_DIGEST}`) return false;
+  const iterations = Number(parts[1]);
+  if (!Number.isSafeInteger(iterations) || iterations < API_KEY_KDF_ITERATIONS) return false;
+  let salt;
+  let expected;
+  try {
+    salt = Buffer.from(parts[2], 'base64url');
+    expected = Buffer.from(parts[3], 'base64url');
+  } catch {
+    return false;
+  }
+  if (salt.length < 16 || expected.length !== API_KEY_KDF_BYTES) return false;
+  const actual = pbkdf2Sync(String(value ?? ''), salt, iterations, expected.length, API_KEY_KDF_DIGEST);
+  return timingSafeEqual(actual, expected);
 }
 
 function opaqueToken(prefix) {
@@ -54,7 +78,7 @@ export function createIdentityBillingRuntime({ clock = () => Date.now() } = {}) 
   const userIndex = new Map();
   const sessionIndex = new Map();
   const apiKeyIndex = new Map();
-  const apiKeyHashIndex = new Map();
+  const apiKeySelectorIndex = new Map();
   const invoiceIndex = new Map();
   const escalationLog = [];
 
@@ -229,22 +253,25 @@ export function createIdentityBillingRuntime({ clock = () => Date.now() } = {}) 
     const state = tenantState(id);
     const normalizedScopes = normalizedList(scopes, 'scopes');
     const normalizedActions = normalizedList(actions, 'actions');
-    const token = opaqueToken('za_');
+    const selector = randomBytes(12).toString('base64url');
+    const secret = randomBytes(24).toString('base64url');
+    const token = `za_${selector}.${secret}`;
     const record = {
       keyId: `ak_${randomUUID()}`,
       tenantId: id,
       actorId: owner,
       scopes: normalizedScopes,
       actions: normalizedActions,
-      tokenHash: sha256Hex(token),
+      selector,
+      tokenHash: deriveSecret(secret),
       createdAt: toIso(nowMs()),
       revokedAt: null,
       disabledAt: null
     };
     state.apiKeysById.set(record.keyId, record);
-    state.apiKeysByHash.set(record.tokenHash, record);
+    state.apiKeysByHash.set(selector, record);
     apiKeyIndex.set(record.keyId, record);
-    apiKeyHashIndex.set(record.tokenHash, record);
+    apiKeySelectorIndex.set(selector, record);
     escalate(id, owner, 'api_key.issue', record.keyId);
     return Object.freeze({
       keyId: record.keyId,
@@ -258,9 +285,11 @@ export function createIdentityBillingRuntime({ clock = () => Date.now() } = {}) 
   }
 
   function authenticateApiKey(token, requiredAction) {
-    const record = apiKeyHashIndex.get(sha256Hex(String(token ?? '')));
     const deny = (reason) => Object.freeze({ authenticated: false, reason, keyId: null, tenantId: null });
-    if (!record) return deny('unknown_key');
+    const match = String(token ?? '').match(/^za_([A-Za-z0-9_-]{16})\.([A-Za-z0-9_-]{32})$/);
+    if (!match) return deny('unknown_key');
+    const record = apiKeySelectorIndex.get(match[1]);
+    if (!record || !verifyDerivedSecret(match[2], record.tokenHash)) return deny('unknown_key');
     if (record.revokedAt) return deny('revoked');
     if (record.disabledAt) return deny('disabled');
     const action = String(requiredAction ?? '').trim().toLowerCase();
@@ -526,7 +555,7 @@ export function createIdentityBillingRuntime({ clock = () => Date.now() } = {}) 
       grantId: `boot_${randomUUID()}`,
       tenantId: id,
       role: 'admin',
-      tokenHash: sha256Hex(token),
+      tokenHash: deriveSecret(token),
       issuedAt: toIso(now),
       expiresAt: toIso(now + ttlMs)
     };
