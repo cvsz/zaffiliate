@@ -237,12 +237,11 @@ export function createDurableStreamConsumer({
   async function consumeOnce(handler, { blockMs = 0 } = {}) {
     if (typeof handler !== 'function') throw new TypeError('handler must be a function');
     await ensureGroup();
-    const reply = await client.xreadgroup(
-      'GROUP', groupName, consumerName,
-      'COUNT', count,
-      'BLOCK', Math.max(0, Number(blockMs) || 0),
-      'STREAMS', streamName, '>'
-    );
+    const readArgs = ['GROUP', groupName, consumerName, 'COUNT', count];
+    const requestedBlockMs = Math.max(0, Number(blockMs) || 0);
+    if (requestedBlockMs > 0) readArgs.push('BLOCK', requestedBlockMs);
+    readArgs.push('STREAMS', streamName, '>');
+    const reply = await client.xreadgroup(...readArgs);
     const results = [];
     for (const entry of normalizeReadGroupReply(reply)) results.push(await deliver(entry, handler));
     return Object.freeze(results);
