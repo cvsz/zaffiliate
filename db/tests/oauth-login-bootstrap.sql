@@ -22,7 +22,13 @@ SELECT set_config('app.tenant_id', '', false);
 
 DO $$
 DECLARE
-  expected_hash text := encode(digest('https://idp.example' || chr(0) || 'remote-login-c', 'sha256'), 'hex');
+  expected_hash text := encode(
+    digest(
+      convert_to('https://idp.example', 'UTF8') || decode('00', 'hex') || convert_to('remote-login-c', 'UTF8'),
+      'sha256'
+    ),
+    'hex'
+  );
 BEGIN
   IF (SELECT count(*) FROM oauth_identity_directory WHERE identity_hash=expected_hash) <> 1 THEN
     RAISE EXCEPTION 'canonical identity insert must populate oauth identity directory';
@@ -85,7 +91,13 @@ SELECT set_config('app.tenant_id', '', false);
 
 DO $$
 DECLARE
-  expected_hash text := encode(digest('https://idp.example' || chr(0) || 'remote-login-c', 'sha256'), 'hex');
+  expected_hash text := encode(
+    digest(
+      convert_to('https://idp.example', 'UTF8') || decode('00', 'hex') || convert_to('remote-login-c', 'UTF8'),
+      'sha256'
+    ),
+    'hex'
+  );
 BEGIN
   IF EXISTS (SELECT 1 FROM oauth_identity_directory WHERE identity_hash=expected_hash) THEN
     RAISE EXCEPTION 'identity unlink must remove oauth identity directory entry';
