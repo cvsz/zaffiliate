@@ -45,7 +45,7 @@ function jsonResponse(status, document) {
   };
 }
 
-test('OIDC mode sends nonce and binds external identity to a verified RS256 id_token subject', async () => {
+test('OIDC mode sends nonce and binds external identity to verified RS256 claims', async () => {
   let expectedNonce = null;
   const fetchImpl = async (url) => {
     if (url === 'https://issuer.example/token') {
@@ -55,6 +55,8 @@ test('OIDC mode sends nonce and binds external identity to a verified RS256 id_t
           iss: 'https://issuer.example/',
           aud: 'client-id',
           sub: 'verified-subject-42',
+          email: 'Verified.User@Example.Test',
+          email_verified: true,
           nonce: expectedNonce,
           iat: NOW_SECONDS - 5,
           exp: NOW_SECONDS + 600
@@ -72,6 +74,7 @@ test('OIDC mode sends nonce and binds external identity to a verified RS256 id_t
   const registry = createOAuthRegistryForEnv({ env: env(), fetchImpl, clock: () => NOW });
   const entry = registry.get('oidc');
   assert.equal(typeof entry.verifyIdentity, 'function');
+  assert.equal(typeof entry.verifyIdentityClaims, 'function');
 
   const authorization = entry.flow.createAuthorization();
   expectedNonce = authorization.nonce;
@@ -81,6 +84,11 @@ test('OIDC mode sends nonce and binds external identity to a verified RS256 id_t
   const tokens = await entry.flow.exchangeCode({ authorization, code: 'grant-1' });
   assert.ok(tokens.idToken);
   assert.equal(await entry.verifyIdentity({ tokens, nonce: expectedNonce }), 'verified-subject-42');
+  assert.deepEqual(await entry.verifyIdentityClaims({ tokens, nonce: expectedNonce }), {
+    subject: 'verified-subject-42',
+    email: 'verified.user@example.test',
+    emailVerified: true
+  });
 
   await assert.rejects(
     () => entry.verifyIdentity({ tokens, nonce: 'wrong-nonce-value-12345' }),
@@ -118,6 +126,31 @@ test('OIDC mode fails closed when id_token is missing, expired, or lacks exp', a
   };
   tokens = await entry.flow.exchangeCode({ authorization, code: 'g3' });
   await assert.rejects(() => entry.verifyIdentity({ tokens, nonce: authorization.nonce }), (error) => error.code === 'OIDC_ID_TOKEN_INVALID');
+});
+
+test('OIDC verified claims discard malformed email and never elevate email verification without a usable signed email', async () => {
+  let nonce;
+  const fetchImpl = async (url) => {
+    if (url.endsWith('/token')) {
+      return jsonResponse(200, {
+        access_token: 'access-token',
+        id_token: idToken({
+          iss: 'https://issuer.example/', aud: 'client-id', sub: 'subject-no-email',
+          email: 'not-an-email', email_verified: true, nonce, exp: NOW_SECONDS + 600
+        })
+      });
+    }
+    return jsonResponse(200, { keys: [jwk] });
+  };
+  const registry = createOAuthRegistryForEnv({ env: env(), fetchImpl, clock: () => NOW });
+  const entry = registry.get('oidc');
+  const authorization = entry.flow.createAuthorization();
+  nonce = authorization.nonce;
+  const tokens = await entry.flow.exchangeCode({ authorization, code: 'g4' });
+  const claims = await entry.verifyIdentityClaims({ tokens, nonce });
+  assert.equal(claims.subject, 'subject-no-email');
+  assert.equal(claims.email, null);
+  assert.equal(claims.emailVerified, true, 'claim fidelity is preserved; login boundary separately requires a usable email before marking the local user verified');
 });
 
 test('OIDC configuration requires openid scope and a public HTTPS JWKS endpoint', () => {
