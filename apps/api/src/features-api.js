@@ -72,8 +72,9 @@ export function createFeatureApi(deps) {
     }));
   }
 
-  async function handle(pathname, method, tenantId, { body = null } = {}) {
+  async function handle(pathname, method, tenantId, { body = null, actorId = null } = {}) {
     if (!pathname.startsWith('/api/v1/')) return null;
+    const trustedActorId = actorId == null ? 'operator' : String(actorId);
 
     if (method === 'GET' && pathname === '/api/v1/commerce/offers') {
       return { status: 200, body: { offers: listOffers(tenantId) } };
@@ -122,7 +123,7 @@ export function createFeatureApi(deps) {
       try {
         const updated = recommendationStore.feedback(tenantId, feedbackMatch[1], {
           decision: String(body.decision ?? '').toUpperCase(),
-          actorId: String(body.actorId ?? 'operator'),
+          actorId: trustedActorId,
           reason: String(body.reason ?? '')
         });
         return { status: 200, body: { recommendationId: updated.recommendationId, status: updated.status, feedback: updated.feedback } };
@@ -145,7 +146,7 @@ export function createFeatureApi(deps) {
         const record = setKillSwitch({
           scope: String(body?.scope ?? ''), id: body?.id ?? null,
           active: body?.active !== false,
-          reason: String(body?.reason ?? ''), actorId: undefined
+          reason: String(body?.reason ?? ''), actorId: trustedActorId
         });
         getSwitches(tenantId).push(record);
         return { status: 200, body: { ok: true, switch: record } };
@@ -159,7 +160,7 @@ export function createFeatureApi(deps) {
         if (!body || typeof body !== 'object') throw new Error('policy body is required');
         const mode = String(body.mode ?? 'manual').toLowerCase();
         if (!AUTOMATION_MODES.includes(mode)) throw new Error(`unsupported automation mode: ${mode}`);
-        const next = createAutomationPolicy({ organizationId: tenantId, ...body, mode });
+        const next = createAutomationPolicy({ ...body, organizationId: tenantId, mode });
         policies.set(tenantId, next);
         return { status: 200, body: { mode: next.mode, policyVersion: next.version, allowAutoPublish: next.allowAutoPublish } };
       } catch (error) {
@@ -173,7 +174,7 @@ export function createFeatureApi(deps) {
         action: body?.action ?? {},
         counters: { postsToday: () => 0, aiCostTodayMinorUnits: () => 0, campaignAiCostMinorUnits: () => 0 },
         killSwitches: getSwitches(tenantId),
-        context: { tenantId, actorId: String(body?.actorId ?? 'operator') }
+        context: { tenantId, actorId: trustedActorId }
       });
       return { status: 200, body: outcome };
     }
@@ -184,7 +185,7 @@ export function createFeatureApi(deps) {
 
     if (pathname === '/api/v1/content/briefs' && method === 'POST') {
       try {
-        const brief = createCreativeBrief({ tenantId, ...body });
+        const brief = createCreativeBrief({ ...(body ?? {}), tenantId });
         const scope = briefsByTenant.get(tenantId) ?? new Map();
         scope.set(brief.briefId, brief);
         briefsByTenant.set(tenantId, scope);
@@ -207,6 +208,7 @@ export function createFeatureApi(deps) {
 
     void getPersona;
     void getPrompt;
+    void evaluateAction;
     return null;
   }
 
