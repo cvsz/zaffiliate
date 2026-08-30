@@ -29,9 +29,10 @@ GRANT SELECT, INSERT ON
   ledger_entries,
   ai_requests,
   ai_usage,
-  analytics_events,
-  conversions
+  analytics_events
 TO zaffiliate_app_test;
+
+GRANT SELECT, INSERT, UPDATE ON conversions TO zaffiliate_app_test;
 
 DO $$
 BEGIN

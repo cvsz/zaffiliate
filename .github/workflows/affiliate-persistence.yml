@@ -4,17 +4,30 @@ on:
   pull_request:
     paths:
       - 'db/migrations/007_affiliate_runtime_persistence.sql'
+      - 'db/migrations/012_conversion_reconciliation.sql'
       - 'db/tests/affiliate-persistence.sql'
+      - 'db/tests/conversion-reconciliation.sql'
       - 'db/tests/bootstrap-role.sql'
       - 'packages/db/src/affiliate-core-repo.js'
+      - 'packages/db/src/conversion-reconciliation-repo.js'
+      - 'packages/db/src/index.js'
+      - 'apps/api/src/conversion-api.js'
+      - 'apps/api/src/production-server.js'
       - 'packages/events/src/outbox-dispatcher.js'
       - 'test/outbox-dispatcher.test.js'
+      - 'test/conversion-api.test.js'
+      - 'test/conversion-production-wiring.test.js'
+      - 'test/conversion-reconciliation-postgres.test.js'
       - '.github/workflows/affiliate-persistence.yml'
   push:
     branches: [main]
     paths:
       - 'db/migrations/007_affiliate_runtime_persistence.sql'
+      - 'db/migrations/012_conversion_reconciliation.sql'
       - 'packages/db/src/affiliate-core-repo.js'
+      - 'packages/db/src/conversion-reconciliation-repo.js'
+      - 'apps/api/src/conversion-api.js'
+      - 'apps/api/src/production-server.js'
       - 'packages/events/src/outbox-dispatcher.js'
 
 permissions:
@@ -44,6 +57,7 @@ jobs:
       PGPORT: '5432'
       PGDATABASE: zaffiliate_test
       PGUSER: postgres
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/zaffiliate_test
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -52,15 +66,20 @@ jobs:
           cache: npm
       - name: Deterministic install
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Apply prerequisite and affiliate migrations
+      - name: Apply prerequisite, affiliate and conversion migrations
         run: |
           psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/007_affiliate_runtime_persistence.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/012_conversion_reconciliation.sql
       - name: Create application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify affiliate persistence RLS
         run: psql -v ON_ERROR_STOP=1 -f db/tests/affiliate-persistence.sql
+      - name: Verify conversion reconciliation RLS
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/conversion-reconciliation.sql
+      - name: Verify conversion reconciliation repository and API contracts
+        run: node --test test/conversion-api.test.js test/conversion-production-wiring.test.js test/conversion-reconciliation-postgres.test.js
       - name: Verify outbox dispatcher
         run: node --test test/outbox-dispatcher.test.js
