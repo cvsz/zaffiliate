@@ -93,6 +93,7 @@ services:
       - no-new-privileges:true
     networks:
       - backend
+      - edge
 
   web:
     build:
@@ -114,12 +115,12 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - frontend
+      - edge
 
 networks:
   backend:
     internal: true
-  frontend:
+  edge:
 
 volumes:
   postgres-data:
