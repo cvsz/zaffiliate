@@ -57,7 +57,6 @@ export function createOAuthRepo({ db } = {}) {
     issuer,
     stateHash,
     codeVerifierCiphertext,
-    subjectHint = null,
     expiresAt
   } = {}) {
     return withTenant(tenantId, async (tx, scopedTenantId) => {
@@ -71,8 +70,8 @@ export function createOAuthRepo({ db } = {}) {
       );
       const created = first(await tx.query(
         `INSERT INTO oauth_pending_authorizations
-          (tenant_id, user_id, provider, issuer, state_hash, code_verifier_ciphertext, subject_hint, expires_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          (tenant_id, user_id, provider, issuer, state_hash, code_verifier_ciphertext, expires_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
          RETURNING id, tenant_id AS "tenantId", user_id AS "userId", provider, issuer,
                    state_hash AS "stateHash", expires_at AS "expiresAt", created_at AS "createdAt"`,
         [
@@ -82,7 +81,6 @@ export function createOAuthRepo({ db } = {}) {
           required(issuer, 'issuer'),
           requireStateHash(stateHash),
           required(codeVerifierCiphertext, 'codeVerifierCiphertext'),
-          subjectHint == null ? null : required(subjectHint, 'subjectHint'),
           expiresAt
         ]
       ));
@@ -106,7 +104,7 @@ export function createOAuthRepo({ db } = {}) {
          AND consumed_at IS NULL AND expires_at > now()
        RETURNING id, tenant_id AS "tenantId", user_id AS "userId", provider, issuer,
                  state_hash AS "stateHash", code_verifier_ciphertext AS "codeVerifierCiphertext",
-                 subject_hint AS "subjectHint", expires_at AS "expiresAt", consumed_at AS "consumedAt"`,
+                 expires_at AS "expiresAt", consumed_at AS "consumedAt"`,
       [scopedTenantId, requireProvider(provider), requireStateHash(stateHash)]
     )));
   }
