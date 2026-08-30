@@ -68,6 +68,9 @@ BEGIN
   IF to_regclass('public.oauth_identity_directory') IS NOT NULL THEN
     GRANT SELECT ON oauth_identity_directory TO zaffiliate_app_test;
   END IF;
+  IF to_regclass('public.campaigns') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON campaigns TO zaffiliate_app_test;
+  END IF;
 END $$;
 
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO zaffiliate_app_test;
