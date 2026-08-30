@@ -112,7 +112,13 @@ jobs:
           psql -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           DECLARE
-            expected_hash text := encode(digest('https://idp.example' || chr(0) || 'pre-upgrade-subject', 'sha256'), 'hex');
+            expected_hash text := encode(
+              digest(
+                convert_to('https://idp.example', 'UTF8') || decode('00', 'hex') || convert_to('pre-upgrade-subject', 'UTF8'),
+                'sha256'
+              ),
+              'hex'
+            );
           BEGIN
             IF NOT EXISTS (
               SELECT 1 FROM oauth_identity_directory
