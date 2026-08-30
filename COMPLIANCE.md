@@ -1,6 +1,6 @@
 # zaffiliate Compliance Architecture
 
-Updated: 2026-08-23
+Updated: 2026-08-30
 
 ## Principles
 
@@ -26,5 +26,11 @@ Each provider entry must eventually expose: capabilities, restrictions, required
 
 ## Verification
 
-- 257/257 tests green including tenancy, audit-chain, SSRF, webhook dedupe/replay, approval-TTL suites.
-- Security gates in CI: secret scan, SSRF guard, syntax check (`npm run check`), full test run.
+- 586 tests — 580 pass, 0 fail, 6 gated skips (2026-08-30) including tenancy, audit-chain, affiliate persistence, campaign lifecycle, conversion reconciliation, SSRF, webhook dedupe/replay, approval-TTL, rate-limit Redis, OIDC suites; RLS proved live on `affiliate-persistence` CI (postgres:16, 31 tables).
+- Security gates in CI: secret scan, SSRF guard, syntax check (`npm run check` 152 gates), full test run, `security-check.sh` PASS, `npm audit 0 vulns`.
+- Hardening: `packages/storage/src/content-validation.js` (MIME/size/immutable-key), `packages/db` RLS 31 tables FORCE, `compose.selfhost.yaml` `no-new-privileges:true`.
+
+## Deferred
+
+- Provider policy registry versioning (MM-007) — manifests cover capabilities + idempotency/webhook; restrictions/disclosures/rate fields remain backlog.
+- Image/video FFmpeg render + storage writes (B7 403).

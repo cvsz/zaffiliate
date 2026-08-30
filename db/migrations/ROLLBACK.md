@@ -1,6 +1,6 @@
 # Migration Rollback Classification
 
-Per master-spec §42. Updated: 2026-08-25 · GM-B5.
+Per master-spec §42. Updated: 2026-08-30 · SWEEP-002 (013 automation state + publishing/trend/k8s).
 
 Rules that override every row below:
 
@@ -17,6 +17,13 @@ Rules that override every row below:
 | `004_canonical_analytics_types.sql` | widened `event_type` CHECK to canonical 17-type set | **FORWARD_FIX_REQUIRED once canonical rows exist**: old CHECK rejects canonical values, so reverting the constraint after canonical writes fails or orphans rows | none needed (widening only) | None required (additive widening) | Constraint revert only valid on pre-canonical data |
 | `005_publication_jobs.sql` | publication_jobs table, dispatch index, RLS policy | **REVERSIBLE WHILE EMPTY** (`DROP TABLE publication_jobs CASCADE`). Post-publication: table holds orchestration state; dropping loses retry/DLQ state — backup then archive instead | n/a | Until first production publication job | Empty: drop. Post-data: backup + forward-fix |
 | `006_tenants_rls_force.sql` | FORCE RLS + isolation policy on `tenants` | **SAFE** — pure hardening; no data touched. Revert = `DROP POLICY tenants_isolation ON tenants; ALTER TABLE tenants NO FORCE ROW LEVEL SECURITY;` | n/a | None required | Policy-only revert anytime |
+| `007_affiliate_runtime_persistence.sql` | `runtime_id` columns + `affiliate_clicks`, `affiliate_margins`, `affiliate_domain_outbox` with leases, RLS | **FORWARD_FIX_REQUIRED post-data** (core affiliate outbox holds durable events + click attribution). Empty-env: `DROP TABLE affiliate_margins, affiliate_clicks, affiliate_domain_outbox CASCADE;` then drop columns/indexes — destroys all affiliate runtime data if used after ingestion | n/a | Pre-data only | Empty-env DDL revert; post-data restore from backup |
+| `008_local_auth_recovery.sql` | `local_auth_users`, `auth_sessions`, `auth_recovery_tokens` with RBAC + recovery rate-limit | **FORWARD_FIX_REQUIRED post-data** (sessions + credentials). Empty-env: `DROP TABLE auth_recovery_tokens, auth_sessions, local_auth_users CASCADE` — destroys tenant auth material | n/a | Pre-data only | Same policy as 007 |
+| `009_oauth_identity_persistence.sql` | `auth_user_identities`, `oauth_pending_authorizations`, `oauth_provider_tokens` encrypted | **FORWARD_FIX_REQUIRED post-data** (linked identities + encrypted tokens). Empty-env: drop three tables | n/a | Pre-data only | Same policy as 007 |
+| `010_oidc_login_bootstrap.sql` | `oauth_login_authorizations` (global, no RLS), `oauth_identity_directory` hash + sync trigger | **REVERSIBLE with caution** — `DROP TRIGGER ...; DROP FUNCTION sync_oauth_identity_directory(); DROP TABLE oauth_login_authorizations, oauth_identity_directory;` No PII in hash table, but NUL-byte digest must be preserved if reverting under live traffic | n/a | During OIDC rollout only | DDL revert; trigger must be re-created on forward FIX |
+| `011_campaign_lifecycle.sql` | `campaigns` table + `affiliate_links.campaign_id` FK + RLS | **FORWARD_FIX_REQUIRED post-data** (campaigns owns link associations). Empty-env: `ALTER TABLE affiliate_links DROP COLUMN campaign_id; DROP TABLE campaigns CASCADE;` | n/a | Pre-data only | Empty-env revert; post-data backup required |
+| `012_conversion_reconciliation.sql` | `conversions.status` + `status_updated_at`, CHECK + index | **FORWARD_FIX_REQUIRED once reconciliation rows exist** — old constraint-safe revert would orphan `refunded/rejected` states. Revert: `ALTER TABLE conversions DROP CONSTRAINT conversions_status_check; DROP INDEX conversions_tenant_status_occurred_idx; ALTER TABLE conversions DROP COLUMN status, DROP COLUMN status_updated_at;` only valid before refined statuses are used | none | None required (additive columns + constraint) | DDL revert valid on pre-reconciliation data |
+| `013_automation_state.sql` | `automation_policies` (tenant PK, mode CHECK, allow_auto_publish) + `automation_kill_switches` (scope CHECK, active, actor) + RLS | **FORWARD_FIX_REQUIRED post-data** (policy + kill switches are operator state). Empty-env: `DROP TABLE automation_kill_switches, automation_policies CASCADE`. Post-data: forward-fix (update mode/payload) preferred; dropping loses active kill-switch blocks | n/a | Pre-data only | Empty-env DDL revert; post-data backup + forward-fix |
 
 ## Rehearsal evidence backing this file
 

@@ -38,8 +38,14 @@ async function seed(db) {
   );
 }
 
-test('conversion reconciliation repository persists status audit/outbox and currency-safe aggregates', { skip: !DATABASE_URL }, async (t) => {
-  const db = createDbClient({ connectionString: DATABASE_URL });
+test('conversion reconciliation repository persists status audit/outbox and currency-safe aggregates', async (t) => {
+  const db = createDbClient({ connectionString: DATABASE_URL || null });
+  const probe = await db.check();
+  if (!probe.reachable) {
+    t.skip(`postgres not reachable (${probe.reason})`);
+    await db.close();
+    return;
+  }
   t.after(async () => db.close());
   await seed(db);
   const repo = createConversionReconciliationRepo({ db, clock: () => Date.parse('2026-08-31T12:00:00Z') });

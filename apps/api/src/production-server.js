@@ -8,13 +8,15 @@ import { createProductionOAuthApi } from './production-oauth-api.js';
 import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
 import { createCampaignApi } from './campaign-api.js';
 import { createConversionApi } from './conversion-api.js';
+import { createPublicationApi } from './publication-api.js';
 import {
   createDbClient,
   createAuthRepo,
   createOAuthRepo,
   createOAuthLoginRepo,
   createCampaignRepo,
-  createConversionReconciliationRepo
+  createConversionReconciliationRepo,
+  createPublicationJobsRepo
 } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
@@ -41,6 +43,7 @@ export function createProductionServer({
   oauthLoginRepository = null,
   campaignRepository = null,
   conversionRepository = null,
+  publicationRepository = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
   db = null
 } = {}) {
@@ -90,13 +93,27 @@ export function createProductionServer({
     return conversionApi;
   };
 
+  let publicationApi = null;
+  const getPublicationApi = () => {
+    if (!publicationApi) {
+      const rawClient = { query: (text, params) => database.query(text, params) };
+      publicationApi = createPublicationApi({
+        repo: publicationRepository ?? createPublicationJobsRepo(rawClient),
+        localAuthService: authService,
+        rateLimiter
+      });
+    }
+    return publicationApi;
+  };
+
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     const isAuth = pathname.startsWith('/api/v1/auth/');
     const isOAuth = pathname.startsWith('/api/v1/oauth/');
     const isCampaign = pathname === '/api/v1/campaigns' || pathname.startsWith('/api/v1/campaigns/');
     const isConversion = pathname === '/api/v1/conversions' || pathname.startsWith('/api/v1/conversions/');
-    if (!isAuth && !isOAuth && !isCampaign && !isConversion) {
+    const isPublication = pathname === '/api/v1/publications' || pathname.startsWith('/api/v1/publications/');
+    if (!isAuth && !isOAuth && !isCampaign && !isConversion && !isPublication) {
       inner.emit('request', req, res);
       return;
     }
@@ -120,8 +137,14 @@ export function createProductionServer({
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
-      } else {
+      } else if (isConversion) {
         result = await getConversionApi().handle({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
+      } else {
+        result = await getPublicationApi().handle({
           req,
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
@@ -130,7 +153,7 @@ export function createProductionServer({
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : 'auth';
+      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : isPublication ? 'publication' : 'auth';
       logger.error(`${surface}_request_failed`, { message: String(error?.message ?? error) });
       return sendJson(res, {
         status: 500,
@@ -155,5 +178,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const logger = createLogger();
   const server = createProductionServer({ env: process.env, logger });
   const port = Number(process.env.PORT || 8080);
-  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true }));
+  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true, publications: true }));
 }
