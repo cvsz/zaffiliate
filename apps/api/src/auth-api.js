@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canRole } from '../../../packages/security/src/rbac.js';
 import { LocalAuthError } from './auth-service.js';
 
 const AUTH_PREFIX = '/api/v1/auth/';
@@ -28,7 +29,23 @@ function requireTenant(tenantId) {
   const value = String(tenantId ?? '').trim();
   if (!value) throw new LocalAuthError(400, 'TENANT_HEADER_REQUIRED', 'x-tenant-id header is required');
   if (!UUID_PATTERN.test(value)) throw new LocalAuthError(400, 'TENANT_ID_INVALID', 'x-tenant-id must be a UUID');
-  return value;
+  return value.toLowerCase();
+}
+
+function queryLimit(req) {
+  const raw = new URL(req?.url || '/', 'http://localhost').searchParams.get('limit');
+  if (raw == null || raw === '') return 50;
+  const limit = Number(raw);
+  if (!Number.isSafeInteger(limit) || limit < 1) throw new LocalAuthError(400, 'LIMIT_INVALID', 'limit must be a positive integer');
+  return Math.min(limit, 100);
+}
+
+async function requireSessionForAction(service, req, tenantId, action) {
+  const session = await service.getSession({ tenantId, token: bearerToken(req.headers) });
+  if (!session) throw new LocalAuthError(401, 'UNAUTHENTICATED', 'authentication required');
+  if (session.user?.tenantId !== tenantId) throw new LocalAuthError(403, 'FORBIDDEN', 'cross-tenant access denied');
+  if (!canRole(session.user?.role, action)) throw new LocalAuthError(403, 'FORBIDDEN', 'role is not permitted for this action');
+  return session;
 }
 
 async function limit(rateLimiter, key) {
@@ -87,6 +104,20 @@ export function createLocalAuthApi({ service, rateLimiter } = {}) {
           const session = await service.getSession({ tenantId: scopedTenant, token: bearerToken(req.headers) });
           if (!session) throw new LocalAuthError(401, 'UNAUTHENTICATED', 'authentication required');
           return { status: 200, body: session, headers: { 'cache-control': 'no-store' } };
+        }
+
+        if (pathname === '/api/v1/auth/users' && method === 'GET') {
+          const scopedTenant = requireTenant(tenantId);
+          await requireSessionForAction(service, req, scopedTenant, 'user:list');
+          const users = await service.listTenantUsers({ tenantId: scopedTenant, limit: queryLimit(req) });
+          return { status: 200, body: { users }, headers: { 'cache-control': 'no-store' } };
+        }
+
+        if (pathname === '/api/v1/auth/audit' && method === 'GET') {
+          const scopedTenant = requireTenant(tenantId);
+          await requireSessionForAction(service, req, scopedTenant, 'audit:read');
+          const events = await service.listAuditEvents({ tenantId: scopedTenant, limit: queryLimit(req) });
+          return { status: 200, body: { events }, headers: { 'cache-control': 'no-store' } };
         }
 
         if (pathname === '/api/v1/auth/password-reset/request' && method === 'POST') {
