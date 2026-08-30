@@ -97,7 +97,12 @@ test('server integration: redis-backed limiter produces canonical 429 with retry
     clock,
     store: createRedisRateLimitStore({ client, requestsPerMinute: 600, burst: 2, keyPrefix: 'zaff:e2e', clock })
   });
-  const runtime = { resolveLinkBySlug: () => null };
+  const runtime = {
+    resolveLinkBySlug: () => null,
+    recordClick: () => {
+      throw new Error('recordClick must not be called for an unknown link');
+    }
+  };
   const server = buildServer({ env: { APP_ENV: 'development' }, runtime, rateLimiter: limiter });
   t.after(() => server.close());
   server.listen(0, '127.0.0.1');
