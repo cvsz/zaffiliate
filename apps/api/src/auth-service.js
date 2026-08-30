@@ -56,11 +56,11 @@ function publicUser(user) {
 export function createNoopRecoverySender({ logger = null } = {}) {
   const info = typeof logger?.info === 'function' ? logger.info.bind(logger) : () => {};
   return Object.freeze({
-    async sendEmailVerification(email, _rawToken) {
-      info('auth_email_verification_queued', { email });
+    async sendEmailVerification(_email, _rawToken) {
+      info('auth_email_verification_queued', { delivery: 'noop' });
     },
-    async sendPasswordReset(email, _rawToken) {
-      info('auth_password_reset_queued', { email });
+    async sendPasswordReset(_email, _rawToken) {
+      info('auth_password_reset_queued', { delivery: 'noop' });
     }
   });
 }
