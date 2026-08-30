@@ -8,6 +8,7 @@ on:
       - 'db/tests/bootstrap-role.sql'
       - 'packages/db/src/oauth-repo.js'
       - 'packages/security/src/oauth.js'
+      - 'packages/security/src/jwks.js'
       - 'packages/security/src/secret-envelope.js'
       - 'apps/api/src/oauth-runtime-factory.js'
       - 'apps/api/src/production-oauth-api.js'
@@ -15,8 +16,11 @@ on:
       - 'test/oauth-flow.test.js'
       - 'test/oauth-runtime-factory.test.js'
       - 'test/oauth-subject-normalization.test.js'
+      - 'test/oidc-verification-parity.test.js'
+      - 'test/security-jwks.test.js'
       - 'test/secret-envelope.test.js'
       - 'test/production-oauth-api.test.js'
+      - 'test/production-oauth-oidc-boundary.test.js'
       - 'test/production-oauth-wiring.test.js'
       - '.github/workflows/oauth-persistence.yml'
   push:
@@ -25,10 +29,13 @@ on:
       - 'db/migrations/009_oauth_identity_persistence.sql'
       - 'packages/db/src/oauth-repo.js'
       - 'packages/security/src/oauth.js'
+      - 'packages/security/src/jwks.js'
       - 'packages/security/src/secret-envelope.js'
       - 'apps/api/src/oauth-runtime-factory.js'
       - 'apps/api/src/production-oauth-api.js'
       - 'apps/api/src/production-server.js'
+      - 'test/oidc-verification-parity.test.js'
+      - 'test/production-oauth-oidc-boundary.test.js'
 
 permissions:
   contents: read
@@ -77,12 +84,15 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify OAuth persistence RLS and single-use state
         run: psql -v ON_ERROR_STOP=1 -f db/tests/oauth-persistence.sql
-      - name: Verify OAuth crypto and production API contracts
+      - name: Verify OAuth, OIDC, crypto and production API contracts
         run: >-
           node --test
           test/secret-envelope.test.js
+          test/security-jwks.test.js
           test/oauth-runtime-factory.test.js
           test/oauth-subject-normalization.test.js
+          test/oidc-verification-parity.test.js
           test/production-oauth-api.test.js
+          test/production-oauth-oidc-boundary.test.js
           test/production-oauth-wiring.test.js
           test/oauth-flow.test.js
