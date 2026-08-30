@@ -1,3 +1,7 @@
+import { connectNodeRedisCompat } from './node-redis-compat.js';
+
+export { connectNodeRedisCompat } from './node-redis-compat.js';
+
 const MEMORY_LIMIT_PER_STREAM = 10000;
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -24,8 +28,15 @@ function fieldsFromEnvelope({ tenantId, type, payload = {}, eventId }) {
   ];
 }
 
-export function createStreamPublisher({ client = null, allowMemoryFallback = process.env.NODE_ENV !== 'production' } = {}) {
+export function createStreamPublisher({
+  client = null,
+  redisUrl = process.env.REDIS_URL,
+  redisConnector = connectNodeRedisCompat,
+  allowMemoryFallback = process.env.NODE_ENV !== 'production'
+} = {}) {
+  if (typeof redisConnector !== 'function') throw new TypeError('redisConnector must be a function');
   let resolvedClient = client;
+  let ownsClient = false;
   let backend = client ? 'redis' : 'unresolved';
   const memory = new Map();
 
@@ -34,11 +45,14 @@ export function createStreamPublisher({ client = null, allowMemoryFallback = pro
       backend = 'redis';
       return { kind: 'redis', client: resolvedClient };
     }
-    if (process.env.REDIS_URL) {
+    const configuredUrl = String(redisUrl ?? '').trim();
+    if (configuredUrl) {
       try {
-        const mod = await import('ioredis');
-        const Redis = mod.default ?? mod;
-        resolvedClient = new Redis(process.env.REDIS_URL, { lazyConnect: false, maxRetriesPerRequest: 2 });
+        resolvedClient = await redisConnector({ url: configuredUrl });
+        if (!resolvedClient || typeof resolvedClient.xadd !== 'function') {
+          throw new TypeError('Redis connector must return a client with xadd');
+        }
+        ownsClient = true;
         backend = 'redis';
         return { kind: 'redis', client: resolvedClient };
       } catch (error) {
@@ -83,7 +97,16 @@ export function createStreamPublisher({ client = null, allowMemoryFallback = pro
     return backend;
   }
 
-  return Object.freeze({ publish, memorySize, backendKind });
+  async function close() {
+    if (!ownsClient || !resolvedClient) return;
+    const owned = resolvedClient;
+    resolvedClient = null;
+    ownsClient = false;
+    backend = 'unresolved';
+    if (typeof owned.close === 'function') await owned.close();
+  }
+
+  return Object.freeze({ publish, memorySize, backendKind, close });
 }
 
 function fieldArrayToObject(fields) {
