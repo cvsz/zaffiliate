@@ -60,6 +60,7 @@ export function createOAuthFlow({
   redirectUri,
   scope,
   transport,
+  useNonce = false,
   clock = () => Date.now(),
   randomBytesFn = randomBytes
 } = {}) {
@@ -71,6 +72,7 @@ export function createOAuthFlow({
   const tokenEndpoint = httpsUrl(tokenUrl, 'tokenUrl');
   const callback = httpsUrl(redirectUri, 'redirectUri');
   if (typeof transport !== 'function') throw new TypeError('transport function is required');
+  if (typeof useNonce !== 'boolean') throw new TypeError('useNonce must be a boolean');
 
   async function postForm(form) {
     const body = new URLSearchParams(form).toString();
@@ -101,6 +103,7 @@ export function createOAuthFlow({
     if (!Number.isFinite(ttl) || ttl <= 0) throw new Error('stateTtlMs must be a positive number');
     const state = base64url(randomBytesFn(24));
     const codeVerifier = base64url(randomBytesFn(48));
+    const nonce = useNonce ? base64url(randomBytesFn(24)) : null;
     const codeChallenge = base64url(createHash('sha256').update(codeVerifier).digest());
     const now = clock();
     const url = new URL(authUrl);
@@ -109,6 +112,7 @@ export function createOAuthFlow({
     url.searchParams.set('redirect_uri', callback);
     if (scope) url.searchParams.set('scope', String(scope));
     url.searchParams.set('state', state);
+    if (nonce) url.searchParams.set('nonce', nonce);
     url.searchParams.set('code_challenge', codeChallenge);
     url.searchParams.set('code_challenge_method', 'S256');
     return Object.freeze({
@@ -116,6 +120,7 @@ export function createOAuthFlow({
       url: url.toString(),
       state,
       codeVerifier,
+      nonce,
       createdAt: now,
       expiresAt: now + ttl
     });
@@ -146,6 +151,7 @@ export function createOAuthFlow({
     const tokens = {
       accessToken,
       refreshToken: typeof json?.refresh_token === 'string' && json.refresh_token ? json.refresh_token : null,
+      idToken: typeof json?.id_token === 'string' && json.id_token ? json.id_token : null,
       tokenType: typeof json?.token_type === 'string' ? json.token_type : 'Bearer',
       scope: typeof json?.scope === 'string' ? json.scope : null,
       expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? clock() + expiresIn * 1000 : null,
