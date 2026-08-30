@@ -1,0 +1,66 @@
+name: Affiliate Persistence
+
+on:
+  pull_request:
+    paths:
+      - 'db/migrations/007_affiliate_runtime_persistence.sql'
+      - 'db/tests/affiliate-persistence.sql'
+      - 'db/tests/bootstrap-role.sql'
+      - 'packages/db/src/affiliate-core-repo.js'
+      - 'packages/events/src/outbox-dispatcher.js'
+      - 'test/outbox-dispatcher.test.js'
+      - '.github/workflows/affiliate-persistence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'db/migrations/007_affiliate_runtime_persistence.sql'
+      - 'packages/db/src/affiliate-core-repo.js'
+      - 'packages/events/src/outbox-dispatcher.js'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-affiliate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: zaffiliate_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d zaffiliate_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: zaffiliate_test
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Deterministic install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Apply prerequisite and affiliate migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/007_affiliate_runtime_persistence.sql
+      - name: Create application test role
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
+      - name: Verify affiliate persistence RLS
+        run: psql -v ON_ERROR_STOP=1 -f db/tests/affiliate-persistence.sql
+      - name: Verify outbox dispatcher
+        run: node --test test/outbox-dispatcher.test.js
