@@ -1,0 +1,108 @@
+name: Campaign and Self-host
+
+on:
+  pull_request:
+    paths:
+      - 'apps/api/src/campaign-api.js'
+      - 'apps/api/src/production-server.js'
+      - 'packages/db/src/campaign-repo.js'
+      - 'packages/db/src/affiliate-core-repo.js'
+      - 'packages/db/src/index.js'
+      - 'db/migrations/**'
+      - 'db/tests/**'
+      - 'Dockerfile'
+      - 'compose.selfhost.yaml'
+      - 'scripts/selfhost-local.sh'
+      - 'test/campaign-*.test.js'
+      - '.github/workflows/campaign-selfhost.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  campaign-persistence:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: zaffiliate
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d zaffiliate"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/zaffiliate
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax-check campaign boundary
+        run: |
+          node --check apps/api/src/campaign-api.js
+          node --check apps/api/src/production-server.js
+          node --check packages/db/src/campaign-repo.js
+          node --check packages/db/src/affiliate-core-repo.js
+      - name: Campaign API and production wiring tests
+        run: node --test test/campaign-api.test.js test/campaign-production-wiring.test.js
+      - name: Apply all migrations
+        run: node packages/db/src/cli.js
+      - name: Create non-superuser application test role
+        run: psql "$DATABASE_URL" -f db/tests/bootstrap-role.sql
+      - name: Execute campaign RLS assertions
+        run: psql "$DATABASE_URL" -f db/tests/campaign-persistence.sql
+
+  selfhost-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create ephemeral self-host environment
+        run: |
+          umask 077
+          cat > .env.selfhost <<'EOF'
+          POSTGRES_PASSWORD=0123456789abcdef0123456789abcdef0123456789abcdef
+          REDIS_PASSWORD=abcdef0123456789abcdef0123456789abcdef0123456789
+          SESSION_SECRET=1111111111111111111111111111111111111111111111111111111111111111
+          ENCRYPTION_KEY=2222222222222222222222222222222222222222222222222222222222222222
+          VISITOR_SALT=3333333333333333333333333333333333333333333333333333333333333333
+          ZAFFILIATE_PORT=8080
+          ZAFFILIATE_WEB_PORT=3100
+          LOG_LEVEL=info
+          EOF
+          chmod 600 .env.selfhost
+      - name: Validate self-host Compose model
+        run: docker compose --env-file .env.selfhost -f compose.selfhost.yaml config -q
+      - name: Build and boot local production stack
+        run: docker compose --env-file .env.selfhost -f compose.selfhost.yaml up -d --build
+      - name: Verify migrations and readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null && curl -fsS http://127.0.0.1:8080/readyz >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8080/healthz
+          curl -fsS http://127.0.0.1:8080/readyz
+          test "$(docker compose --env-file .env.selfhost -f compose.selfhost.yaml exec -T postgres psql -U zaffiliate -d zaffiliate -Atc "SELECT to_regclass('public.campaigns')")" = "campaigns"
+      - name: Assert data services are not host-published
+        run: |
+          ! docker compose --env-file .env.selfhost -f compose.selfhost.yaml port postgres 5432 2>/dev/null | grep -q .
+          ! docker compose --env-file .env.selfhost -f compose.selfhost.yaml port redis 6379 2>/dev/null | grep -q .
+      - name: Self-host diagnostics
+        if: failure()
+        run: |
+          docker compose --env-file .env.selfhost -f compose.selfhost.yaml ps -a || true
+          docker compose --env-file .env.selfhost -f compose.selfhost.yaml logs --tail=200 api migrate postgres redis web || true
+      - name: Tear down local stack
+        if: always()
+        run: docker compose --env-file .env.selfhost -f compose.selfhost.yaml down -v --remove-orphans || true

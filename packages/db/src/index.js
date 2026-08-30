@@ -5,3 +5,4 @@ export { createAffiliateCoreRepo } from './affiliate-core-repo.js';
 export { createAuthRepo } from './auth-repo.js';
 export { createOAuthRepo } from './oauth-repo.js';
 export { createOAuthLoginRepo, oauthIdentityHash } from './oauth-login-repo.js';
+export { createCampaignRepo, CampaignNotFoundError, CampaignTransitionError, CampaignConflictError } from './campaign-repo.js';

@@ -6,7 +6,14 @@ import { createLocalAuthApi } from './auth-api.js';
 import { createLocalAuthService, createNoopRecoverySender } from './auth-service.js';
 import { createProductionOAuthApi } from './production-oauth-api.js';
 import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
-import { createDbClient, createAuthRepo, createOAuthRepo, createOAuthLoginRepo } from '../../../packages/db/src/index.js';
+import { createCampaignApi } from './campaign-api.js';
+import {
+  createDbClient,
+  createAuthRepo,
+  createOAuthRepo,
+  createOAuthLoginRepo,
+  createCampaignRepo
+} from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
 
@@ -30,6 +37,7 @@ export function createProductionServer({
   oauthRegistry = null,
   oauthRepository = null,
   oauthLoginRepository = null,
+  campaignRepository = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
   db = null
 } = {}) {
@@ -51,33 +59,60 @@ export function createProductionServer({
     rateLimiter
   });
 
+  // Campaign dependencies are intentionally lazy. Authentication and OAuth
+  // routes must not become unavailable merely because an unrelated campaign
+  // adapter/repository is absent in an injected test or maintenance runtime.
+  let campaignApi = null;
+  const getCampaignApi = () => {
+    if (!campaignApi) {
+      campaignApi = createCampaignApi({
+        repo: campaignRepository ?? createCampaignRepo({ db: database }),
+        affiliateRuntime,
+        localAuthService: authService,
+        rateLimiter
+      });
+    }
+    return campaignApi;
+  };
+
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     const isAuth = pathname.startsWith('/api/v1/auth/');
     const isOAuth = pathname.startsWith('/api/v1/oauth/');
-    if (!isAuth && !isOAuth) {
+    const isCampaign = pathname === '/api/v1/campaigns' || pathname.startsWith('/api/v1/campaigns/');
+    if (!isAuth && !isOAuth && !isCampaign) {
       inner.emit('request', req, res);
       return;
     }
     try {
-      const result = isAuth
-        ? await authApi.handle({
+      let result;
+      if (isAuth) {
+        result = await authApi.handle({
           req,
           pathname,
           tenantId: String(req.headers['x-tenant-id'] ?? '').trim()
-        })
-        : await oauthApi.handle({
+        });
+      } else if (isOAuth) {
+        result = await oauthApi.handle({
           req,
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
+      } else {
+        result = await getCampaignApi().handle({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
+      }
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      logger.error(isOAuth ? 'oauth_request_failed' : 'auth_request_failed', { message: String(error?.message ?? error) });
+      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : 'auth';
+      logger.error(`${surface}_request_failed`, { message: String(error?.message ?? error) });
       return sendJson(res, {
         status: 500,
-        body: { error: { code: isOAuth ? 'OAUTH_INTERNAL' : 'AUTH_INTERNAL', message: 'unexpected authentication failure' } }
+        body: { error: { code: `${surface.toUpperCase()}_INTERNAL`, message: `unexpected ${surface} failure` } }
       });
     }
   });
@@ -98,5 +133,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const logger = createLogger();
   const server = createProductionServer({ env: process.env, logger });
   const port = Number(process.env.PORT || 8080);
-  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth' }));
+  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true }));
 }
