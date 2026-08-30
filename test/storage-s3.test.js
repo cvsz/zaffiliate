@@ -11,6 +11,13 @@ const FIXED = {
   bucket: 'test-bucket'
 };
 
+const MP4_BODY = Buffer.concat([
+  Buffer.from([0x00, 0x00, 0x00, 0x18]),
+  Buffer.from('ftypisom', 'ascii'),
+  Buffer.from([0x00, 0x00, 0x02, 0x00]),
+  Buffer.from('isomiso2', 'ascii')
+]);
+
 function capturedDriver() {
   const requests = [];
   const driver = createS3Driver({
@@ -23,16 +30,27 @@ function capturedDriver() {
   return { driver, requests };
 }
 
-test('putObject issues SigV4-signed PUT to bucket-prefixed path with payload hash', async () => {
+test('putObject validates bytes and issues SigV4-signed PUT with the hashed request body', async () => {
   const { driver, requests } = capturedDriver();
-  const result = await driver.put('tenants/org-A/2026/08/deadbeef01.mp4', Buffer.from('hello-media'), 'video/mp4', { now: new Date('2026-08-24T12:00:00.000Z') });
+  const result = await driver.put('tenants/org-A/2026/08/deadbeef01.mp4', MP4_BODY, 'video/mp4', { now: new Date('2026-08-24T12:00:00.000Z') });
   assert.equal(result.stored, true);
   const req = requests[0];
   assert.equal(new URL(req.url).pathname, '/test-bucket/tenants/org-A/2026/08/deadbeef01.mp4');
-  const sha = createHash('sha256').update(Buffer.from('hello-media')).digest('hex');
+  const sha = createHash('sha256').update(MP4_BODY).digest('hex');
   assert.equal(req.options.headers['x-amz-content-sha256'], sha);
+  assert.equal(req.options.headers['content-type'], 'video/mp4');
+  assert.deepEqual(req.options.body, MP4_BODY, 'the body used for the payload hash must be sent to S3');
   assert.match(req.options.headers.authorization, /^AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE\/\d{8}\/us-east-1\/s3\/aws4_request,/);
   assert.match(req.options.headers.authorization, /SignedHeaders=host;x-amz-content-sha256;x-amz-date/);
+});
+
+test('spoofed declared media is rejected before any S3 network call', async () => {
+  const { driver, requests } = capturedDriver();
+  await assert.rejects(
+    () => driver.put('tenants/org-A/2026/08/deadbeef01.mp4', Buffer.from('not-an-mp4'), 'video/mp4'),
+    (error) => error?.code === 'MEDIA_MIME_MISMATCH'
+  );
+  assert.equal(requests.length, 0);
 });
 
 test('signature derives through the documented four-stage HMAC key schedule', () => {
