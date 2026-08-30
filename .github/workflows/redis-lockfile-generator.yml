@@ -1,0 +1,39 @@
+name: Redis Lockfile Generator
+
+on:
+  push:
+    branches:
+      - upgrade/zaff-redis-runtime-parity-20260831
+    paths:
+      - .github/workflows/redis-lockfile-generator.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: upgrade/zaff-redis-runtime-parity-20260831
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Generate deterministic Redis dependency lock
+        run: npm install --package-lock-only --ignore-scripts --save-exact redis@4.7.1
+      - name: Commit generated dependency metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfile already deterministic."
+            exit 0
+          fi
+          git commit -m "chore(deps): add redis runtime client"
+          git push origin HEAD:upgrade/zaff-redis-runtime-parity-20260831
