@@ -1,6 +1,8 @@
 import { createOAuthFlow } from '../../../packages/security/src/oauth.js';
 import { createUrlValidator } from '../../../packages/security/src/url-validation.js';
 
+const MAX_TOKEN_RESPONSE_BYTES = 1024 * 1024;
+
 function required(env, key) {
   const value = String(env?.[key] ?? '').trim();
   if (!value) {
@@ -15,6 +17,44 @@ function publicHttps(value, label) {
   const validator = createUrlValidator({ allowedSchemes: ['https'], blockPrivateRanges: true });
   validator.validate(value, label);
   return new URL(value).toString();
+}
+
+function responseTooLarge() {
+  const error = new Error('oauth token response exceeded 1MB');
+  error.code = 'OAUTH_TOKEN_RESPONSE_TOO_LARGE';
+  return error;
+}
+
+async function readTokenResponseBounded(response) {
+  const contentLength = Number(response?.headers?.get?.('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > MAX_TOKEN_RESPONSE_BYTES) throw responseTooLarge();
+
+  const body = response?.body;
+  if (body && typeof body.getReader === 'function') {
+    const reader = body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = Buffer.from(value);
+        total += chunk.length;
+        if (total > MAX_TOKEN_RESPONSE_BYTES) {
+          try { await reader.cancel('oauth token response too large'); } catch {}
+          throw responseTooLarge();
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+    return Buffer.concat(chunks, total).toString('utf8');
+  }
+
+  const text = await response.text();
+  if (Buffer.byteLength(text, 'utf8') > MAX_TOKEN_RESPONSE_BYTES) throw responseTooLarge();
+  return text;
 }
 
 export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globalThis.fetch, clock = () => Date.now() } = {}) {
@@ -48,19 +88,19 @@ export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globa
         redirect: 'error',
         signal: AbortSignal.timeout(10_000)
       });
+      const text = await readTokenResponseBounded(response);
+      let json = null;
+      if (text) {
+        try { json = JSON.parse(text); } catch { json = null; }
+      }
+      return { status: response.status, json, text };
     } catch (error) {
+      if (error?.code === 'OAUTH_TOKEN_RESPONSE_TOO_LARGE') throw error;
       const wrapped = new Error('oauth token transport failed');
       wrapped.code = 'OAUTH_TRANSPORT_FAILED';
       wrapped.cause = error;
       throw wrapped;
     }
-    const text = await response.text();
-    if (text.length > 1024 * 1024) throw new Error('oauth token response exceeded 1MB');
-    let json = null;
-    if (text) {
-      try { json = JSON.parse(text); } catch { json = null; }
-    }
-    return { status: response.status, json, text };
   };
 
   const flow = createOAuthFlow({
