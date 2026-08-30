@@ -4,9 +4,13 @@ on:
   pull_request:
     paths:
       - 'db/migrations/009_oauth_identity_persistence.sql'
+      - 'db/migrations/010_oidc_login_bootstrap.sql'
       - 'db/tests/oauth-persistence.sql'
+      - 'db/tests/oauth-login-bootstrap.sql'
       - 'db/tests/bootstrap-role.sql'
       - 'packages/db/src/oauth-repo.js'
+      - 'packages/db/src/oauth-login-repo.js'
+      - 'packages/db/src/index.js'
       - 'packages/security/src/oauth.js'
       - 'packages/security/src/jwks.js'
       - 'packages/security/src/secret-envelope.js'
@@ -21,13 +25,19 @@ on:
       - 'test/secret-envelope.test.js'
       - 'test/production-oauth-api.test.js'
       - 'test/production-oauth-oidc-boundary.test.js'
+      - 'test/production-oauth-login.test.js'
+      - 'test/oauth-login-repo.integration.test.js'
       - 'test/production-oauth-wiring.test.js'
       - '.github/workflows/oauth-persistence.yml'
   push:
     branches: [main]
     paths:
       - 'db/migrations/009_oauth_identity_persistence.sql'
+      - 'db/migrations/010_oidc_login_bootstrap.sql'
+      - 'db/tests/oauth-login-bootstrap.sql'
       - 'packages/db/src/oauth-repo.js'
+      - 'packages/db/src/oauth-login-repo.js'
+      - 'packages/db/src/index.js'
       - 'packages/security/src/oauth.js'
       - 'packages/security/src/jwks.js'
       - 'packages/security/src/secret-envelope.js'
@@ -36,6 +46,8 @@ on:
       - 'apps/api/src/production-server.js'
       - 'test/oidc-verification-parity.test.js'
       - 'test/production-oauth-oidc-boundary.test.js'
+      - 'test/production-oauth-login.test.js'
+      - 'test/oauth-login-repo.integration.test.js'
 
 permissions:
   contents: read
@@ -80,11 +92,17 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/migrations/006_tenants_rls_force.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/008_local_auth_recovery.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/009_oauth_identity_persistence.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/010_oidc_login_bootstrap.sql
       - name: Create application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify OAuth persistence RLS and single-use state
-        run: psql -v ON_ERROR_STOP=1 -f db/tests/oauth-persistence.sql
+        run: |
+          psql -v ON_ERROR_STOP=1 -f db/tests/oauth-persistence.sql
+          psql -v ON_ERROR_STOP=1 -f db/tests/oauth-login-bootstrap.sql
       - name: Verify OAuth, OIDC, crypto and production API contracts
+        env:
+          OIDC_LOGIN_DB_INTEGRATION: '1'
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/zaffiliate_test
         run: >-
           node --test
           test/secret-envelope.test.js
@@ -94,5 +112,7 @@ jobs:
           test/oidc-verification-parity.test.js
           test/production-oauth-api.test.js
           test/production-oauth-oidc-boundary.test.js
+          test/production-oauth-login.test.js
+          test/oauth-login-repo.integration.test.js
           test/production-oauth-wiring.test.js
           test/oauth-flow.test.js
