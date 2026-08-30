@@ -59,6 +59,7 @@ export function createS3Driver({ endpoint, bucket, accessKeyId, secretAccessKey,
 
   async function put(key, body, contentType, { now = new Date() } = {}) {
     if (!Buffer.isBuffer(body)) throw new TypeError('body must be a Buffer');
+    assertValidObjectKey(key);
     const validated = assertMediaContentMatches(body, contentType);
     const { url, options } = signedRequest('PUT', key, body, { now });
     options.headers['content-type'] = validated.detectedMime;
