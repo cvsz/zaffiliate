@@ -8,12 +8,21 @@ on:
       - 'db/tests/bootstrap-role.sql'
       - 'packages/db/src/auth-repo.js'
       - 'packages/security/src/passwords.js'
+      - 'packages/security/src/rbac.js'
+      - 'packages/security/src/request-principal.js'
       - 'apps/api/src/auth-service.js'
       - 'apps/api/src/auth-api.js'
+      - 'apps/api/src/production-authorization.js'
       - 'apps/api/src/production-server.js'
+      - 'apps/api/src/features-api.js'
       - 'test/passwords.test.js'
       - 'test/local-auth-service.test.js'
       - 'test/production-auth-api.test.js'
+      - 'test/rbac.test.js'
+      - 'test/production-authorization.test.js'
+      - 'test/auth-rbac-api.test.js'
+      - 'test/production-rbac-wiring.test.js'
+      - 'test/feature-auth-context.test.js'
       - '.github/workflows/auth-persistence.yml'
   push:
     branches: [main]
@@ -21,9 +30,13 @@ on:
       - 'db/migrations/008_local_auth_recovery.sql'
       - 'packages/db/src/auth-repo.js'
       - 'packages/security/src/passwords.js'
+      - 'packages/security/src/rbac.js'
+      - 'packages/security/src/request-principal.js'
       - 'apps/api/src/auth-service.js'
       - 'apps/api/src/auth-api.js'
+      - 'apps/api/src/production-authorization.js'
       - 'apps/api/src/production-server.js'
+      - 'apps/api/src/features-api.js'
 
 permissions:
   contents: read
@@ -71,5 +84,14 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify auth persistence RLS
         run: psql -v ON_ERROR_STOP=1 -f db/tests/auth-persistence.sql
-      - name: Verify auth service and API contracts
-        run: node --test test/passwords.test.js test/local-auth-service.test.js test/production-auth-api.test.js
+      - name: Verify auth, RBAC and production boundary contracts
+        run: >-
+          node --test
+          test/passwords.test.js
+          test/local-auth-service.test.js
+          test/production-auth-api.test.js
+          test/rbac.test.js
+          test/production-authorization.test.js
+          test/auth-rbac-api.test.js
+          test/production-rbac-wiring.test.js
+          test/feature-auth-context.test.js
