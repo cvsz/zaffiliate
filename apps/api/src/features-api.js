@@ -1,5 +1,6 @@
 import { createAutomationPolicy, evaluateAction, setKillSwitch } from '../../../packages/automation/src/index.js';
 import { createDecisionGate } from '../../../packages/intelligence/src/decision-gate.js';
+import { getRequestPrincipal } from '../../../packages/security/src/request-principal.js';
 import {
   PERSONAS,
   getPersona,
@@ -74,7 +75,11 @@ export function createFeatureApi(deps) {
 
   async function handle(pathname, method, tenantId, { body = null, actorId = null } = {}) {
     if (!pathname.startsWith('/api/v1/')) return null;
-    const trustedActorId = actorId == null ? 'operator' : String(actorId);
+    const principal = getRequestPrincipal();
+    if (principal && principal.tenantId !== tenantId) {
+      return { status: 403, error: { code: 'FORBIDDEN', message: 'request principal does not match tenant context' } };
+    }
+    const trustedActorId = actorId == null ? (principal?.userId ?? 'operator') : String(actorId);
 
     if (method === 'GET' && pathname === '/api/v1/commerce/offers') {
       return { status: 200, body: { offers: listOffers(tenantId) } };
