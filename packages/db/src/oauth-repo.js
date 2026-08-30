@@ -63,6 +63,12 @@ export function createOAuthRepo({ db } = {}) {
       const resolvedUserId = required(userId, 'userId');
       const resolvedProvider = requireProvider(provider);
       await tx.query(
+        `UPDATE oauth_pending_authorizations
+         SET consumed_at=now()
+         WHERE tenant_id=$1 AND user_id=$2 AND provider=$3 AND consumed_at IS NULL`,
+        [scopedTenantId, resolvedUserId, resolvedProvider]
+      );
+      await tx.query(
         `DELETE FROM oauth_pending_authorizations
          WHERE tenant_id=$1 AND user_id=$2 AND provider=$3
            AND (consumed_at IS NOT NULL OR expires_at <= now())`,
