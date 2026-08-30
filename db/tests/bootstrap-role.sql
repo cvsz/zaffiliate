@@ -31,5 +31,18 @@ GRANT SELECT, INSERT ON
   conversions
 TO zaffiliate_app_test;
 
+DO $$
+BEGIN
+  IF to_regclass('public.affiliate_clicks') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON affiliate_clicks TO zaffiliate_app_test;
+  END IF;
+  IF to_regclass('public.affiliate_margins') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON affiliate_margins TO zaffiliate_app_test;
+  END IF;
+  IF to_regclass('public.affiliate_domain_outbox') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON affiliate_domain_outbox TO zaffiliate_app_test;
+  END IF;
+END $$;
+
 GRANT USAGE, SELECT ON SEQUENCE audit_events_id_seq TO zaffiliate_app_test;
 GRANT EXECUTE ON FUNCTION post_ledger_transaction(uuid) TO zaffiliate_app_test;
