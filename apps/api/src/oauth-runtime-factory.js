@@ -162,9 +162,11 @@ export function createOAuthRegistryForEnv({ env = process.env, fetchImpl = globa
         nonce,
         nowSeconds: Math.floor(clock() / 1000)
       });
-      const subject = String(verification?.claims?.sub ?? '').trim();
-      if (!verification.valid || !subject || subject.length > 1024) {
-        const error = new Error(`OIDC identity verification failed (${verification.reason ?? 'subject_missing'})`);
+      const claims = verification?.claims ?? {};
+      const subject = String(claims.sub ?? '').trim();
+      if (!verification.valid || !Number.isFinite(claims.exp) || !subject || subject.length > 1024) {
+        const reason = verification.valid && !Number.isFinite(claims.exp) ? 'exp_missing' : (verification.reason ?? 'subject_missing');
+        const error = new Error(`OIDC identity verification failed (${reason})`);
         error.code = 'OIDC_ID_TOKEN_INVALID';
         throw error;
       }
