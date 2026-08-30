@@ -19,7 +19,7 @@ function dependencies() {
   return {
     env: {
       APP_ENV: 'test',
-      PORT: '0',
+      PORT: '8080',
       SESSION_SECRET: 's'.repeat(64)
     },
     db: {},
