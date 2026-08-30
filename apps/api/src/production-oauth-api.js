@@ -1,0 +1,257 @@
+import { createHash } from 'node:crypto';
+import { OAuthTokenError } from '../../../packages/security/src/oauth.js';
+import { encryptSecret, decryptSecret } from '../../../packages/security/src/secret-envelope.js';
+
+const OAUTH_PREFIX = '/api/v1/oauth/';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+function bearerToken(headers = {}) {
+  const value = String(headers.authorization ?? '');
+  const match = /^Bearer\s+(.+)$/i.exec(value);
+  return match ? match[1].trim() : '';
+}
+
+function tenantId(value) {
+  const id = String(value ?? '').trim().toLowerCase();
+  if (!UUID_PATTERN.test(id)) {
+    const error = new Error('valid UUID x-tenant-id header is required');
+    error.status = 400;
+    error.code = 'TENANT_HEADER_INVALID';
+    throw error;
+  }
+  return id;
+}
+
+function stateHash(value) {
+  return createHash('sha256').update(String(value), 'utf8').digest('hex');
+}
+
+function parseBoundState(value) {
+  const state = String(value ?? '');
+  if (!state || state.length > 512) return null;
+  const dot = state.indexOf('.');
+  if (dot !== 36) return null;
+  const boundTenant = state.slice(0, dot).toLowerCase();
+  const randomState = state.slice(dot + 1);
+  if (!UUID_PATTERN.test(boundTenant) || !/^[A-Za-z0-9_-]{16,256}$/.test(randomState)) return null;
+  return { tenantId: boundTenant, state };
+}
+
+function pendingAad(tenant, provider, hash) {
+  return `zaffiliate:oauth:pending:${tenant}:${provider}:${hash}`;
+}
+
+function tokenAad(tenant, userId, provider, kind) {
+  return `zaffiliate:oauth:token:${tenant}:${userId}:${provider}:${kind}`;
+}
+
+async function limited(rateLimiter, key) {
+  const verdict = await rateLimiter.tryAcquire(key);
+  if (verdict.allowed) return null;
+  return {
+    status: 429,
+    body: { error: { code: 'RATE_LIMITED', message: 'too many requests' } },
+    headers: { 'retry-after': String(Math.ceil(verdict.retryAfterMs / 1000) || 1), 'cache-control': 'no-store' }
+  };
+}
+
+function failure(error) {
+  return {
+    status: Number(error?.status ?? 500),
+    body: {
+      error: {
+        code: String(error?.code ?? 'OAUTH_INTERNAL'),
+        message: Number(error?.status ?? 500) >= 500 ? 'unexpected oauth failure' : String(error?.message ?? 'oauth request failed')
+      }
+    },
+    headers: { 'cache-control': 'no-store' }
+  };
+}
+
+export function createProductionOAuthApi({
+  registry,
+  repo,
+  localAuthService,
+  encryptionKey,
+  rateLimiter,
+  clock = Date.now
+} = {}) {
+  if (!(registry instanceof Map)) throw new TypeError('oauth registry must be a Map');
+  if (!repo || typeof repo.createPendingAuthorization !== 'function') throw new TypeError('oauth repo is required');
+  if (!localAuthService || typeof localAuthService.getSession !== 'function') throw new TypeError('local auth service is required');
+  if (!rateLimiter || typeof rateLimiter.tryAcquire !== 'function') throw new TypeError('rateLimiter is required');
+  if (typeof clock !== 'function') throw new TypeError('clock must be a function');
+  if (registry.size > 0 && String(encryptionKey ?? '').length < 32) {
+    const error = new Error('ENCRYPTION_KEY must be at least 32 characters when OAuth is configured');
+    error.code = 'OAUTH_ENCRYPTION_KEY_REQUIRED';
+    throw error;
+  }
+
+  async function authenticate(req, scopedTenant) {
+    const token = bearerToken(req.headers);
+    if (!token) return null;
+    return localAuthService.getSession({ tenantId: scopedTenant, token });
+  }
+
+  return Object.freeze({
+    async handle({ req, pathname, tenantHeader = '' } = {}) {
+      if (!String(pathname ?? '').startsWith(OAUTH_PREFIX)) return null;
+      const match = /^\/api\/v1\/oauth\/([a-z0-9_-]{2,32})\/(authorize|callback|disconnect)$/.exec(String(pathname));
+      if (!match) return { status: 404, body: { error: { code: 'OAUTH_ROUTE_NOT_FOUND', message: 'oauth route not found' } } };
+      const provider = match[1];
+      const action = match[2];
+      const entry = registry.get(provider);
+      if (!entry) return { status: 503, body: { error: { code: 'OAUTH_NOT_CONFIGURED', message: 'oauth provider is not configured' } } };
+      if (!entry.flow || typeof entry.flow.createAuthorization !== 'function' || typeof entry.flow.exchangeCode !== 'function') {
+        return { status: 500, body: { error: { code: 'OAUTH_MISCONFIGURED', message: 'oauth provider flow is invalid' } } };
+      }
+      const issuer = String(entry.issuer ?? '').trim();
+      if (!issuer) return { status: 500, body: { error: { code: 'OAUTH_MISCONFIGURED', message: 'oauth issuer is missing' } } };
+      const ip = String(req?.socket?.remoteAddress ?? 'unknown');
+      const url = new URL(req.url || '/', 'http://localhost');
+
+      try {
+        if (action === 'authorize') {
+          if (String(req.method ?? 'GET').toUpperCase() !== 'GET') return { status: 405, body: { error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } } };
+          const scopedTenant = tenantId(tenantHeader);
+          const session = await authenticate(req, scopedTenant);
+          if (!session) return { status: 401, body: { error: { code: 'UNAUTHENTICATED', message: 'authentication required' } }, headers: { 'cache-control': 'no-store' } };
+          const throttled = await limited(rateLimiter, `oauth:authorize:${scopedTenant}:${session.user.userId}:${provider}:${ip}`);
+          if (throttled) return throttled;
+
+          const authorization = entry.flow.createAuthorization();
+          const boundState = `${scopedTenant}.${authorization.state}`;
+          const hash = stateHash(boundState);
+          const verifierCiphertext = encryptSecret(authorization.codeVerifier, {
+            key: encryptionKey,
+            aad: pendingAad(scopedTenant, provider, hash)
+          });
+          await repo.createPendingAuthorization({
+            tenantId: scopedTenant,
+            userId: session.user.userId,
+            provider,
+            issuer,
+            stateHash: hash,
+            codeVerifierCiphertext: verifierCiphertext,
+            expiresAt: new Date(authorization.expiresAt)
+          });
+          const authorizeUrl = new URL(authorization.url);
+          authorizeUrl.searchParams.set('state', boundState);
+          return {
+            status: 302,
+            body: { authorizeUrl: authorizeUrl.toString(), expiresAt: authorization.expiresAt },
+            headers: { location: authorizeUrl.toString(), 'cache-control': 'no-store' }
+          };
+        }
+
+        if (action === 'disconnect') {
+          if (String(req.method ?? '').toUpperCase() !== 'POST') return { status: 405, body: { error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } } };
+          const scopedTenant = tenantId(tenantHeader);
+          const session = await authenticate(req, scopedTenant);
+          if (!session) return { status: 401, body: { error: { code: 'UNAUTHENTICATED', message: 'authentication required' } }, headers: { 'cache-control': 'no-store' } };
+          const throttled = await limited(rateLimiter, `oauth:disconnect:${scopedTenant}:${session.user.userId}:${provider}:${ip}`);
+          if (throttled) return throttled;
+          const removed = await repo.disconnectProvider({
+            tenantId: scopedTenant,
+            userId: session.user.userId,
+            provider,
+            issuer
+          });
+          return {
+            status: 200,
+            body: {
+              disconnected: true,
+              provider,
+              removedLinks: removed.removedIdentities,
+              dataDeleted: ['stored_tokens', 'account_link']
+            },
+            headers: { 'cache-control': 'no-store' }
+          };
+        }
+
+        if (String(req.method ?? 'GET').toUpperCase() !== 'GET') return { status: 405, body: { error: { code: 'METHOD_NOT_ALLOWED', message: 'method not allowed' } } };
+        const state = String(url.searchParams.get('state') ?? '');
+        const code = String(url.searchParams.get('code') ?? '');
+        const bound = parseBoundState(state);
+        if (!bound || !code || code.length > 4096) {
+          return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
+        }
+        const throttled = await limited(rateLimiter, `oauth:callback:${bound.tenantId}:${provider}:${ip}`);
+        if (throttled) return throttled;
+        const hash = stateHash(bound.state);
+        const pending = await repo.consumePendingAuthorization({ tenantId: bound.tenantId, provider, stateHash: hash });
+        if (!pending || pending.provider !== provider) {
+          return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
+        }
+
+        let codeVerifier;
+        try {
+          codeVerifier = decryptSecret(pending.codeVerifierCiphertext, {
+            key: encryptionKey,
+            aad: pendingAad(bound.tenantId, provider, hash)
+          });
+        } catch {
+          return { status: 400, body: { error: { code: 'INVALID_OAUTH_STATE', message: 'unknown, expired or already-used oauth state' } }, headers: { 'cache-control': 'no-store' } };
+        }
+
+        let tokens;
+        try {
+          tokens = await entry.flow.exchangeCode({
+            authorization: { state: bound.state, codeVerifier, expiresAt: new Date(pending.expiresAt).getTime() },
+            code
+          });
+        } catch (error) {
+          const reason = error instanceof OAuthTokenError ? error.reason : 'exchange_failed';
+          return { status: 502, body: { error: { code: 'OAUTH_EXCHANGE_FAILED', message: reason } }, headers: { 'cache-control': 'no-store' } };
+        }
+
+        let issuerSubject = null;
+        if (typeof entry.resolveSubject === 'function') issuerSubject = await entry.resolveSubject(tokens);
+        else issuerSubject = tokens.providerAccountId;
+        issuerSubject = String(issuerSubject ?? '').trim();
+        if (!issuerSubject || issuerSubject.length > 1024) {
+          return { status: 502, body: { error: { code: 'OAUTH_SUBJECT_MISSING', message: 'provider did not return a usable account subject' } }, headers: { 'cache-control': 'no-store' } };
+        }
+
+        const accessTokenCiphertext = encryptSecret(tokens.accessToken, {
+          key: encryptionKey,
+          aad: tokenAad(bound.tenantId, pending.userId, provider, 'access')
+        });
+        const refreshTokenCiphertext = tokens.refreshToken ? encryptSecret(tokens.refreshToken, {
+          key: encryptionKey,
+          aad: tokenAad(bound.tenantId, pending.userId, provider, 'refresh')
+        }) : null;
+
+        try {
+          await repo.completeOAuthLink({
+            tenantId: bound.tenantId,
+            userId: pending.userId,
+            provider,
+            issuer,
+            issuerSubject,
+            accessTokenCiphertext,
+            refreshTokenCiphertext,
+            tokenType: tokens.tokenType,
+            scope: tokens.scope,
+            expiresAt: Number.isFinite(tokens.expiresAt) ? new Date(tokens.expiresAt) : null
+          });
+        } catch (error) {
+          if (error?.code === 'IDENTITY_ALREADY_LINKED') {
+            return { status: 409, body: { error: { code: 'IDENTITY_ALREADY_LINKED', message: 'external identity is already bound to another user' } }, headers: { 'cache-control': 'no-store' } };
+          }
+          if (error?.code === 'OAUTH_USER_NOT_FOUND') {
+            return { status: 409, body: { error: { code: 'OAUTH_USER_NOT_FOUND', message: 'oauth user no longer exists' } }, headers: { 'cache-control': 'no-store' } };
+          }
+          throw error;
+        }
+        return {
+          status: 200,
+          body: { linked: true, provider, expiresAt: tokens.expiresAt },
+          headers: { 'cache-control': 'no-store' }
+        };
+      } catch (error) {
+        return failure(error);
+      }
+    }
+  });
+}
