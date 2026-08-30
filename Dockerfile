@@ -7,4 +7,4 @@ COPY apps ./apps
 COPY packages ./packages
 USER node
 EXPOSE 8080
-CMD ["node", "apps/api/src/server.js"]
+CMD ["node", "apps/api/src/production-server.js"]
