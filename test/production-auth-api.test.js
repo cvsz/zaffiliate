@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createProductionServer } from '../apps/api/src/production-server.js';
 
+const TENANT = '00000000-0000-4000-8000-000000000001';
+
 function allowedLimiter() {
   return { async tryAcquire() { return { allowed: true, retryAfterMs: 0 }; } };
 }
@@ -13,7 +15,7 @@ function fakeAuthService() {
     calls,
     async register(body) {
       calls.push(['register', body]);
-      return { tenantId: 'tenant-1', userId: 'usr_1', email: body.email.toLowerCase(), role: 'owner', emailVerified: false };
+      return { tenantId: TENANT, userId: 'usr_1', email: body.email.toLowerCase(), role: 'owner', emailVerified: false };
     },
     async login(input) {
       calls.push(['login', input]);
@@ -56,7 +58,7 @@ test('production server handles local auth before delegating existing API routes
   assert.equal((await health.json()).ok, true);
 });
 
-test('login requires tenant context and never permits caching the issued session token', async (t) => {
+test('login requires a UUID tenant context and never permits caching the issued session token', async (t) => {
   const auth = fakeAuthService();
   const server = createProductionServer({ env: { APP_ENV: 'development' }, runtime: {}, localAuthService: auth, rateLimiter: allowedLimiter() });
   t.after(() => server.close());
@@ -69,9 +71,17 @@ test('login requires tenant context and never permits caching the issued session
   });
   assert.equal(missingTenant.status, 400);
 
+  const malformedTenant = await fetch(`${base}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-tenant-id': 'not-a-uuid' },
+    body: JSON.stringify({ email: 'a@example.test', password: 'password123' })
+  });
+  assert.equal(malformedTenant.status, 400);
+  assert.equal((await malformedTenant.json()).error.code, 'TENANT_ID_INVALID');
+
   const login = await fetch(`${base}/api/v1/auth/login`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-tenant-id': 'tenant-1' },
+    headers: { 'content-type': 'application/json', 'x-tenant-id': TENANT },
     body: JSON.stringify({ email: 'a@example.test', password: 'password123' })
   });
   assert.equal(login.status, 200);
