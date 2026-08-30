@@ -57,7 +57,42 @@ SELECT
 FROM auth_user_identities
 ON CONFLICT (identity_hash) DO NOTHING;
 
+-- Keep the global hash directory synchronized with the canonical RLS-protected
+-- identity table. The function has a fixed search_path and never accepts caller
+-- supplied SQL identifiers.
+CREATE OR REPLACE FUNCTION sync_oauth_identity_directory()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  digest_value text;
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    digest_value := encode(digest(OLD.issuer || chr(0) || OLD.issuer_subject, 'sha256'), 'hex');
+    DELETE FROM public.oauth_identity_directory
+    WHERE identity_hash = digest_value
+      AND tenant_id = OLD.tenant_id
+      AND user_id = OLD.user_id;
+    RETURN OLD;
+  END IF;
+
+  digest_value := encode(digest(NEW.issuer || chr(0) || NEW.issuer_subject, 'sha256'), 'hex');
+  INSERT INTO public.oauth_identity_directory (identity_hash, tenant_id, user_id)
+  VALUES (digest_value, NEW.tenant_id, NEW.user_id)
+  ON CONFLICT (identity_hash) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS auth_user_identities_directory_sync ON auth_user_identities;
+CREATE TRIGGER auth_user_identities_directory_sync
+AFTER INSERT OR DELETE ON auth_user_identities
+FOR EACH ROW EXECUTE FUNCTION sync_oauth_identity_directory();
+
 REVOKE ALL ON oauth_login_authorizations FROM PUBLIC;
 REVOKE ALL ON oauth_identity_directory FROM PUBLIC;
+REVOKE ALL ON FUNCTION sync_oauth_identity_directory() FROM PUBLIC;
 
 COMMIT;
