@@ -9,6 +9,8 @@ END $$;
 
 GRANT USAGE ON SCHEMA public TO zaffiliate_app_test;
 
+GRANT SELECT, INSERT ON tenants TO zaffiliate_app_test;
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   tenant_memberships,
   products,
@@ -41,6 +43,15 @@ BEGIN
   END IF;
   IF to_regclass('public.affiliate_domain_outbox') IS NOT NULL THEN
     GRANT SELECT, INSERT, UPDATE, DELETE ON affiliate_domain_outbox TO zaffiliate_app_test;
+  END IF;
+  IF to_regclass('public.local_auth_users') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON local_auth_users TO zaffiliate_app_test;
+  END IF;
+  IF to_regclass('public.auth_sessions') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON auth_sessions TO zaffiliate_app_test;
+  END IF;
+  IF to_regclass('public.auth_recovery_tokens') IS NOT NULL THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON auth_recovery_tokens TO zaffiliate_app_test;
   END IF;
 END $$;
 
