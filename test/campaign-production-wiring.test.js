@@ -27,6 +27,9 @@ function dependencies() {
       async generateLink() { return { linkId: 'lnk_test' }; }
     },
     localAuthService: {
+      async login() {
+        throw new Error('login is not exercised by campaign production wiring test');
+      },
       async getSession({ tenantId, token }) {
         if (tenantId !== TENANT || token !== 'session-token') return null;
         return { user: { userId: 'usr_test', role: 'owner' } };
