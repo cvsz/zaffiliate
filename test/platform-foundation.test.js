@@ -47,19 +47,20 @@ test('media validation enforces size caps, mime allowlist and safe keys', () => 
   assert.ok(!JSON.stringify(evil).includes('passwd'), 'rejected filenames must not leak paths');
 });
 
-test('local driver stores and retrieves bytes under tenant-prefixed immutable keys', async () => {
+test('local driver stores and retrieves validated bytes under tenant-prefixed immutable keys', async () => {
   const os = await import('node:os');
   const path = await import('node:path');
   const fs = await import('node:fs/promises');
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'zaff-storage-'));
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x04, 0x01, 0x02]);
   try {
     const driver = createLocalDriver({ rootDir: root });
-    const put = await driver.put('tenants/org-A/2026/08/abc.jpg', Buffer.from([1, 2, 3]), 'image/jpeg');
+    const put = await driver.put('tenants/org-A/2026/08/abc.jpg', jpeg, 'image/jpeg');
     assert.equal(put.stored, true);
     const get = await driver.get('tenants/org-A/2026/08/abc.jpg');
-    assert.deepEqual(get.body, Buffer.from([1, 2, 3]));
+    assert.deepEqual(get.body, jpeg);
     await assert.rejects(() => driver.get('../escape'), /invalid object key/i);
-    await assert.rejects(() => driver.put('../escape', Buffer.from([0])), /invalid object key/i);
+    await assert.rejects(() => driver.put('../escape', Buffer.from([0]), 'image/png'), /invalid object key/i);
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
