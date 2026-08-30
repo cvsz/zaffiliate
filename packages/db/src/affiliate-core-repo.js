@@ -90,6 +90,7 @@ function mapLink(row) {
     linkId: row.runtime_id,
     offerId: row.offer_runtime_id,
     productId: row.product_runtime_id,
+    campaignId: row.campaign_id ?? null,
     destinationUrl: row.destination_url ?? row.url,
     deepLinkUrl: row.deep_link_url ?? row.url,
     subIds: Object.freeze(row.sub_ids ?? {}),
@@ -207,6 +208,13 @@ export function createAffiliateCoreRepo({ db, clock = () => Date.now() } = {}) {
       );
       const offer = rows(offerResult)[0];
       if (!offer) throw new Error(`offer ${input.offerId} not found`);
+      const campaignId = input.campaignId == null ? null : required(input.campaignId, 'campaignId').toLowerCase();
+      if (campaignId && !UUID_PATTERN.test(campaignId)) throw new Error('campaignId must be a UUID');
+      if (campaignId) {
+        const campaign = rows(await tx.query('SELECT id, status FROM campaigns WHERE tenant_id = $1 AND id = $2', [id, campaignId]))[0];
+        if (!campaign) throw new Error(`campaign ${campaignId} not found`);
+        if (campaign.status !== 'active') throw new Error(`campaign ${campaignId} must be active to generate links`);
+      }
       let destination;
       try { destination = new URL(required(input.destinationUrl, 'destinationUrl')); }
       catch { throw new Error('destinationUrl must be a valid URL'); }
@@ -230,16 +238,16 @@ export function createAffiliateCoreRepo({ db, clock = () => Date.now() } = {}) {
       let result;
       try {
         result = await tx.query(
-          `INSERT INTO affiliate_links (tenant_id, runtime_id, offer_id, url, destination_url, deep_link_url, sub_id, sub_ids, slug, expires_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $4, $6, $7::jsonb, $8, $9, $10)
-           RETURNING *, $11::text AS offer_runtime_id, $12::text AS product_runtime_id`,
-          [id, linkId, offer.id, deep.toString(), destination.toString(), Object.values(subIds)[0] ?? null, JSON.stringify(subIds), slug, expiresAt, occurredAt, offer.runtime_id, offer.product_runtime_id]
+          `INSERT INTO affiliate_links (tenant_id, runtime_id, offer_id, campaign_id, url, destination_url, deep_link_url, sub_id, sub_ids, slug, expires_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $5, $7, $8::jsonb, $9, $10, $11)
+           RETURNING *, $12::text AS offer_runtime_id, $13::text AS product_runtime_id`,
+          [id, linkId, offer.id, campaignId, deep.toString(), destination.toString(), Object.values(subIds)[0] ?? null, JSON.stringify(subIds), slug, expiresAt, occurredAt, offer.runtime_id, offer.product_runtime_id]
         );
       } catch (error) {
         if (slug && String(error?.code ?? '') === '23505') throw new Error(`slug ${slug} already exists`);
         throw error;
       }
-      await enqueue(tx, id, 'link.generated', { linkId, offerId: offer.runtime_id }, occurredAt);
+      await enqueue(tx, id, 'link.generated', { linkId, offerId: offer.runtime_id, ...(campaignId ? { campaignId } : {}) }, occurredAt);
       return mapLink(rows(result)[0]);
     });
   }
