@@ -98,15 +98,16 @@ export function createOAuthRepo({ db } = {}) {
     });
   }
 
-  async function consumePendingAuthorization({ tenantId, stateHash } = {}) {
+  async function consumePendingAuthorization({ tenantId, provider, stateHash } = {}) {
     return withTenant(tenantId, async (tx, scopedTenantId) => first(await tx.query(
       `UPDATE oauth_pending_authorizations
        SET consumed_at=now()
-       WHERE tenant_id=$1 AND state_hash=$2 AND consumed_at IS NULL AND expires_at > now()
+       WHERE tenant_id=$1 AND provider=$2 AND state_hash=$3
+         AND consumed_at IS NULL AND expires_at > now()
        RETURNING id, tenant_id AS "tenantId", user_id AS "userId", provider, issuer,
                  state_hash AS "stateHash", code_verifier_ciphertext AS "codeVerifierCiphertext",
                  subject_hint AS "subjectHint", expires_at AS "expiresAt", consumed_at AS "consumedAt"`,
-      [scopedTenantId, requireStateHash(stateHash)]
+      [scopedTenantId, requireProvider(provider), requireStateHash(stateHash)]
     )));
   }
 
