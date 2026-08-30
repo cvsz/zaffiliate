@@ -27,6 +27,14 @@ function requireText(value, label) {
   return text;
 }
 
+function firstText(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return null;
+}
+
 function httpsUrl(value, label) {
   const text = requireText(value, label);
   let parsed;
@@ -140,7 +148,14 @@ export function createOAuthFlow({
       refreshToken: typeof json?.refresh_token === 'string' && json.refresh_token ? json.refresh_token : null,
       tokenType: typeof json?.token_type === 'string' ? json.token_type : 'Bearer',
       scope: typeof json?.scope === 'string' ? json.scope : null,
-      expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? clock() + expiresIn * 1000 : null
+      expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? clock() + expiresIn * 1000 : null,
+      providerAccountId: firstText(
+        json?.provider_account_id,
+        json?.account_id,
+        json?.open_id,
+        json?.user_id,
+        json?.sub
+      )
     };
     return Object.freeze(tokens);
   }
