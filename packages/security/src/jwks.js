@@ -66,7 +66,7 @@ function timingSafeEqualStrings(a, b) {
   return diff === 0;
 }
 
-export function verifyJwt({ token, jwksClient, issuer, audience, nowSeconds = Math.floor(Date.now() / 1000) }) {
+export function verifyJwt({ token, jwksClient, issuer, audience, nonce = null, nowSeconds = Math.floor(Date.now() / 1000) }) {
   const fail = (reason) => ({ valid: false, reason });
   const parts = String(token ?? '').split('.');
   if (parts.length !== 3) return fail('malformed_token');
@@ -99,6 +99,7 @@ export function verifyJwt({ token, jwksClient, issuer, audience, nowSeconds = Ma
         return fail('audience_mismatch');
       }
     }
+    if (nonce != null && !timingSafeEqualStrings(String(claims.nonce ?? ''), String(nonce))) return fail('nonce_mismatch');
 
     return { valid: true, reason: 'verified', claims: Object.freeze({ ...claims }), header: Object.freeze({ ...header }) };
   });
