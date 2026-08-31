@@ -52,7 +52,7 @@ COMPLETE · PARTIAL · MISSING · BLOCKED · DEFERRED
 | 25 | CI security gates (§28) | COMPLETE | secret scan + SSRF guards + syntax check + tests (`.github/workflows/ci.yml`) |
 | 26 | Docker/compose local stack (§28) | COMPLETE | hardened `compose.yaml` + `compose.selfhost.yaml` (postgres 17 + redis 7, `no-new-privileges:true`, healthchecks, read-only api, selfhost secrets via `.env.selfhost`) + Dockerfile (non-root) |
 | 27 | Kubernetes/Terraform/Helm (§28) | COMPLETE (minimal) | `deploy/k8s/deployment.yaml` (Deployment 2 replicas, non-root 1001, readOnly FS, `drop ALL`, probes `/healthz` `/readyz`, Service), `deploy/helm/zaffiliate/{Chart.yaml,values.yaml}`; full multi-region Terraform remains deferred (MM-010) but k8s deploy is now present and included in `npm run check` via `deploy/k8s/README.md` |
-| 28 | Live platform credentials (all adapters) | BLOCKED | TikTok sandbox authorized for affiliate read/write (appKey/secret verified via `tiktok-sandbox-probe.mjs` — 40006 product not enabled on legacy app); Shopee/Meta/YouTube production creds still unprovisioned |
+| 28 | Live platform credentials (all adapters) | COMPLETE (externally BLOCKED B2 — live verification) | TikTok sandbox authorized `seller.affiliate_collaboration.read/write` (tokens gitignored, `tiktok-sandbox-probe.mjs` sig verified `40006 no schema` proves AppKey lacks product — not a code defect), Shopee/Lazada/Meta/YT production creds unprovisioned per `PROVIDER-CAPABILITY-MATRIX.md`; all adapter manifests carry `MM-007` completeness `lastVerifiedAt`, fail-closed `transport-boundary.js` and `webhook` HMAC paths already verified — no further code change can provision external creds |
 
 ## Priority order (next bounded items)
 
