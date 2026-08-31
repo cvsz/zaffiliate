@@ -1,6 +1,6 @@
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
-Updated: 2026-08-31 · Evidence base: `npm test` 595 tests — 589 pass, 0 fail, 6 gated skips; `npm run check` clean (160 syntax gates incl. affiliate persistence, campaign, conversion reconciliation, outbox dispatcher, publication API, trend engine, automation repo, AI mock/video factory, analytics warehouse); slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
+Updated: 2026-08-31 · Evidence base: `npm test` 595 tests — 589 pass, 0 fail, 6 gated skips; `npm run check` clean (162 syntax gates incl. affiliate persistence, campaign, conversion reconciliation, outbox dispatcher, publication API, trend engine, automation repo, AI mock/video factory, analytics warehouse, calendar); slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
 
 ## Classification legend
 

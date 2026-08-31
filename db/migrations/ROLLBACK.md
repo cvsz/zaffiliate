@@ -1,6 +1,6 @@
 # Migration Rollback Classification
 
-Per master-spec §42. Updated: 2026-08-30 · SWEEP-002 (013 automation state + publishing/trend/k8s).
+Per master-spec §42. Updated: 2026-08-31 · SWEEP-003 (013 automation + 014 calendar + mock/video/warehouse/studio).
 
 Rules that override every row below:
 
@@ -24,6 +24,7 @@ Rules that override every row below:
 | `011_campaign_lifecycle.sql` | `campaigns` table + `affiliate_links.campaign_id` FK + RLS | **FORWARD_FIX_REQUIRED post-data** (campaigns owns link associations). Empty-env: `ALTER TABLE affiliate_links DROP COLUMN campaign_id; DROP TABLE campaigns CASCADE;` | n/a | Pre-data only | Empty-env revert; post-data backup required |
 | `012_conversion_reconciliation.sql` | `conversions.status` + `status_updated_at`, CHECK + index | **FORWARD_FIX_REQUIRED once reconciliation rows exist** — old constraint-safe revert would orphan `refunded/rejected` states. Revert: `ALTER TABLE conversions DROP CONSTRAINT conversions_status_check; DROP INDEX conversions_tenant_status_occurred_idx; ALTER TABLE conversions DROP COLUMN status, DROP COLUMN status_updated_at;` only valid before refined statuses are used | none | None required (additive columns + constraint) | DDL revert valid on pre-reconciliation data |
 | `013_automation_state.sql` | `automation_policies` (tenant PK, mode CHECK, allow_auto_publish) + `automation_kill_switches` (scope CHECK, active, actor) + RLS | **FORWARD_FIX_REQUIRED post-data** (policy + kill switches are operator state). Empty-env: `DROP TABLE automation_kill_switches, automation_policies CASCADE`. Post-data: forward-fix (update mode/payload) preferred; dropping loses active kill-switch blocks | n/a | Pre-data only | Empty-env DDL revert; post-data backup + forward-fix |
+| `014_calendar.sql` | `calendar_events` (tenant_id FK, title, kind enum campaign/content/publish/meeting, starts_at/ends_at, payload jsonb, RLS) | **FORWARD_FIX_REQUIRED post-data** (calendar holds scheduling). Empty-env: `DROP TABLE calendar_events CASCADE`. Post-data: forward-fix preferred; dropping loses tenant scheduling | n/a | Pre-data only | Empty-env DDL revert; post-data backup |
 
 ## Rehearsal evidence backing this file
 

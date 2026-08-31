@@ -9,6 +9,7 @@ import { createOAuthRegistryForEnv } from './oauth-runtime-factory.js';
 import { createCampaignApi } from './campaign-api.js';
 import { createConversionApi } from './conversion-api.js';
 import { createPublicationApi } from './publication-api.js';
+import { createCalendarApi } from './calendar-api.js';
 import {
   createDbClient,
   createAuthRepo,
@@ -16,7 +17,8 @@ import {
   createOAuthLoginRepo,
   createCampaignRepo,
   createConversionReconciliationRepo,
-  createPublicationJobsRepo
+  createPublicationJobsRepo,
+  createCalendarRepo
 } from '../../../packages/db/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
@@ -44,6 +46,7 @@ export function createProductionServer({
   campaignRepository = null,
   conversionRepository = null,
   publicationRepository = null,
+  calendarRepository = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
   db = null
 } = {}) {
@@ -106,6 +109,18 @@ export function createProductionServer({
     return publicationApi;
   };
 
+  let calendarApi = null;
+  const getCalendarApi = () => {
+    if (!calendarApi) {
+      calendarApi = createCalendarApi({
+        repo: calendarRepository ?? createCalendarRepo({ db: database }),
+        localAuthService: authService,
+        rateLimiter
+      });
+    }
+    return calendarApi;
+  };
+
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     const isAuth = pathname.startsWith('/api/v1/auth/');
@@ -113,7 +128,8 @@ export function createProductionServer({
     const isCampaign = pathname === '/api/v1/campaigns' || pathname.startsWith('/api/v1/campaigns/');
     const isConversion = pathname === '/api/v1/conversions' || pathname.startsWith('/api/v1/conversions/');
     const isPublication = pathname === '/api/v1/publications' || pathname.startsWith('/api/v1/publications/');
-    if (!isAuth && !isOAuth && !isCampaign && !isConversion && !isPublication) {
+    const isCalendar = pathname === '/api/v1/calendar' || pathname.startsWith('/api/v1/calendar/');
+    if (!isAuth && !isOAuth && !isCampaign && !isConversion && !isPublication && !isCalendar) {
       inner.emit('request', req, res);
       return;
     }
@@ -143,8 +159,14 @@ export function createProductionServer({
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
-      } else {
+      } else if (isPublication) {
         result = await getPublicationApi().handle({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
+      } else {
+        result = await getCalendarApi().handle({
           req,
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
@@ -153,7 +175,7 @@ export function createProductionServer({
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : isPublication ? 'publication' : 'auth';
+      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : isPublication ? 'publication' : isCalendar ? 'calendar' : 'auth';
       logger.error(`${surface}_request_failed`, { message: String(error?.message ?? error) });
       return sendJson(res, {
         status: 500,
@@ -178,5 +200,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const logger = createLogger();
   const server = createProductionServer({ env: process.env, logger });
   const port = Number(process.env.PORT || 8080);
-  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true, publications: true }));
+  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true, publications: true, calendar: true }));
 }

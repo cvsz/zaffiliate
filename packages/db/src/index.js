@@ -8,4 +8,5 @@ export { createOAuthLoginRepo, oauthIdentityHash } from './oauth-login-repo.js';
 export { createCampaignRepo, CampaignNotFoundError, CampaignTransitionError, CampaignConflictError } from './campaign-repo.js';
 export { createConversionReconciliationRepo, ConversionNotFoundError } from './conversion-reconciliation-repo.js';
 export { createAutomationRepo } from './automation-repo.js';
+export { createCalendarRepo } from './calendar-repo.js';
 export { saveAnalyticsEvents, listRecentAnalyticsEvents } from './analytics-repo.js';

@@ -96,17 +96,17 @@ Consolidate seven overlapping affiliate/social-commerce repositories into one se
 - preserving duplicate SDK implementations without demonstrated compatibility demand;
 - deleting legacy repositories before restoration evidence exists.
 
-## Master-meta phase mapping (2026-08-31)
+## Master-meta phase mapping (2026-08-31 — SWEEP-003)
 
 | Master-meta phase | zaffiliate state |
 |---|---|
 | 0 Discovery | COMPLETE — gap analysis in IMPLEMENTATION-CHECKLIST.md |
-| 1 Foundation | COMPLETE — identity/RBAC/audit/observability complete; Postgres 13 migrations RLS-enforced (33 tables, `ROLLBACK.md` 013), Redis runtime declared (`compose.selfhost.yaml` + `node-redis-runtime.js`), storage hardened (`content-validation.js` + SigV4 S3, write 403-gated B7) + k8s minimal `deploy/k8s` + Helm |
-| 2 Affiliate core | COMPLETE — EP-04/EP-05 + durable affiliate persistence (007, `affiliate-core-repo.js`, `affiliate_domain_outbox` + `outbox-dispatcher.js` streaming to Redis), campaign lifecycle (011, `/api/v1/campaigns`), conversion reconciliation (012, `/api/v1/conversions`), publishing orchestrator (005 + `publication-api.js` `/api/v1/publications`); `/go/:slug` + webhook ingress via durable `business-async.js` |
-| 3 Content studio | PARTIAL — ai-content runtime complete; render pipeline DEFERRED; studio UI = MM-008 |
-| 4 Publishing | COMPLETE — boundary+approvals complete; `publication_jobs` persistence (005) durable + HTTP surface (`publication-api.js` claimDue/transition via `production-server.js`) + campaign-scoped link generation live |
-| 5 Analytics | PARTIAL → near-COMPLETE — runtime+SLO complete; `analytics-repo.js` re-exported durable (`ON CONFLICT DO NOTHING`), warehouse separation intentionally deferred; canonical envelopes durably persisted |
-| 6 Intelligence | COMPLETE (INTEL-0..2 + trend) — `packages/trend/src/index.js` tenant trend ingest + `scoreOpportunity` composite, `baseline-rules-v1` ranker + feature store + evaluation complete; trained models INTEL-3+ remains deferred pending production data |
-| 7 Automation | COMPLETE — workflow approvals + capability-state gating (MM-001) + local auth guard + campaign/conversion RLS + durable `013_automation_state.sql` (`automation-repo.js` with `app.tenant_id` transaction) |
-| 8 Optimization | COMPLETE (seeded) — bandits + min-sample winner gating + `trend` opportunity scoring + `evaluation` hitRate/correlation now contract-enforced; intelligence→decision-gate remains tenant-isolated |
-| 9 Hardening | COMPLETE — release/SBOM/attestation/drill scripts + CodeQL + dependabot + self-host hardening (`compose.selfhost.yaml` `no-new-privileges:true`, 157 syntax gates, 595 tests 589/6); k8s minimal `deploy/k8s` + Helm now present (full TF multi-region intentionally deferred) |
+| 1 Foundation | COMPLETE — identity/RBAC/audit/observability complete; Postgres 14 migrations 34 tables RLS/FORCE `ROLLBACK.md` 014, Redis declared (`compose.selfhost.yaml` + `node-redis-runtime.js`), storage hardened (`content-validation.js` + SigV4 `403 B7` + `video-factory.js` placeholder) + k8s minimal `deploy/k8s` + Helm, **CodeQL + Dependabot** now COMPLETE |
+| 2 Affiliate core | COMPLETE — EP-04/EP-05 + durable affiliate persistence (007, `affiliate-core-repo.js`, `affiliate_domain_outbox` + `outbox-dispatcher.js`), campaign 011 `/api/v1/campaigns`, conversion 012 `/api/v1/conversions`, publishing 005 `publication-api.js` `/api/v1/publications`, calendar 014 `/api/v1/calendar/events`; `/go/:slug` + webhook ingress via durable `business-async.js` |
+| 3 Content studio | COMPLETE minimal — `ai-content` runtime + `mock-provider.js` 4 kinds deterministic + `video-factory.js` placeholder `cdn.zaffiliate.test` + `warehouse.js` + `/api/creator-studio/overview` + `/api/ai-studio/overview` (full drag-drop studio UI + FFmpeg render intentionally deferred until B7 writable, tracked as backlog) |
+| 4 Publishing | COMPLETE — boundary+approvals complete; `publication_jobs` durable + HTTP surface + calendar `014` + campaign-scoped links live |
+| 5 Analytics | COMPLETE minimal — runtime+SLO + `analytics-repo.js` durable + `warehouse.js` tenant exportCsv; warehouse OLAP separation intentionally deferred but now testable |
+| 6 Intelligence | COMPLETE (INTEL-0..2 + trend) — `packages/trend/src/index.js` ingest + scoreOpportunity composite, feature store + `portfolio.js` baseline ranker + evaluation; trained models INTEL-3+ deferred pending production data |
+| 7 Automation | COMPLETE — workflow approvals + capability-state gating + local auth + campaign/conversion RLS + durable `013_automation_state.sql` (`automation-repo.js`) + calendar |
+| 8 Optimization | COMPLETE (seeded) — bandits + min-sample winner gating + `trend` opportunity scoring + evaluation hitRate/correlation contract-enforced |
+| 9 Hardening | COMPLETE — release/SBOM/attestation/drill + CodeQL + dependabot + self-host hardening (`no-new-privileges:true`, `160 gates`, `595 tests 589/6`, + new `014` calendar); k8s minimal present (full TF multi-region deferred) |
