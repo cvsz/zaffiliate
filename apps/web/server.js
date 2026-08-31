@@ -309,6 +309,10 @@ async function handleApi(req, res, pathname, state = {}) {
         return sendJson(res, 200, { tenant, attempts: clone(outreachAttempts) }, headOnly);
       case '/api/analytics/funnel':
         return sendJson(res, 200, { tenant, ...clone(funnelSnapshot) }, headOnly);
+      case '/api/creator-studio/overview':
+        return sendJson(res, 200, { tenant, creators: [{ id: 'cr_4417', status: 'active', campaigns: 2 }, { id: 'cr_5093', status: 'pending', campaigns: 0 }], note: 'minimal creator-studio surface — full UI deferred but API now present' }, headOnly);
+      case '/api/ai-studio/overview':
+        return sendJson(res, 200, { tenant, agents: ['product-research','copy-script','publisher'], mockProviders: ['mock-llm','mock-image','mock-video'], note: 'minimal ai-studio surface — deterministic mock transport, real LLM bindings BLOCKED B2' }, headOnly);
       default:
         return sendJson(res, 404, { error: 'not_found' }, headOnly);
     }
