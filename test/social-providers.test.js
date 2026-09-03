@@ -14,6 +14,9 @@ test('Meta resolves server-side credentials and keeps tokens out of URLs and bod
   assert.equal(seen[0].url.includes('meta-token-secret'), false);
   assert.equal(seen[0].init.headers.authorization, 'Bearer meta-token-secret');
   assert.deepEqual(JSON.parse(seen[0].init.body), { message: 'launch' });
+  assert.deepEqual(await adapter.publishPost({ pageId: 'page_1', message: 'launch', approvalRef: 'apr-1', idempotencyKey: 'idem-1' }), { externalId: 'page_1_post_2' });
+  assert.equal(seen.length, 1);
+  await assert.rejects(() => adapter.publishPost({ pageId: 'page_1', message: 'changed', approvalRef: 'apr-1', idempotencyKey: 'idem-1' }), /different input/);
   await assert.rejects(() => adapter.publishPost({ pageId: 'p', message: 'm', idempotencyKey: 'i' }), /approvalRef/);
   assert.throws(() => createMetaAdapter({ credentialsRef: 'inline-token', resolveCredential: async () => 'x' }), /ref:/);
 });
@@ -40,16 +43,23 @@ test('YouTube supports resumable upload and deterministic quota periods', async 
   const session = await adapter.initiateVideoUpload({ metadata: { title: 'Demo', description: 'Affiliate demo', privacyStatus: 'unlisted' }, byteLength: 3, quotaPeriodKey: '2026-09-02', approvalRef: 'apr-9', idempotencyKey: 'idem-9' });
   assert.equal(session.uploadUrl, 'https://upload.youtube.com/session/abc');
   assert.equal(adapter.quotaConsumed(), 1600);
+  assert.deepEqual(await adapter.initiateVideoUpload({ metadata: { title: 'Demo', description: 'Affiliate demo', privacyStatus: 'unlisted' }, byteLength: 3, quotaPeriodKey: '2026-09-02', approvalRef: 'apr-9', idempotencyKey: 'idem-9' }), session);
+  assert.equal(seen.length, 1);
+  assert.equal(adapter.quotaConsumed(), 1600);
   assert.deepEqual(await adapter.uploadBytes({ uploadUrl: session.uploadUrl, bytes: new Uint8Array([1, 2, 3]) }), { externalId: 'video_9' });
   assert.equal(seen[0].url.includes('youtube-secret'), false);
   assert.equal(seen[0].init.headers.authorization, 'Bearer youtube-secret');
   assert.deepEqual(await adapter.getChannelStatistics({ quotaPeriodKey: '2026-09-02' }), { channelId: 'channel_1', subscriberCount: 12, viewCount: 34, videoCount: 5 });
   await assert.rejects(() => adapter.getChannelStatistics({ quotaPeriodKey: '2026-09-02' }), (error) => error.name === 'YouTubeQuotaExceededError');
   assert.deepEqual(await adapter.getChannelStatistics({ quotaPeriodKey: '2026-09-03' }), { channelId: 'channel_1', subscriberCount: 12, viewCount: 34, videoCount: 5 });
+  assert.equal(adapter.quotaConsumed('2026-09-02'), 1601);
+  await assert.rejects(() => adapter.getChannelStatistics({ quotaPeriodKey: '2026-09-02' }), (error) => error.name === 'YouTubeQuotaExceededError');
 });
 
 test('YouTube rejects unsafe upload URLs and malformed inputs', async () => {
   const adapter = createYouTubeAdapter({ credentialsRef: 'ref:yt/x', resolveCredential: async () => 'token', transport: async () => ({ status: 200, payload: { id: 'x' } }) });
   await assert.rejects(() => adapter.uploadBytes({ uploadUrl: 'http://upload.example/x', bytes: new Uint8Array() }), /https/);
+  await assert.rejects(() => adapter.uploadBytes({ uploadUrl: 'https://attacker.example/collect', bytes: new Uint8Array() }), /not issued by this adapter/);
   await assert.rejects(() => adapter.initiateVideoUpload({ metadata: { title: 'x' }, byteLength: 0, quotaPeriodKey: 'day', approvalRef: 'a', idempotencyKey: 'i' }), /byteLength/);
+  await assert.rejects(() => adapter.getChannelStatistics({ quotaPeriodKey: 'A' }), /YYYY-MM-DD/);
 });
