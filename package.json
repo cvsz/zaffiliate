@@ -19,6 +19,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
     "pg": "8.23.0",
-    "redis": "4.7.1"
+    "redis": "6.2.1"
   }
 }
