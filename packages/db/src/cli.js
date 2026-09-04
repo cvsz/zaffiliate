@@ -14,7 +14,17 @@ if (!status.reachable) {
 try {
   const migrator = createMigrator({ client, migrationsDir: process.env.MIGRATIONS_DIR || defaultMigrationsDir });
   const result = await migrator.applyAll();
-  console.log(JSON.stringify({ ok: true, applied: result.applied, skipped: result.skipped.length }));
+  const payload = {
+    ok: true,
+    applied: result.applied,
+    already_applied: result.skipped.length,
+    planned: [],
+    drift: []
+  };
+  console.log(JSON.stringify(payload));
+  if (payload.applied.length === 0 && payload.already_applied > 0) {
+    console.error(`[migrate] all ${payload.already_applied} migrations already applied`);
+  }
 } catch (error) {
   console.error(JSON.stringify({ ok: false, code: error.code ?? 'MIGRATION_FAILED', message: error.message }));
   process.exit(1);

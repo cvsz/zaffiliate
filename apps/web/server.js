@@ -1,11 +1,36 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, sep } from 'node:path';
 import { controlPlaneManifest } from '../../packages/control-plane/src/navigation.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(here, 'public');
+const buildDir = resolve(here, 'dist/web');
+
+function getContentType(pathname) {
+  const ext = pathname.split('.').pop()?.toLowerCase();
+  const map = {
+    'html': 'text/html; charset=utf-8',
+    'js': 'text/javascript; charset=utf-8',
+    'mjs': 'text/javascript; charset=utf-8',
+    'css': 'text/css; charset=utf-8',
+    'svg': 'image/svg+xml',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'ico': 'image/x-icon',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'eot': 'application/vnd.ms-fontobject',
+    'json': 'application/json; charset=utf-8'
+  };
+  return map[ext || ''] || 'application/octet-stream';
+}
+
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
@@ -53,7 +78,7 @@ export async function buildOverviewPayload({ tenant, dataProviders = {}, approva
   }
   let expiring = [];
   try {
-    expiring = dataProviders.expiringPromotions ? await dataProviders.expiringPromotions(tenant) : [];
+    expiring = dataProviders.expiringPromotions ? (await dataProviders.expiringPromotions(tenant)) : [];
   } catch {
     degraded = true;
   }
@@ -337,22 +362,33 @@ async function handleStatic(req, res, pathname) {
   if (decoded.includes('\0') || decoded.includes('\\') || decoded.split('/').includes('..')) {
     return sendJson(res, 403, { error: 'forbidden' }, headOnly);
   }
-  const resolved = resolve(publicDir, `.${decoded}`);
-  if (resolved !== publicDir && !resolved.startsWith(`${publicDir}${sep}`)) {
-    return sendJson(res, 403, { error: 'forbidden' }, headOnly);
-  }
-  const entry = files.get(pathname) ?? files.get(decoded);
-  if (!entry) {
-    return sendJson(res, 404, { error: 'not_found' }, headOnly);
-  }
+
+  const buildPath = join(buildDir, decoded);
   try {
-    const [filename, contentType] = entry;
-    const body = await readFile(join(publicDir, filename));
-    res.writeHead(200, { 'content-type': contentType, 'cache-control': filename === 'index.html' ? 'no-store' : 'public, max-age=300' });
-    res.end(headOnly ? undefined : body);
+    const buildStat = await stat(buildPath);
+    if (buildStat.isFile()) {
+      const contentType = getContentType(decoded);
+      const body = await readFile(buildPath);
+      res.writeHead(200, { 'content-type': contentType, 'cache-control': 'public, max-age=300' });
+      return res.end(headOnly ? undefined : body);
+    }
   } catch {
-    sendJson(res, 500, { error: 'asset_read_failed' }, headOnly);
+    // fall through to public dir
   }
+
+  const entry = files.get(pathname) ?? files.get(decoded);
+  if (entry) {
+    const [filename, contentType] = entry;
+    try {
+      const body = await readFile(join(publicDir, filename));
+      res.writeHead(200, { 'content-type': contentType, 'cache-control': filename === 'index.html' ? 'no-store' : 'public, max-age=300' });
+      return res.end(headOnly ? undefined : body);
+    } catch {
+      return sendJson(res, 500, { error: 'asset_read_failed' }, headOnly);
+    }
+  }
+
+  return sendJson(res, 404, { error: 'not_found' }, headOnly);
 }
 
 export function buildWebServer({ dataProviders = {} } = {}) {

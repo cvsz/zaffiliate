@@ -1,6 +1,9 @@
 import http from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import { createLogger, MetricsRegistry, traceContext } from '../../../packages/observability/src/index.js';
 import { getSupabaseStatus, createSupabaseClient } from '../../../packages/supabase/src/index.js';
 import { createAffiliateRuntime } from '../../../packages/affiliate-core/src/runtime.js';
@@ -22,6 +25,85 @@ import { createRecommendationService } from '../../../packages/intelligence/src/
 const port = Number(process.env.PORT || 8080);
 const requiredForReady = ['DATABASE_URL', 'REDIS_URL'];
 const packageManifest = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
+const frontendBuildDir = resolve(fileURLToPath(new URL('../../../apps/web/dist/web/public', import.meta.url)));
+const frontendAssetsDir = resolve(fileURLToPath(new URL('../../../apps/web/dist/web/assets', import.meta.url)));
+
+function getContentType(pathname) {
+  const ext = pathname.split('.').pop()?.toLowerCase();
+  const map = {
+    'html': 'text/html; charset=utf-8',
+    'js': 'text/javascript; charset=utf-8',
+    'mjs': 'text/javascript; charset=utf-8',
+    'css': 'text/css; charset=utf-8',
+    'svg': 'image/svg+xml',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'ico': 'image/x-icon',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'eot': 'application/vnd.ms-fontobject',
+    'json': 'application/json; charset=utf-8'
+  };
+  return map[ext || ''] || 'application/octet-stream';
+}
+
+async function serveFrontend(req, res, pathname) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return false;
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+  if (decoded.includes('\0') || decoded.includes('\\') || decoded.split('/').includes('..')) {
+    return false;
+  }
+  const relative = decoded.startsWith('/') ? decoded.slice(1) : decoded;
+  const filePath = join(frontendBuildDir, relative);
+  const assetRelative = relative.replace(/^assets\//, '');
+  const assetPath = join(frontendAssetsDir, assetRelative);
+  try {
+    const fileStat = await stat(assetPath);
+    if (fileStat.isFile()) {
+      const contentType = getContentType(decoded);
+      const body = await readFile(assetPath);
+      res.writeHead(200, { 'content-type': contentType, 'cache-control': 'public, max-age=300' });
+      res.end(req.method === 'HEAD' ? undefined : body);
+      return true;
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    const fileStat = await stat(filePath);
+    if (fileStat.isDirectory()) {
+      const body = await readFile(join(filePath, 'index.html'));
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(req.method === 'HEAD' ? undefined : body);
+      return true;
+    }
+    if (!fileStat.isFile()) return false;
+    const contentType = getContentType(decoded);
+    const body = await readFile(filePath);
+    res.writeHead(200, { 'content-type': contentType, 'cache-control': 'public, max-age=300' });
+    res.end(req.method === 'HEAD' ? undefined : body);
+    return true;
+  } catch {
+    // fall through to SPA fallback
+  }
+  try {
+    const body = await readFile(join(frontendBuildDir, 'index.html'));
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(req.method === 'HEAD' ? undefined : body);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function readiness(env = process.env) {
   const missing = requiredForReady.filter((key) => !String(env[key] || '').trim());
@@ -336,7 +418,10 @@ export function buildServer({
       return undefined;
     }
 
-    return errorEnvelope(404, 'not_found', 'NOT_FOUND', 'not_found');
+    const served = await serveFrontend(req, res, pathname);
+    if (!served) {
+      return errorEnvelope(404, 'not_found', 'NOT_FOUND', 'not_found');
+    }
   });
 }
 

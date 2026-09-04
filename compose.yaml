@@ -1,49 +1,13 @@
 services:
   api:
     build: .
-    environment:
-      PORT: 8080
-      DATABASE_URL: postgresql://zaffiliate:zaffiliate@postgres:5432/zaffiliate
-      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - .env
     ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - "8081:8080"
     restart: unless-stopped
     read_only: true
     tmpfs:
       - /tmp
     security_opt:
       - no-new-privileges:true
-
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: zaffiliate
-      POSTGRES_USER: zaffiliate
-      POSTGRES_PASSWORD: zaffiliate
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zaffiliate -d zaffiliate"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-volumes:
-  postgres-data:
-  redis-data:
