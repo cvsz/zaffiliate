@@ -20,19 +20,12 @@
     "preflight:production": "node scripts/production-preflight.mjs"
   },
   "dependencies": {
-    "@line/bot-sdk": "^11.2.0",
     "@supabase/supabase-js": "^2.112.4",
-    "ecom-connector": "^1.3.4",
-    "facebook-nodejs-business-sdk": "^24.0.1",
-    "googleapis": "^176.0.0",
-    "lazada-api": "^2.6.0",
     "pg": "8.23.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
-    "redis": "6.2.1",
-    "shopee-open-api": "^1.0.5",
-    "tiktok-shop-sdk": "^1.0.3"
+    "redis": "6.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",
