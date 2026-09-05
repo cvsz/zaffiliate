@@ -16,6 +16,23 @@ Updated: 2026-08-31 · Release source of truth (Gold Master master-spec §3). Th
 
 Machine-readable manifest: `node scripts/generate-release-manifest.mjs` (commit, components, migrations, verification fields); SBOM via `scripts/generate-sbom.mjs`; attestation via `scripts/gpg-attest.mjs`.
 
+## 2026-09-05 Closure Refresh
+
+Current repository evidence supersedes stale historical counts below where they differ:
+
+- Head validated: `d1f97e8c14726d917428220697b55d2f7ae19545`.
+- CI run 33940214347: **PASS** across validate, SAST, container build/scan, Postgres RLS, secret scan, IaC scan, compose validation and validation harnesses.
+- CodeQL run 33940214360: **PASS**.
+- Full test run: **608 tests — 602 pass, 0 fail, 6 environment-gated skips**.
+- `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities**.
+- Removed unused legacy provider SDK dependencies that introduced deprecated `request`/vulnerable axios/form-data/qs/tough-cookie chains; canonical adapters remain implemented in-repo and use the hardened transport boundaries.
+- `compose.yaml` validation no longer requires a local `.env` file in CI.
+- React/Vite control-plane shell preserves public Privacy/Terms/Contact links and the full control-plane navigation contract.
+- Production preflight command: `npm run preflight:production`, writing secret-free evidence to `dist/production-preflight.json`.
+
+**Remaining external release blockers are unchanged:** B2 live-provider credentials/approval and B7 write-enabled object-storage permission. Production cutover/Gold Master remain fail-closed until those external prerequisites and subsequent live evidence gates pass.
+
+
 ## Scope
 
 Frozen for stabilization (§5). Allowed: bug fixes, security fixes, release blockers, documentation corrections, operational hardening. Deferred features below are out of scope until Gold Master gates clear.
