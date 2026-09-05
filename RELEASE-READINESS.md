@@ -20,15 +20,17 @@ Machine-readable manifest: `node scripts/generate-release-manifest.mjs` (commit,
 
 Current repository evidence supersedes stale historical counts below where they differ:
 
-- Head validated: `e6da289c6a2dbe5b270715e4c5987baa9967290` (preflight probe key fix on top of `d1f97e8`).
+- Head validated: `78e362d` (preflight endpoint-guard + Makefile target + RC wiring + 10 production scripts in check).
 - CI run 33940214347: **PASS** across validate, SAST, container build/scan, Postgres RLS, secret scan, IaC scan, compose validation and validation harnesses.
 - CodeQL run 33940214360: **PASS**.
-- Full test run: **614 tests — 608 pass, 0 fail, 6 environment-gated skips** (+6 new preflight tests; the previously failing `test/api-baseline.test.js:26` "unknown routes" case is now fixed: `serveFrontend` no longer SPA-falls-back for `/api/...` paths).
+- Full test run: **625 tests — 619 pass, 0 fail, 6 environment-gated skips** (+11 vs the prior 614/608 baseline: 3 new preflight endpoint-guard cases + 8 new release-candidate/cutover contract cases).
+- `npm run check`: **150** `node --check` gates (was 140; +10 for the previously ungated operational scripts: backup-restore-drill, cutover, derive-pooler-url, fault-inject, generate-sbom, gpg-attest, load-test, migrate-data, reconcile, soak-test).
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities**.
 - Removed unused legacy provider SDK dependencies that introduced deprecated `request`/vulnerable axios/form-data/qs/tough-cookie chains; canonical adapters remain implemented in-repo and use the hardened transport boundaries.
 - `compose.yaml` validation no longer requires a local `.env` file in CI.
 - React/Vite control-plane shell preserves public Privacy/Terms/Contact links and the full control-plane navigation contract.
-- Production preflight command: `npm run preflight:production`, writing secret-free evidence to `dist/production-preflight.json`. The storage probe now uses a runtime-compliant key (`tenants/_probe/YYYY/MM/<uuid>.png`) so B7 evidence actually exercises the bucket (previously failed at key validation before reaching the network).
+- Production preflight command: `npm run preflight:production` (also `make preflight`), writing secret-free evidence to `dist/production-preflight.json`. The storage probe now uses a runtime-compliant key (`tenants/_probe/YYYY/MM/<uuid>.png`) so B7 evidence actually exercises the bucket. The preflight now also fail-closes on `http://` or loopback `OBJECT_STORAGE_ENDPOINT` to keep dev-style URLs out of production evidence.
+- Release-candidate gate (`scripts/release-candidate.mjs`) now requires `preflight.decision === 'READY_FOR_LIVE_PROVIDER_VERIFICATION'` in `dist/rc-evidence.json`; RC cannot report green without B7 (storage write/read) and B2 (provider credential presence) evidence being present.
 
 **Remaining external release blockers are unchanged:** B2 live-provider credentials/approval and B7 write-enabled object-storage permission. Production cutover/Gold Master remain fail-closed until those external prerequisites and subsequent live evidence gates pass.
 
