@@ -112,6 +112,35 @@ test('durable consumer accepts node-redis structured XREADGROUP replies', async 
   assert.equal(result[0].status, 'acked');
 });
 
+
+test('durable consumer accepts RESP3 Map XREADGROUP replies', async () => {
+  let attempts = 0;
+  const client = {
+    async xgroup() { return 'OK'; },
+    async xreadgroup() {
+      return new Map([[
+        'affiliate-events',
+        [['11-0', new Map([
+          ['tenantId', 'org-A'],
+          ['type', 'conversion.recorded'],
+          ['eventId', 'evt-resp3'],
+          ['payload', '{"orderRef":"o-resp3"}']
+        ])]]
+      ]]);
+    },
+    async xack() { return 1; },
+    async xadd() { return '12-0'; },
+    async incr() { attempts += 1; return attempts; },
+    async pexpire() { return 1; },
+    async del() { return 1; }
+  };
+  const consumer = createDurableStreamConsumer({ client, stream: 'affiliate-events', group: 'g', consumer: 'c' });
+  const seen = [];
+  const result = await consumer.consumeOnce(async (entry) => seen.push(entry.eventId));
+  assert.deepEqual(seen, ['evt-resp3']);
+  assert.equal(result[0].status, 'acked');
+});
+
 test('stream publisher auto-connects a configured Redis URL and closes an owned client', async () => {
   const calls = [];
   let closed = 0;
