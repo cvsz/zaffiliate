@@ -53,6 +53,7 @@ function getContentType(pathname) {
 
 async function serveFrontend(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;
+  if (pathname.startsWith('/api/')) return false;
   let decoded;
   try {
     decoded = decodeURIComponent(pathname);

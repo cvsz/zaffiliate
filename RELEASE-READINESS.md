@@ -20,15 +20,15 @@ Machine-readable manifest: `node scripts/generate-release-manifest.mjs` (commit,
 
 Current repository evidence supersedes stale historical counts below where they differ:
 
-- Head validated: `d1f97e8c14726d917428220697b55d2f7ae19545`.
+- Head validated: `e6da289c6a2dbe5b270715e4c5987baa9967290` (preflight probe key fix on top of `d1f97e8`).
 - CI run 33940214347: **PASS** across validate, SAST, container build/scan, Postgres RLS, secret scan, IaC scan, compose validation and validation harnesses.
 - CodeQL run 33940214360: **PASS**.
-- Full test run: **608 tests — 602 pass, 0 fail, 6 environment-gated skips**.
+- Full test run: **614 tests — 608 pass, 0 fail, 6 environment-gated skips** (+6 new preflight tests; the previously failing `test/api-baseline.test.js:26` "unknown routes" case is now fixed: `serveFrontend` no longer SPA-falls-back for `/api/...` paths).
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities**.
 - Removed unused legacy provider SDK dependencies that introduced deprecated `request`/vulnerable axios/form-data/qs/tough-cookie chains; canonical adapters remain implemented in-repo and use the hardened transport boundaries.
 - `compose.yaml` validation no longer requires a local `.env` file in CI.
 - React/Vite control-plane shell preserves public Privacy/Terms/Contact links and the full control-plane navigation contract.
-- Production preflight command: `npm run preflight:production`, writing secret-free evidence to `dist/production-preflight.json`.
+- Production preflight command: `npm run preflight:production`, writing secret-free evidence to `dist/production-preflight.json`. The storage probe now uses a runtime-compliant key (`tenants/_probe/YYYY/MM/<uuid>.png`) so B7 evidence actually exercises the bucket (previously failed at key validation before reaching the network).
 
 **Remaining external release blockers are unchanged:** B2 live-provider credentials/approval and B7 write-enabled object-storage permission. Production cutover/Gold Master remain fail-closed until those external prerequisites and subsequent live evidence gates pass.
 
