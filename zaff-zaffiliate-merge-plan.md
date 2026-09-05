@@ -1,272 +1,188 @@
-# zaff ↔ zaffiliate — Feature Comparison & Full Merge Plan
+# zaff ↔ zaffiliate — Executed Merge Ledger
 
-**Date:** 2026-08-23
-**Mode:** Report only (no merge code written in this session)
-**Scope requested:** Full merge (all missing features consolidated)
-**Repos:**
-- `/home/cvsz/zaff` — TypeScript monorepo, npm workspaces, 14,024 LOC TS, 44 test files. Strong *infrastructure*.
-- `/home/cvsz/zaffiliate` — JavaScript monorepo, single package, 6,636 LOC JS, 33 test files, runnable. Strong *domain/business logic*.
+**Original plan date:** 2026-08-23  
+**Execution refresh:** 2026-09-05  
+**Canonical target:** `cvsz/zaffiliate`  
+**Source donor:** `cvsz/zaff`  
+**Mode:** Executed/current-state ledger
 
----
+This file supersedes the original report-only assumptions. The original plan correctly identified `zaffiliate` as the canonical target and `zaff` as the infrastructure donor, but the repository has advanced substantially since that report. Current implementation evidence is authoritative; duplicate ports are explicitly avoided.
 
-## 1. Stack & Packaging Differences (root cause of merge friction)
+## Canonical decisions
 
-| Dimension | zaff | zaffiliate |
-|---|---|---|
-| Language | TypeScript (strict, `tsc -b` project refs) | JavaScript (ESM, `node --test`) |
-| Packaging | npm workspaces (`apps/*`,`services/*`,`packages/*`) | single `package.json`, `packages/*` as plain dirs |
-| Runtime state | Postgres + Redis (real persistence) | in-memory runtimes (no DB) |
-| Node engine | >=20.19 | >=22 |
-| API surface | business routes (auth, oauth, links, campaigns, webhooks) | health/readiness/metrics only |
-| Web/UI | stub | real SPA (views.js + app.js) with mock data |
-| Tests | vitest (unit/integration/security/parity) | node:test (runtime/e2e/harnesses) |
-| CI | lint + typecheck + build + test + Postgres service | `node --check` + `node --test` + secret/security guards |
-| Self-description | "Affiliate Automation OS" scaffold | "canonical" consolidation of legacy repos |
+| Decision | Resolution |
+|---|---|
+| Target repository | `cvsz/zaffiliate` |
+| Runtime language | JavaScript ESM; do not mechanically convert to zaff TypeScript workspace |
+| Persistence | Postgres in production; in-memory remains available for deterministic unit tests |
+| Event delivery | Redis Streams for durable delivery with bounded in-memory fallback/test mode |
+| Affiliate runtime | zaffiliate `affiliate-core` with DB repository port |
+| TikTok implementation | zaffiliate TikTok Shop SDK is canonical |
+| Security boundary | zaffiliate security + transport boundary is canonical |
+| RBAC | zaffiliate tenant-aware grants model remains canonical; donor semantics are parity inputs, not a second authorization stack |
+| Session/API-key model | zaffiliate identity/billing model remains canonical |
+| Contract strategy | Preserve the canonical JavaScript contract surface; introduce schema validation only behind compatibility-safe boundaries rather than forcing a wholesale Zod migration |
 
-**Implication:** A full merge is a *port*, not a `git merge`. The two trees do not share files, build tooling, or a type system. The plan below treats it as a consolidation with explicit source→target mapping and dedup steps.
+## Execution status by original phase
 
----
+### Phase 0 — Contracts & tooling — COMPLETE / CONSOLIDATED
 
-## 2. Feature Comparison Matrix
+Canonical tenancy, grants, audit-chain and domain contracts are already established in `packages/contracts`. The repository has extensive regression and tenant-isolation coverage. A wholesale TypeScript/Zod workspace conversion is intentionally rejected because it would replace the richer canonical runtime rather than port missing infrastructure behind stable interfaces.
 
-Legend: ✅ implemented · 🟡 partial/stub · ❌ absent
+### Phase 1 — Persistence layer — COMPLETE
 
-### 2.1 Cross-cutting infrastructure
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| Postgres persistence (repos + migrator + drift) | ✅ | ❌ | zaff has 12 repos + migrator + drift detection |
-| Redis event bus / streams (consumer groups, DLQ) | ✅ | ❌ | zaff `redis-streams.ts`; zaffiliate is in-memory outbox only |
-| In-memory event bus (retry + DLQ) | ✅ | 🟡 | zaff full bus; zaffiliate outbox pattern in runtimes |
-| Structured logging (pino + redaction) | ✅ | 🟡 | zaff pino; zaffiliate custom JSON logger w/ redaction |
-| OpenTelemetry tracing | ✅ | 🟡 | zaff otel wrapper; zaffiliate spans via observability pkg |
-| Metrics (Prometheus exposition) | 🟡 | ✅ | zaff none; zaffiliate `/metrics` + MetricsRegistry |
-| SLO / error-budget evaluation | ❌ | ✅ | zaffiliate `defineSlo/evaluateSlo` |
-| Storage adapters (local/S3, MIME, signed URLs) | ✅ | ❌ | zaff `storage/*`; zaffiliate none |
-| Security package (SSRF, secrets, classification, redaction) | ❌ (empty) | ✅ | zaffiliate `security/*`; zaff has none |
-| SSRF URL validation | ❌ | ✅ | zaffiliate `url-validation.js` |
-| Secret manager (`ref:`-only) | ❌ | ✅ | zaffiliate `secrets.js` |
-| CI security gates (secret/SSRF scanning) | 🟡 | ✅ | zaffiliate explicit guards |
+Implemented in `zaffiliate`:
 
-### 2.2 Auth / identity / tenancy
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| OAuth/OIDC browser flow (PKCE, JWKS, RS256/HS256) | ✅ | ❌ | zaff full; zaffiliate only API-key + external identity link |
-| Account recovery (email verify + password reset) | ✅ | ❌ | zaff `account-recovery` |
-| Argon2id password hashing | ✅ | ❌ | zaff; zaffiliate `createUser` rejects password claims |
-| RBAC / permission model | ✅ | ✅ | zaff `rbac.ts`; zaffiliate `grants.js` (different shapes) |
-| Org / tenant isolation | ✅ | ✅ | zaff org-scope; zaffiliate tenantId equality |
-| Session management | ✅ | ✅ | zaff 32B tokens; zaffiliate `startSession` `zs_*` |
-| Scoped API keys w/ hash storage | ❌ | ✅ | zaffiliate `issueApiKey` |
-| Append-only audit log (hash chain) | 🟡 | ✅ | zaff audit repo + events; zaffiliate full SHA-256 chain |
-| Membership / plans / entitlements | ❌ | ✅ | zaffiliate `identity-billing` |
+- `packages/db` pooled client and checksummed migrator;
+- drift detection/fail-closed migration behavior;
+- production SQL migrations under `db/migrations`;
+- tenant/RLS integration coverage;
+- publication-job repositories;
+- affiliate-core persistence repository;
+- auth/OAuth repositories;
+- campaign/conversion reconciliation repositories;
+- Postgres-backed integration workflows in GitHub Actions.
 
-### 2.3 Affiliate domain
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| Affiliate core domain (product/offer/link/conversion) | 🟡 | ✅ | zaff contracts+db repos; zaffiliate full runtime |
-| Commission math (basis-point / BigInt) | ✅ | ✅ | zaff webhook %/fixed; zaffiliate BigInt basis-points |
-| Affiliate link redirect `/go/:slug` + click attribution | ✅ | ❌ | zaff `link-routes.ts` |
-| Webhook ingest (HMAC, replay, commission, dedup) | ✅ | ❌ | zaff `campaign-routes.ts` |
-| Campaign lifecycle (state machine) | ✅ | 🟡 | zaff campaign status; zaffiliate via workflow |
-| Affiliate link generation (slug uniqueness) | ✅ | ✅ | both |
+Do not copy `zaff/packages/db` wholesale. The required donor capability has already been ported into the canonical JavaScript architecture.
 
-### 2.4 Platform adapters / integrations
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| TikTok Shop adapter/SDK | ✅ | ✅ | zaff signed requests; zaffiliate full SDK (signing/auth/webhook/client/resilience/pagination/resources) |
-| Shopee adapter | ✅ | ✅ | both signed clients |
-| Meta adapter | ✅ | 🟡 | zaff Meta Graph; zaffiliate publishing supports FB/IG |
-| YouTube adapter | ✅ | 🟡 | zaff upload; zaffiliate publishing supports YT |
-| Lazada adapter | ❌ | ✅ | zaffiliate only |
-| Line adapter | ❌ | ✅ | zaffiliate only |
-| Policy registry (capabilities/rate/disclosure) | ✅ | ✅ | both, different shapes |
-| Rate limiting (token bucket) | 🟡 | ✅ | zaff API limiter; zaffiliate `rate-limit.js` |
-| Transport boundary (SSRF + sensitive body) | ❌ | ✅ | zaffiliate `transport-boundary.js` |
-| Publishing adapter (approval + idempotency) | 🟡 | ✅ | zaff throws NotImplemented; zaffiliate real |
+### Phase 2 — Durable events — COMPLETE
 
-### 2.5 Content / AI
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| AI content runtime (templates, providers, budget) | ❌ (empty) | ✅ | zaffiliate `ai-content` |
-| AI agents + experiments | ❌ | ✅ | zaffiliate `runAgent`, `createExperiment` |
-| AI provider package | ❌ (empty) | 🟡 | zaffiliate provider selection inside ai-content |
-| Copy/image/video generation pipelines | ❌ | ❌ | neither (vision only) |
+`packages/events` now includes the Redis Streams reliability features the original report identified as missing:
 
-### 2.6 Analytics / attribution
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| Analytics domain/runtime | ❌ (stub) | ✅ | zaffiliate `analytics` |
-| Attribution models (last/first/linear) | 🟡 | ✅ | zaffiliate full chain |
-| Funnel / drop-off / cohort | ❌ | ✅ | zaffiliate |
-| Anomaly detection | ❌ | ✅ | zaffiliate |
-| Commission reconciliation | 🟡 | ✅ | zaffiliate 1% tolerance |
+- consumer-group creation;
+- batch `XREADGROUP` consumption;
+- `XAUTOCLAIM` pending-message recovery;
+- ACK only after successful processing;
+- retry-attempt tracking;
+- bounded DLQ behavior;
+- Redis-backed idempotency/deduplication;
+- stable caller-supplied event IDs;
+- fail-closed behavior when Redis is required;
+- deterministic in-memory mode for tests/degraded environments.
 
-### 2.7 Workflow / automation / outreach
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| Workflow engine (state machine, DLQ, approval) | ❌ | ✅ | zaffiliate `workflow` |
-| Outreach (consent, quiet-hours, budget, DLQ) | ❌ | ✅ | zaffiliate `outreach` |
-| Human approval inbox / web approve | 🟡 | ✅ | zaff campaign status; zaffiliate web approve |
-| Worker / scheduler apps | ❌ | ❌ | both stubs/absent |
+### Phase 3 — Auth & identity — COMPLETE FOR CANONICAL SCOPE
 
-### 2.8 Billing
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| Plans / quotas / entitlements | ❌ | ✅ | zaffiliate |
-| Usage metering | ❌ | ✅ | zaffiliate |
-| Ledger (balanced entries) | ❌ | ✅ | zaffiliate |
-| Invoice lifecycle | ❌ | ✅ | zaffiliate |
+Implemented:
 
-### 2.9 Release / tooling / control-plane
-| Capability | zaff | zaffiliate | Notes |
-|---|---|---|---|
-| Release manifest / version / changelog | ❌ | ✅ | zaffiliate `release` |
-| Control-plane navigation manifest | ❌ | ✅ | zaffiliate `control-plane` |
-| Supabase client | ❌ | ✅ | zaffiliate |
-| Web SPA (real UI) | ❌ | ✅ | zaffiliate `apps/web` |
+- OAuth authorization-code + PKCE flow;
+- callback/disconnect wiring;
+- external identity binding;
+- persistent OAuth state/login repositories;
+- session lifecycle;
+- scoped API keys stored by hash;
+- tenant-aware RBAC/grants;
+- plans, quotas, usage, ledger and invoices;
+- security/audit boundaries around privilege changes.
 
----
+The canonical identity model is the existing zaffiliate implementation; donor auth semantics are used as parity references rather than imported as a second token/session system.
 
-## 3. Missing Features (the "find missing" answer)
+### Phase 4 — Security package — COMPLETE
 
-### 3.1 Features MISSING in `zaff` (present in zaffiliate)
-- Affiliate core *runtime* (in-memory lifecycle w/ BigInt commission math, event outbox)
-- AI content runtime (templates, provider selection, budget metering, agents, experiments)
-- Analytics runtime (attribution models, funnel, cohort, anomaly, reconciliation, export)
-- Workflow engine (durable job SM, tool grants, idempotency, approval, DLQ, reconcile)
-- Outreach engine (consent suppression, quiet-hours, daily budget, follow-ups, DLQ)
-- Identity & billing (membership, scoped API keys, plans, quotas, ledger, invoices)
-- Security package: SSRF validation, secret classification/redaction, `ref:` secret manager, transport boundary
-- TikTok Shop **SDK** (current zaff TikTok adapter is shallower than zaffiliate's SDK)
-- Lazada + Line adapters
-- Rate-limit token bucket, publishing adapter, transport boundary
-- Observability SLO/metrics/span richness
-- Release tooling (manifest/version/changelog), control-plane nav, Supabase client
-- Real web SPA
+Canonical security package includes:
 
-### 3.2 Features MISSING in `zaffiliate` (present in zaff)
-- Postgres persistence layer (12 repos, migrator, schema-drift detection)
-- Redis Streams event bus (durable, consumer groups, DLQ)
-- OAuth/OIDC browser flow (PKCE, JWKS, RS256/HS256) + account recovery
-- Argon2id password hashing
-- Storage adapters (local/S3, MIME sniffing, signed URLs)
-- Affiliate link redirect `/go/:slug` + click attribution endpoint
-- Webhook ingest (HMAC, replay protection, commission computation, dedup)
-- API business routes (auth register/login/logout/me, campaigns CRUD, conversions)
-- CI: lint + typecheck + build + Postgres integration tests
-- (zaff has no billing/analytics/workflow — those come FROM zaffiliate)
+- SSRF/URL validation;
+- `ref:` secret-manager contract;
+- secret classification and structured-log redaction;
+- JWKS/OAuth verification helpers;
+- ingress and Redis-backed rate limiting;
+- transport-boundary protections;
+- CI secret/security gates.
 
-### 3.3 Overlapping capabilities needing DEDUP (not simply "missing")
-Both implement, with divergent shapes — must be reconciled, not duplicated:
-- **Affiliate domain**: zaff (contracts + db repos + webhook math) vs zaffiliate (`affiliate-core` runtime). → one canonical affiliate-core that is *persistent*.
-- **Observability/logging**: zaff (pino + otel) vs zaffiliate (custom metrics/spans/redaction). → merge into one.
-- **RBAC / tenancy / audit**: zaff (`rbac.ts`, audit repo) vs zaffiliate (`grants.js`, `tenancy.js`, `audit.js` hash chain). → one canonical authz + append-only audit.
-- **Platform adapters / TikTok**: zaff (`platform-adapters/*`) vs zaffiliate (`tiktok-shop` SDK + `adapters/*`). → one adapter layer.
-- **Policy registry**: zaff (`policy-registry.ts`) vs zaffiliate (`capabilities.js` manifests). → one.
-- **Contracts**: zaff (Zod) vs zaffiliate (plain JS). → recommend Zod as single source of truth.
+### Phase 5 — Storage — COMPLETE IN CODE / EXTERNAL PERMISSION BLOCKER REMAINS
 
----
+Implemented:
 
-## 4. Recommended Consolidation Target
+- local storage driver;
+- S3-compatible storage boundary;
+- MIME/media validation;
+- signed object URLs;
+- fail-closed storage behavior.
 
-**Recommendation: make `zaffiliate` the canonical target and port `zaff`'s infrastructure into it as JavaScript packages, while replacing zaffiliate's in-memory runtimes with zaff's Postgres persistence.**
+Remaining issue is not a merge/code gap: current release-readiness evidence records provider-side object-storage write permission as an external operational blocker.
 
-Rationale:
-- `zaffiliate` is explicitly the "canonical affiliate-commerce platform" and is already runnable (API + web SPA) with the richer business logic (affiliate-core, ai-content, analytics, workflow, outreach, identity-billing).
-- `zaff` provides exactly the backbone zaffiliate lacks: durable persistence, real auth, storage, durable events.
-- Porting zaff's infra *into* zaffiliate (JS) avoids rewriting 6.6k LOC of validated business logic into TS, and keeps the runnable artifact intact.
+### Phase 6 — Adapter consolidation — COMPLETE FOR MERGE SCOPE
 
-Alternative (not recommended here): port everything to zaff's TS — higher cost, loses the running zaffiliate app.
+Canonical adapter surface now retains the deeper zaffiliate implementations while incorporating the required donor capabilities where appropriate:
 
-> This is a recommendation only; the report does not perform the port.
+- TikTok Shop SDK as canonical implementation;
+- Shopee and Lazada signed clients;
+- LINE messaging boundary;
+- Facebook/Instagram and YouTube publishing boundaries;
+- capability registry and provider policy;
+- rate limiting, idempotency and transport boundary;
+- approval-required/manual capability classification where live automation is unsupported.
 
----
+Live-provider credential verification is operational release work, not a repository merge gap.
 
-## 5. Full Merge Plan (phased)
+### Phase 7 — Domain runtime persistence — COMPLETE FOR AFFILIATE CORE; DURABILITY HARDENING CONTINUES BY SUBSYSTEM
 
-Each phase: source → target mapping, what to build, tests to port/extend, risks.
+`affiliate-core` is now wired through `createAffiliateCoreRepo` and runtime composition can select the persistent backend. Transactional persistence, restart/replay and RLS coverage exist for the core affiliate lifecycle.
 
-### Phase 0 — Unify contracts & tooling
-- **Source:** zaff `packages/contracts` (Zod), zaffiliate `packages/contracts` (JS).
-- **Action:** Adopt Zod as single contract layer in zaffiliate `packages/contracts`. Port zaffiliate's `tenancy.js`, `audit.js`, `grants.js` into Zod schemas. Keep `audit.js` SHA-256 hash chain as canonical.
-- **Tests:** port `contracts.test.js`, `tenancy.test.js`, `audit-grants.test.js`; add Zod parity tests vs zaff `contracts/*.test.ts`.
-- **Risk:** schema drift between two contract sets; freeze both before porting.
+Other runtimes retain deterministic in-memory seams where useful for tests; durable workflow/publication state and Redis delivery have dedicated persistence implementations. Future subsystem-specific persistence should be added only where production semantics require it, not by replacing all runtime interfaces wholesale.
 
-### Phase 1 — Persistence layer (zaff → zaffiliate)
-- **Source:** zaff `packages/db` (client, migrator, scope, 12 repos), `packages/db/migrations/*`.
-- **Action:** add `packages/db` to zaffiliate (JS port of client/migrator/repos). Port 7 SQL migrations. Add Postgres service to `compose.yaml` + CI.
-- **Tests:** port zaff `db.integration.test.ts`, `affiliate.integration.test.ts`, `migrator.drift.integration.test.ts` as `node --test`.
-- **Risk:** in-memory runtimes must be re-pointed to repos; transactional semantics differ.
+### Phase 8 — API surface unification — COMPLETE
 
-### Phase 2 — Durable events (zaff → zaffiliate)
-- **Source:** zaff `packages/events` (memory bus, redis-streams, typed-bus, domain events).
-- **Action:** add `packages/events` to zaffiliate; replace runtime outboxes with the bus where durable delivery is required (affiliate-core, workflow, outreach). Keep in-memory bus for tests.
-- **Tests:** port `bus.*`, `redis-streams.test.ts`, `domain.test.ts`.
-- **Risk:** Redis dependency; must degrade gracefully when Redis absent (zaffiliate `/readyz` already fails closed).
+The API is no longer health/readiness-only. Current server/business layers include tenant-gated business routes such as:
 
-### Phase 3 — Auth & identity unification
-- **Source:** zaff `services/auth` (OAuth/OIDC, account-recovery, rbac, passwords), zaffiliate `identity-billing`.
-- **Action:** merge into one `packages/identity` (or keep `identity-billing` + add `auth`). Port OAuth/OIDC browser flow + account recovery as JS. Reconcile RBAC (`rbac.ts` vs `grants.js`) → one model. Keep `identity-billing` for plans/ledger/invoices.
-- **Tests:** port zaff `oauth.*`, `account-recovery.*`, `rbac.test.ts`; keep zaffiliate `identity-billing-*.test.js`.
-- **Risk:** two session/token schemes (`zs_*` vs 32B); pick one canonical token format.
+- safe `/go/:slug` redirect and click attribution;
+- signed webhook ingress, replay protection and conversion recording;
+- campaign and commerce endpoints;
+- analytics/automation/content/intelligence surfaces;
+- OAuth authorization/callback/disconnect routes;
+- readiness, health and metrics.
 
-### Phase 4 — Security package (zaffiliate already has it)
-- **Source:** zaffiliate `packages/security` (SSRF, secrets, classification, redaction), `adapters/transport-boundary.js`.
-- **Action:** wire zaffiliate's `security` + `transport-boundary` into zaff's API server and all outbound adapter calls (zaff's adapters currently lack SSRF/transport guards).
-- **Tests:** already covered by `ssrf-validation.test.js`, `security-observability.test.js`; add parity for zaff adapters.
+The web control plane is wired to the canonical API surfaces rather than being treated as a donor replacement target.
 
-### Phase 5 — Storage (zaff → zaffiliate)
-- **Source:** zaff `packages/storage` (local, s3, mime, signing, keys).
-- **Action:** add `packages/storage` to zaffiliate (JS port). Wire into media/asset paths used by ai-content and publishing.
-- **Tests:** port `keys.test.ts`, `mime.test.ts`, `local.test.ts`, `signing.test.ts`, `s3.test.ts`.
+### Phase 9 — Observability unification — COMPLETE
 
-### Phase 6 — Adapter consolidation
-- **Source:** zaff `platform-adapters/*` (tiktok, shopee, meta, youtube, policy-registry, core), zaffiliate `tiktok-shop` SDK + `adapters/*` (shopee, lazada, line, capabilities, publishing, rate-limit).
-- **Action:** produce one `packages/adapters` with: TikTok (prefer zaffiliate SDK depth), Shopee (merge both), Lazada + Line (from zaffiliate), Meta + YouTube (from zaff), unified policy registry, rate-limit, transport-boundary, publishing adapter. Mark unsupported ops `manual`/`approval-required` per AGENTS.md.
-- **Tests:** port both `adapters.test.js`, `adapters-marketplace.test.js`, `tiktok-*.test.js`, and zaff `meta/tiktok/shopee/youtube/policy-registry` tests.
+Canonical observability now includes structured redacted logs, metrics registry, `/metrics`, correlation/span support, SLO/error-budget evaluation, alert definitions and dashboards. A second pino/otel stack from `zaff` is not required unless a future bounded slice demonstrates a measurable missing capability.
 
-### Phase 7 — Domain runtime persistence (zaffiliate → wired to Phase 1)
-- **Action:** re-point `affiliate-core`, `analytics`, `workflow`, `outreach`, `ai-content` runtimes from in-memory to `packages/db` repos. Keep in-memory mode for unit tests.
-- **Tests:** keep existing `*-runtime.test.js`; add persistence integration tests.
+### Phase 10 — Release / control-plane / CI hardening — COMPLETE FOR MERGE SCOPE
 
-### Phase 8 — API surface unification (zaff → zaffiliate)
-- **Source:** zaff `apps/api` routes (links `/go/:slug`, campaigns, conversions, webhooks, auth, oauth).
-- **Action:** expand zaffiliate `apps/api` beyond health/readiness/metrics to include business routes, backed by unified auth + db + runtimes. Keep zaffiliate web SPA; point it at real endpoints (replace mock data).
-- **Tests:** port zaff `*.integration.test.ts` (links, campaign, oauth, auth, bootstrap, prod-wiring).
-- **Risk:** zaff API is TS; re-implement in JS inside zaffiliate.
+Present in `zaffiliate`:
 
-### Phase 9 — Observability unification
-- **Action:** merge zaff (pino/otel) and zaffiliate (metrics/spans/SLO/redaction) into one `packages/observability`. Keep `/metrics` + SLO evaluation + otel bridge + redaction.
-- **Tests:** merge `observability.test.js`, `logger.test.ts`, `request-log.test.ts`.
+- release manifest/version/changelog tooling;
+- CycloneDX SBOM generation;
+- GPG attestation workflow/runbook;
+- control-plane navigation and web SPA;
+- Supabase integration boundary;
+- CI with syntax/tests, Postgres integration, security scanning, CodeQL and dedicated persistence/runtime workflows;
+- load/soak/fault/backup/restore tooling and runbooks.
 
-### Phase 10 — Release / control-plane / CI hardening
-- **Action:** keep zaffiliate `release` + `control-plane` + Supabase client. Extend CI to lint + typecheck (if TS introduced) + build + Postgres integration + secret/SSRF scanning (zaffiliate already has guards). Add `node --test` for all new packages.
+## Original gap list — disposition
 
----
+| Original missing capability in `zaffiliate` | Current disposition |
+|---|---|
+| Postgres persistence | COMPLETE |
+| Redis Streams event bus | COMPLETE |
+| OAuth/OIDC browser flow | COMPLETE |
+| Account/session persistence | COMPLETE for canonical passwordless/OIDC/API-key model |
+| Argon2id password hashing | NOT REQUIRED by canonical passwordless/OIDC design; do not add unused password auth solely for parity |
+| Storage adapters | COMPLETE in code; external write permission remains operational blocker |
+| `/go/:slug` + click attribution | COMPLETE |
+| Signed webhook ingest/replay/dedup | COMPLETE |
+| API business routes | COMPLETE |
+| CI Postgres/security integration | COMPLETE |
+| Affiliate durable persistence | COMPLETE |
+| Durable event delivery | COMPLETE |
 
-## 6. Decisions Needed Before Execution
-1. **Target stack:** confirm zaffiliate (JS) as target, or switch to zaff (TS). (Report recommends zaffiliate.)
-2. **Canonical token/session format:** `zs_*` (zaffiliate) vs 32B base64url (zaff).
-3. **Contract system:** confirm Zod single source.
-4. **RBAC model:** merge `rbac.ts` (viewer/member/admin/owner) with `grants.js` (owner/admin/operator/affiliate/viewer/service).
-5. **Persistence default:** in-memory (dev) vs Postgres (prod) toggle for runtimes.
-6. **Duplicate adapters:** which TikTok/Shopee implementation is canonical.
-7. **Repo hygiene:** both are git repos; plan a single consolidated repo (or subtree merge) and retire the other per zaffiliate migration contract (evidence-gated).
+## Non-merge blockers
 
----
+The remaining release blockers must not be misclassified as zaff→zaffiliate merge work:
 
-## 7. Summary of "Missing → Source → Target"
-| Missing in | Feature | Source repo | Port to |
-|---|---|---|---|
-| zaffiliate | Postgres persistence | zaff | zaffiliate `packages/db` |
-| zaffiliate | Redis event bus | zaff | zaffiliate `packages/events` |
-| zaffiliate | OAuth/OIDC + recovery | zaff | zaffiliate `packages/identity` |
-| zaffiliate | Storage adapters | zaff | zaffiliate `packages/storage` |
-| zaffiliate | API business routes | zaff | zaffiliate `apps/api` |
-| zaffiliate | Observability depth | zaff | zaffiliate `packages/observability` |
-| zaff | Affiliate/analytics/ai/workflow/outreach/billing runtimes | zaffiliate | zaff (if TS target) or keep in zaffiliate |
-| zaff | Security (SSRF/secrets/transport) | zaffiliate | zaff `packages/security` |
-| zaff | Lazada/Line adapters, TikTok SDK depth | zaffiliate | zaff `platform-adapters` |
-| zaff | Release/control-plane/Supabase/web SPA | zaffiliate | zaff |
+1. **Live provider credentials/capability approval** — external maintainer/provider dependency.
+2. **Object-storage write permission** — external provider/S3 credential or bucket-policy dependency.
+3. **Final live-provider verification and explicit production release authorization** — operational evidence gate.
+4. **Legacy retirement/cutover evidence** — execute only after production gates and rollback evidence are green.
 
-This report is the comparison matrix + full merge plan requested. No files were modified.
+## Execution rule going forward
+
+`cvsz/zaffiliate` is the sole canonical implementation target. `cvsz/zaff` is a provenance/parity donor only. Before porting anything from `zaff`, first prove the capability is still absent in current `zaffiliate/main`; if an equivalent or stronger implementation already exists, do not duplicate it.
+
+All future work follows `EXEC-PLANNING.md`: bounded vertical slices, production code + tests + security/telemetry/rollback evidence, no merge on red CI, and no retirement of legacy repositories until cutover evidence is complete.
+
+## Final merge-plan status
+
+**ZAFF → ZAFFILIATE CODE CONSOLIDATION: EXECUTED FOR THE ORIGINAL HIGH-VALUE MERGE SCOPE.**
+
+The historical merge plan is no longer an open implementation checklist. Remaining work belongs to release readiness, live-provider enablement, storage permissions, production validation/cutover and legacy-retirement evidence.
