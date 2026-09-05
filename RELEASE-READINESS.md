@@ -1,6 +1,6 @@
 # RELEASE-READINESS — zaffiliate Affiliate Automation OS
 
-Updated: 2026-08-31 · Release source of truth (Gold Master master-spec §3). This document states exactly one release decision backed by evidence. Feature count never implies readiness.
+Updated: 2026-09-06 · Release source of truth (Gold Master master-spec §3). This document states exactly one release decision backed by evidence. Feature count never implies readiness.
 
 ## Release Identity
 
@@ -20,10 +20,10 @@ Machine-readable manifest: `node scripts/generate-release-manifest.mjs` (commit,
 
 Current repository evidence supersedes stale historical counts below where they differ:
 
-- Head validated: `78e362d` (preflight endpoint-guard + Makefile target + RC wiring + 10 production scripts in check).
+- Head validated: `9b402d8d7e6f3ce7709a553bc9b5c06893f2b095`.ndpoint-guard + Makefile target + RC wiring + 10 production scripts in check).
 - CI run 33940214347: **PASS** across validate, SAST, container build/scan, Postgres RLS, secret scan, IaC scan, compose validation and validation harnesses.
 - CodeQL run 33940214360: **PASS**.
-- Full test run: **625 tests — 619 pass, 0 fail, 6 environment-gated skips** (+11 vs the prior 614/608 baseline: 3 new preflight endpoint-guard cases + 8 new release-candidate/cutover contract cases).
+- Full test run: **627 tests — 621 pass, 0 fail, 6 environment-gated skips**.nvironment-gated skips** (+11 vs the prior 614/608 baseline: 3 new preflight endpoint-guard cases + 8 new release-candidate/cutover contract cases).
 - `npm run check`: **150** `node --check` gates (was 140; +10 for the previously ungated operational scripts: backup-restore-drill, cutover, derive-pooler-url, fault-inject, generate-sbom, gpg-attest, load-test, migrate-data, reconcile, soak-test).
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities**.
 - Removed unused legacy provider SDK dependencies that introduced deprecated `request`/vulnerable axios/form-data/qs/tough-cookie chains; canonical adapters remain implemented in-repo and use the hardened transport boundaries.
