@@ -157,8 +157,23 @@ function normalizeReadGroupReply(reply) {
   if (!Array.isArray(reply)) return [];
   const entries = [];
   for (const streamReply of reply) {
-    if (!Array.isArray(streamReply) || !Array.isArray(streamReply[1])) continue;
-    for (const entry of streamReply[1]) entries.push(entry);
+    if (Array.isArray(streamReply)) {
+      if (!Array.isArray(streamReply[1])) continue;
+      for (const entry of streamReply[1]) entries.push(entry);
+      continue;
+    }
+    if (!streamReply || typeof streamReply !== 'object') continue;
+    const messages = Array.isArray(streamReply.messages) ? streamReply.messages : [];
+    for (const message of messages) {
+      if (Array.isArray(message)) {
+        entries.push(message);
+        continue;
+      }
+      if (!message || typeof message !== 'object') continue;
+      const id = message.id ?? message.ID;
+      const fields = message.message ?? message.fields;
+      if (id != null && fields != null) entries.push([id, fields]);
+    }
   }
   return entries;
 }
