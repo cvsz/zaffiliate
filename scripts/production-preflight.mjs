@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createS3Driver } from '../packages/storage/src/s3.js';
 
-const now = new Date().toISOString();
+const generatedAt = new Date().toISOString();
 const checks = [];
 const add = (name, status, detail = null) => checks.push({ name, status, detail });
 
@@ -53,7 +53,9 @@ optionalRef('YOUTUBE_CREDENTIALS_REF');
 
 if (endpoint && bucket && accessKeyId && secretAccessKey) {
   const driver = createS3Driver({ endpoint, bucket, accessKeyId, secretAccessKey });
-  const key = `preflight/${Date.now()}-probe.png`;
+  const now = new Date();
+  const probeId = randomUUID();
+  const key = `tenants/_probe/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, '0')}/${probeId}.png`;
   // 1x1 transparent PNG, safe deterministic fixture.
   const body = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
   try {
@@ -71,7 +73,7 @@ if (endpoint && bucket && accessKeyId && secretAccessKey) {
 
 const hardFailures = checks.filter((c) => ['FAIL', 'BLOCKED'].includes(c.status));
 const evidence = {
-  generatedAt: now,
+  generatedAt: generatedAt,
   commit: process.env.GITHUB_SHA ?? process.env.COMMIT_SHA ?? null,
   decision: hardFailures.length === 0 ? 'READY_FOR_LIVE_PROVIDER_VERIFICATION' : 'BLOCKED',
   checks
