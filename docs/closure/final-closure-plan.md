@@ -1,6 +1,6 @@
 # zaff → zaffiliate Final Closure Plan
 
-**Updated:** 2026-09-05  
+**Updated:** 2026-09-06  
 **Canonical repository:** `cvsz/zaffiliate`  
 **Status:** Code consolidation complete; production closure in progress.
 
@@ -17,7 +17,7 @@
 
 | Order | Gate | Owner | State | Exit evidence |
 |---:|---|---|---|---|
-| 0 | Main CI + CodeQL | repository | PASS | GitHub Actions green on current baseline |
+| 0 | Main CI + CodeQL + Redis Runtime | repository | PASS | GitHub Actions green on current baseline, including live Redis stream integration |
 | 1 | B2 provider credentials/approval | maintainer + providers | BLOCKED_EXTERNAL | live credentials are provisioned outside git; approved capability probes pass |
 | 2 | B7 object-storage permission | maintainer + storage provider | BLOCKED_EXTERNAL | write/read/signed-url/delete probe passes with tenant-safe policy |
 | 3 | Production dependency wiring | operator | READY_AFTER_1_2 | Postgres + Redis + storage readiness green; no required memory fallback |
