@@ -9,15 +9,17 @@ const here = new URL('.', import.meta.url).pathname;
 const releaseCandidate = await import(join(here, '../scripts/release-candidate.mjs'));
 const cutover = await import(join(here, '../scripts/cutover.mjs'));
 
-function makeManifestFixture() {
+function makeManifestFixture({ withProdEnv = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'zaff-rc-test-'));
   const manifestPath = join(dir, 'dist', 'release-manifest.json');
   const shaPath = join(dir, 'dist', 'release-manifest.sha256');
   const sbomPath = join(dir, 'dist', 'sbom.json');
   const preflightPath = join(dir, 'dist', 'production-preflight.json');
+  const envProdPath = join(dir, '.env.production');
   return {
     dir,
-    paths: { manifestPath, shaPath, sbomPath, preflightPath },
+    withProdEnv,
+    paths: { manifestPath, shaPath, sbomPath, preflightPath, envProdPath },
     writeManifest(manifest = { version: '1.0.0', components: ['api', 'web'] }) {
       const body = JSON.stringify(manifest, null, 2);
       const sha = createHash('sha256').update(body).digest('hex');
@@ -40,6 +42,9 @@ function makeManifestFixture() {
         ]
       }));
     },
+    writeProdEnv() {
+      writeFileSync(envProdPath, 'APP_ENV=production\n');
+    },
     cleanup() {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -47,11 +52,12 @@ function makeManifestFixture() {
 }
 
 test('runReleaseCandidate: all gates pass with READY_FOR_LIVE_PROVIDER_VERIFICATION', () => {
-  const fix = makeManifestFixture();
+  const fix = makeManifestFixture({ withProdEnv: true });
   try {
     fix.writeManifest();
     fix.writeSbom();
     fix.writePreflight('READY_FOR_LIVE_PROVIDER_VERIFICATION');
+    fix.writeProdEnv();
     const originalCwd = process.cwd();
     process.chdir(fix.dir);
     try {
@@ -78,11 +84,12 @@ test('runReleaseCandidate: all gates pass with READY_FOR_LIVE_PROVIDER_VERIFICAT
 });
 
 test('runReleaseCandidate: BLOCKED preflight decision fails the RC', () => {
-  const fix = makeManifestFixture();
+  const fix = makeManifestFixture({ withProdEnv: true });
   try {
     fix.writeManifest();
     fix.writeSbom();
     fix.writePreflight('BLOCKED');
+    fix.writeProdEnv();
     const originalCwd = process.cwd();
     process.chdir(fix.dir);
     try {
@@ -104,10 +111,11 @@ test('runReleaseCandidate: BLOCKED preflight decision fails the RC', () => {
 });
 
 test('runReleaseCandidate: preflight command failure surfaces as reason', () => {
-  const fix = makeManifestFixture();
+  const fix = makeManifestFixture({ withProdEnv: true });
   try {
     fix.writeManifest();
     fix.writeSbom();
+    fix.writeProdEnv();
     const originalCwd = process.cwd();
     process.chdir(fix.dir);
     try {
@@ -128,10 +136,11 @@ test('runReleaseCandidate: preflight command failure surfaces as reason', () => 
 });
 
 test('runReleaseCandidate: preflight evidence missing is fail-closed', () => {
-  const fix = makeManifestFixture();
+  const fix = makeManifestFixture({ withProdEnv: true });
   try {
     fix.writeManifest();
     fix.writeSbom();
+    fix.writeProdEnv();
     const originalCwd = process.cwd();
     process.chdir(fix.dir);
     try {
@@ -142,6 +151,31 @@ test('runReleaseCandidate: preflight evidence missing is fail-closed', () => {
       });
       assert.equal(evidence.checks.preflight.passed, false);
       assert.match(evidence.checks.preflight.reason, /could not read dist\/production-preflight\.json/);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  } finally {
+    fix.cleanup();
+  }
+});
+
+test('runReleaseCandidate: no .env.production skips preflight (CI mode) and stays green', () => {
+  const fix = makeManifestFixture();
+  try {
+    fix.writeManifest();
+    fix.writeSbom();
+    const originalCwd = process.cwd();
+    process.chdir(fix.dir);
+    try {
+      const evidence = releaseCandidate.runReleaseCandidate({
+        version: 'ci',
+        executor: () => true,
+        preflight: () => true
+      });
+      assert.equal(evidence.checksPassed, true);
+      assert.equal(evidence.checks.preflight.passed, true);
+      assert.equal(evidence.checks.preflight.decision, 'SKIPPED_NO_PROD_ENV');
+      assert.match(evidence.checks.preflight.reason, /\.env\.production not found/);
     } finally {
       process.chdir(originalCwd);
     }

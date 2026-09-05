@@ -22,6 +22,26 @@ jobs:
       - run: npm test
       - run: npm run release:manifest
       - run: node scripts/generate-sbom.mjs
+      - name: Release-candidate gate
+        run: |
+          set -e
+          RC_OUT=$(node scripts/release-candidate.mjs "${{ github.ref_name }}")
+          echo "$RC_OUT" | node -e "
+            const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+            if (!data.checksPassed) {
+              console.error('release-candidate FAILED:');
+              console.error(JSON.stringify(data.checks, null, 2));
+              process.exit(1);
+            }
+            console.log('release-candidate OK');
+          "
+          test -f dist/rc-evidence.json
+      - name: Upload rc-evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-evidence
+          path: dist/rc-evidence.json
+          if-no-files-found: error
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -48,5 +68,6 @@ jobs:
             dist/release-manifest.json \
             dist/sbom.json \
             dist/release-manifest.sha256 \
+            dist/rc-evidence.json \
             --title "zaffiliate ${{ github.ref_name }}" \
             --generate-notes
