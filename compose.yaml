@@ -2,7 +2,8 @@ services:
   api:
     build: .
     env_file:
-      - .env
+      - path: .env
+        required: false
     ports:
       - "8081:8080"
     restart: unless-stopped
