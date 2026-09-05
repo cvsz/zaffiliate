@@ -80,6 +80,38 @@ test('durable consumer operates through node-redis raw command adapter', async (
   await client.close();
 });
 
+
+test('durable consumer accepts node-redis structured XREADGROUP replies', async () => {
+  let attempts = 0;
+  const client = {
+    async xgroup() { return 'OK'; },
+    async xreadgroup() {
+      return [{
+        name: 'affiliate-events',
+        messages: [{
+          id: '9-0',
+          message: {
+            tenantId: 'org-A',
+            type: 'conversion.recorded',
+            eventId: 'evt-structured',
+            payload: '{"orderRef":"o-structured"}'
+          }
+        }]
+      }];
+    },
+    async xack() { return 1; },
+    async xadd() { return '10-0'; },
+    async incr() { attempts += 1; return attempts; },
+    async pexpire() { return 1; },
+    async del() { return 1; }
+  };
+  const consumer = createDurableStreamConsumer({ client, stream: 'affiliate-events', group: 'g', consumer: 'c' });
+  const seen = [];
+  const result = await consumer.consumeOnce(async (entry) => seen.push(entry.eventId));
+  assert.deepEqual(seen, ['evt-structured']);
+  assert.equal(result[0].status, 'acked');
+});
+
 test('stream publisher auto-connects a configured Redis URL and closes an owned client', async () => {
   const calls = [];
   let closed = 0;
