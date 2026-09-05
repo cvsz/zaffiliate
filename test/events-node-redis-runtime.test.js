@@ -165,6 +165,9 @@ test('declared redis package publishes and consumes a real Redis Stream', { skip
     consumer: `c-${process.pid}`
   });
   try {
+    // Mirror production worker lifecycle: establish the durable consumer group
+    // before publishing new work, then verify node-redis + Redis end to end.
+    await consumer.ensureGroup();
     await publisher.publish({
       stream,
       tenantId: '00000000-0000-4000-8000-000000000001',
