@@ -186,3 +186,7 @@ All future work follows `EXEC-PLANNING.md`: bounded vertical slices, production 
 **ZAFF → ZAFFILIATE CODE CONSOLIDATION: EXECUTED FOR THE ORIGINAL HIGH-VALUE MERGE SCOPE.**
 
 The historical merge plan is no longer an open implementation checklist. Remaining work belongs to release readiness, live-provider enablement, storage permissions, production validation/cutover and legacy-retirement evidence.
+
+## Production closure handoff
+
+The executable post-merge path is now maintained in `docs/closure/final-closure-plan.md`. Main CI and CodeQL were green on the consolidation baseline `2bf67961a05f1439de24c7e7758f46d04dca0795`. Repository consolidation is closed; do not reopen donor-copy work unless a capability is proven absent. Production completion is gated by B2 provider enablement, B7 object-storage permissions, live verification, EP-11 evidence, explicit cutover/Gold-Master authorization, signed attestation, and the seven-day observation period before irreversible legacy retirement.
