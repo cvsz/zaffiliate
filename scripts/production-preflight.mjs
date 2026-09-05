@@ -16,6 +16,15 @@ function required(name) {
   return value;
 }
 
+function mutateStatus(name, status, detail) {
+  const idx = checks.findIndex((c) => c.name === name);
+  if (idx === -1) {
+    add(name, status, detail);
+    return;
+  }
+  checks[idx] = { name, status, detail };
+}
+
 function optionalRef(name) {
   const value = String(process.env[name] ?? '').trim();
   if (!value) {
@@ -39,6 +48,32 @@ const endpoint = required('OBJECT_STORAGE_ENDPOINT');
 const bucket = required('OBJECT_STORAGE_BUCKET');
 const accessKeyId = required('OBJECT_STORAGE_ACCESS_KEY');
 const secretAccessKey = required('OBJECT_STORAGE_SECRET_KEY');
+
+if (endpoint) {
+  const lower = String(endpoint).toLowerCase();
+  if (lower.startsWith('http://')) {
+    mutateStatus('OBJECT_STORAGE_ENDPOINT', 'FAIL', 'must use https:// — plain http rejected in production');
+  } else {
+    let host = lower.replace(/^https?:\/\//, '');
+    const slash = host.indexOf('/');
+    if (slash !== -1) host = host.slice(0, slash);
+    if (host.startsWith('[')) {
+      const close = host.indexOf(']');
+      if (close !== -1) host = host.slice(0, close + 1);
+    } else {
+      const colon = host.indexOf(':');
+      if (colon !== -1) host = host.slice(0, colon);
+    }
+    const isLoopback = host === 'localhost'
+      || /^127\.\d+\.\d+\.\d+$/.test(host)
+      || host === '0.0.0.0'
+      || host === '::1'
+      || host === '[::1]';
+    if (isLoopback) {
+      mutateStatus('OBJECT_STORAGE_ENDPOINT', 'FAIL', 'must not target localhost / loopback in production');
+    }
+  }
+}
 
 const tiktokKey = String(process.env.TIKTOK_APP_KEY ?? '').trim();
 const tiktokSecret = String(process.env.TIKTOK_APP_SECRET ?? '').trim();

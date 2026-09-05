@@ -95,3 +95,44 @@ test('preflight: clean evidence artifact is written and parseable', () => {
   assert.equal(typeof evidence.decision, 'string');
   assert.ok(['READY_FOR_LIVE_PROVIDER_VERIFICATION', 'BLOCKED'].includes(evidence.decision));
 });
+
+test('preflight: OBJECT_STORAGE_ENDPOINT over plain http fails closed', () => {
+  const { evidence } = runPreflight({
+    ...baseEnv,
+    OBJECT_STORAGE_ENDPOINT: 'http://s3.example.com',
+    OBJECT_STORAGE_BUCKET: 'b',
+    OBJECT_STORAGE_ACCESS_KEY: 'AK',
+    OBJECT_STORAGE_SECRET_KEY: 'sk'
+  });
+  const endpointChecks = evidence.checks.filter((c) => c.name === 'OBJECT_STORAGE_ENDPOINT');
+  assert.equal(endpointChecks.length, 1, `expected exactly one endpoint check, got ${endpointChecks.length}`);
+  assert.equal(endpointChecks[0].status, 'FAIL');
+  assert.match(endpointChecks[0].detail, /https:\/\//);
+});
+
+test('preflight: OBJECT_STORAGE_ENDPOINT against localhost or loopback fails closed', () => {
+  for (const bad of ['https://localhost:9000', 'https://127.0.0.1', 'https://[::1]:443', 'https://0.0.0.0']) {
+    const { evidence } = runPreflight({
+      ...baseEnv,
+      OBJECT_STORAGE_ENDPOINT: bad,
+      OBJECT_STORAGE_BUCKET: 'b',
+      OBJECT_STORAGE_ACCESS_KEY: 'AK',
+      OBJECT_STORAGE_SECRET_KEY: 'sk'
+    });
+    const endpointCheck = evidence.checks.find((c) => c.name === 'OBJECT_STORAGE_ENDPOINT');
+    assert.equal(endpointCheck.status, 'FAIL', `expected ${bad} to FAIL, got ${endpointCheck.status}`);
+    assert.match(endpointCheck.detail, /localhost|loopback/);
+  }
+});
+
+test('preflight: OBJECT_STORAGE_ENDPOINT https + real host stays PASS', () => {
+  const { evidence } = runPreflight({
+    ...baseEnv,
+    OBJECT_STORAGE_ENDPOINT: 'https://s3.fake.invalid',
+    OBJECT_STORAGE_BUCKET: 'b',
+    OBJECT_STORAGE_ACCESS_KEY: 'AK',
+    OBJECT_STORAGE_SECRET_KEY: 'sk'
+  });
+  const endpointCheck = evidence.checks.find((c) => c.name === 'OBJECT_STORAGE_ENDPOINT');
+  assert.equal(endpointCheck.status, 'PASS');
+});

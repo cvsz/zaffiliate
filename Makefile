@@ -2,7 +2,7 @@
 # zaffiliate - unified build, setup, and deployment automation
 # =============================================================================
 .PHONY: help setup install dev test check verify security migrate backup \
-        restore healthcheck selfhost build deploy release clean clean-all \
+        restore healthcheck selfhost build deploy release preflight clean clean-all \
         docker-build docker-push compose-up compose-down compose-ps \
         compose-logs compose-restart
 
@@ -182,6 +182,9 @@ release-manifest: ## Generate release manifest
 
 sbom: ## Generate SBOM
 	node scripts/generate-sbom.mjs
+
+preflight: ## Run production preflight (requires .env.production; writes dist/production-preflight.json)
+	npm run preflight:production
 
 # =============================================================================
 # clean
