@@ -110,6 +110,7 @@ export function createStreamPublisher({
 }
 
 function fieldArrayToObject(fields) {
+  if (fields instanceof Map) return Object.fromEntries([...fields.entries()].map(([key, value]) => [String(key), String(value ?? '')]));
   if (!Array.isArray(fields)) return fields && typeof fields === 'object' ? fields : {};
   const out = {};
   for (let index = 0; index < fields.length; index += 2) out[String(fields[index])] = String(fields[index + 1] ?? '');
@@ -154,16 +155,10 @@ export function createRedisIdempotencyStore({ client, prefix = 'zaffiliate:dedup
 }
 
 function normalizeReadGroupReply(reply) {
-  if (!Array.isArray(reply)) return [];
   const entries = [];
-  for (const streamReply of reply) {
-    if (Array.isArray(streamReply)) {
-      if (!Array.isArray(streamReply[1])) continue;
-      for (const entry of streamReply[1]) entries.push(entry);
-      continue;
-    }
-    if (!streamReply || typeof streamReply !== 'object') continue;
-    const messages = Array.isArray(streamReply.messages) ? streamReply.messages : [];
+
+  function collectMessages(messages) {
+    if (!Array.isArray(messages)) return;
     for (const message of messages) {
       if (Array.isArray(message)) {
         entries.push(message);
@@ -174,6 +169,27 @@ function normalizeReadGroupReply(reply) {
       const fields = message.message ?? message.fields;
       if (id != null && fields != null) entries.push([id, fields]);
     }
+  }
+
+  if (reply instanceof Map) {
+    for (const messages of reply.values()) collectMessages(messages);
+    return entries;
+  }
+
+  if (!Array.isArray(reply)) {
+    if (reply && typeof reply === 'object') {
+      for (const messages of Object.values(reply)) collectMessages(messages);
+    }
+    return entries;
+  }
+
+  for (const streamReply of reply) {
+    if (Array.isArray(streamReply)) {
+      collectMessages(streamReply[1]);
+      continue;
+    }
+    if (!streamReply || typeof streamReply !== 'object') continue;
+    collectMessages(streamReply.messages);
   }
   return entries;
 }
