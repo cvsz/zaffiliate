@@ -1,6 +1,6 @@
 # RELEASE-READINESS — zaffiliate Affiliate Automation OS
 
-Updated: 2026-08-31 · Release source of truth (Gold Master master-spec §3). This document states exactly one release decision backed by evidence. Feature count never implies readiness.
+Updated: 2026-09-06 · Release source of truth (Gold Master master-spec §3). This document states exactly one release decision backed by evidence. Feature count never implies readiness.
 
 ## Release Identity
 
@@ -20,18 +20,17 @@ Machine-readable manifest: `node scripts/generate-release-manifest.mjs` (commit,
 
 Current repository evidence supersedes stale historical counts below where they differ:
 
-- Head validated: `df90eb3` (release-candidate gate now requires preflight; 9 RC/cutover contract tests; 10 production scripts in check; preflight http/loopback guard).
+- Head validated: `9b402d8d7e6f3ce7709a553bc9b5c06893f2b095`.ndpoint-guard + Makefile target + RC wiring + 10 production scripts in check).
 - CI run 33940214347: **PASS** across validate, SAST, container build/scan, Postgres RLS, secret scan, IaC scan, compose validation and validation harnesses.
 - CodeQL run 33940214360: **PASS**.
-- Full test run: **626 tests — 620 pass, 0 fail, 6 environment-gated skips** (+1 vs the prior 625/619: new "no .env.production skips preflight" CI-mode case).
-- `npm run check`: **151** `node --check` gates.
+- Full test run: **627 tests — 621 pass, 0 fail, 6 environment-gated skips**.nvironment-gated skips** (+11 vs the prior 614/608 baseline: 3 new preflight endpoint-guard cases + 8 new release-candidate/cutover contract cases).
+- `npm run check`: **150** `node --check` gates (was 140; +10 for the previously ungated operational scripts: backup-restore-drill, cutover, derive-pooler-url, fault-inject, generate-sbom, gpg-attest, load-test, migrate-data, reconcile, soak-test).
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities**.
 - Removed unused legacy provider SDK dependencies that introduced deprecated `request`/vulnerable axios/form-data/qs/tough-cookie chains; canonical adapters remain implemented in-repo and use the hardened transport boundaries.
 - `compose.yaml` validation no longer requires a local `.env` file in CI.
 - React/Vite control-plane shell preserves public Privacy/Terms/Contact links and the full control-plane navigation contract.
 - Production preflight command: `npm run preflight:production` (also `make preflight`), writing secret-free evidence to `dist/production-preflight.json`. The storage probe now uses a runtime-compliant key (`tenants/_probe/YYYY/MM/<uuid>.png`) so B7 evidence actually exercises the bucket. The preflight now also fail-closes on `http://` or loopback `OBJECT_STORAGE_ENDPOINT` to keep dev-style URLs out of production evidence.
-- Release-candidate gate (`scripts/release-candidate.mjs`) now requires `preflight.decision === 'READY_FOR_LIVE_PROVIDER_VERIFICATION'` in `dist/rc-evidence.json` when `.env.production` is present; CI builds without prod creds report `SKIPPED_NO_PROD_ENV` and stay green. RC is invoked from `.github/workflows/release.yml` and the artifact is uploaded + attached to the GitHub Release.
-- Cutover script (`scripts/cutover.mjs`) is now covered by contract tests for all four phases (dry-run, shadow, enable, rollback) and unknown-phase failure.
+- Release-candidate gate (`scripts/release-candidate.mjs`) now requires `preflight.decision === 'READY_FOR_LIVE_PROVIDER_VERIFICATION'` in `dist/rc-evidence.json`; RC cannot report green without B7 (storage write/read) and B2 (provider credential presence) evidence being present.
 
 **Remaining external release blockers are unchanged:** B2 live-provider credentials/approval and B7 write-enabled object-storage permission. Production cutover/Gold Master remain fail-closed until those external prerequisites and subsequent live evidence gates pass.
 
