@@ -16,24 +16,34 @@ function fakeClient() {
         async query(text, params) {
           queries.push({ tx: true, text: String(text).replace(/\s+/g, ' ').trim(), params });
           const n = String(text).toUpperCase();
+          if (n.includes('SET_CONFIG')) return { rows: [] };
           if (n.includes('INSERT') && n.includes('SHOPEE_TH_IMPORT_BATCHES')) {
-            const row = { batch_id: params[1], status: 'started', row_count: 0, accepted_count: 0, rejected_count: 0, evidence_hash: null, started_at: '2026-09-16T00:00:00.000Z', completed_at: null };
-            batches.set(params[1], row);
+            const row = { tenant: params[0], batch_id: params[1], status: 'started', row_count: 0, accepted_count: 0, rejected_count: 0, evidence_hash: null, started_at: '2026-09-16T00:00:00.000Z', completed_at: null };
+            batches.set(`${params[0]}:${params[1]}`, row);
             return { rows: [row] };
           }
           if (n.includes('UPDATE') && n.includes('SHOPEE_TH_IMPORT_BATCHES')) {
-            const row = batches.get(params[1]);
+            const row = batches.get(`${params[0]}:${params[1]}`);
             if (!row || row.status !== 'started') return { rows: [] };
-            row.status = 'completed';
-            row.row_count = params[2];
-            row.accepted_count = params[3];
-            row.rejected_count = params[4];
-            row.evidence_hash = params[5] ?? null;
-            row.completed_at = '2026-09-16T00:00:00.000Z';
+            if (text.includes('status = \'failed\'')) {
+              row.status = 'failed';
+              row.completed_at = '2026-09-16T00:00:00.000Z';
+            } else {
+              row.status = 'completed';
+              row.row_count = params[2];
+              row.accepted_count = params[3];
+              row.rejected_count = params[4];
+              row.evidence_hash = params[5] ?? null;
+              row.completed_at = '2026-09-16T00:00:00.000Z';
+            }
             return { rows: [row] };
           }
           if (n.includes('SELECT') && n.includes('SHOPEE_TH_IMPORT_BATCHES')) {
-            const row = batches.get(params[1]);
+            if (n.includes('ORDER BY')) {
+              const all = [...batches.values()].filter((r) => r.tenant === params[0]);
+              return { rows: all };
+            }
+            const row = batches.get(`${params[0]}:${params[1]}`);
             return row ? { rows: [row] } : { rows: [] };
           }
           if (n.includes('SELECT') && n.includes('PRODUCTS')) {
@@ -49,10 +59,10 @@ function fakeClient() {
             return { rows: [{ runtime_id: params[1], external_product_id: params[3], title: params[4], currency: params[5], import_batch_id: params[15], updated_at: '2026-09-16T00:00:00.000Z' }] };
           }
           if (n.includes('INSERT') && n.includes('OFFERS')) {
-            return { rows: [{ runtime_id: params[1], price_minor_units: params[3], commission_rate: 0.1, currency: params[7], import_batch_id: params[17], updated_at: '2026-09-16T00:00:00.000Z' }] };
+            return { rows: [{ runtime_id: params[1], price_minor_units: params[4], commission_rate: 0.1, currency: params[8], import_batch_id: params[17], updated_at: '2026-09-16T00:00:00.000Z' }] };
           }
           if (n.includes('UPDATE') && n.includes('OFFERS')) {
-            return { rows: [{ runtime_id: params[1], price_minor_units: params[3], commission_rate: 0.1, currency: params[7], import_batch_id: params[17], updated_at: '2026-09-16T00:00:00.000Z' }] };
+            return { rows: [{ runtime_id: params[1], price_minor_units: params[4], commission_rate: 0.1, currency: params[8], import_batch_id: params[17], updated_at: '2026-09-16T00:00:00.000Z' }] };
           }
           return { rows: [] };
         }
@@ -165,7 +175,7 @@ test('evidenceHash is a stable sha256 hex digest', async () => {
     sourceRowKey: 'row-1', parserVersion: '1.0.0'
   });
   const q = lastQuery(client);
-  assert.equal(q.params[13], '0f719b1f3a428a4dd53c61b3bdc5c2ec279c2e6139f160b3bbb8df8e7efdead8');
+  assert.equal(q.params[14], '0f719b1f3a428a4dd53c61b3bdc5c2ec279c2e6139f160b3bbb8df8e7efdead8');
 });
 
 test('tenantId must be a UUID', async () => {
