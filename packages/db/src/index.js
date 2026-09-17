@@ -9,4 +9,5 @@ export { createCampaignRepo, CampaignNotFoundError, CampaignTransitionError, Cam
 export { createConversionReconciliationRepo, ConversionNotFoundError } from './conversion-reconciliation-repo.js';
 export { createAutomationRepo } from './automation-repo.js';
 export { createCalendarRepo } from './calendar-repo.js';
+export { createShopeeThRepo } from './shopee-th-repo.js';
 export { saveAnalyticsEvents, listRecentAnalyticsEvents } from './analytics-repo.js';

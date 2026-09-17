@@ -2,9 +2,15 @@
 
 Canonical affiliate-commerce platform consolidating the legacy `cvsz/zaffhub`, `cvsz/ztsaff`, `cvsz/tiktok-shop-bot`, `cvsz/tiktok-shop-sdk`, `cvsz/tiktokshop-php`, `cvsz/zlttbots`, and `cvsz/zttlbots` repositories.
 
-## Current baseline (2026-08-30)
+# zaffiliate
 
-`zaffiliate` now contains a runnable Node.js API with durable Postgres persistence (12 migrations, 31 RLS tables, `affiliate-core-repo` + `campaign-repo` + `conversion-reconciliation-repo` + `auth-repo`/`oauth-repo`), hardened Redis production runtime (`node-redis-runtime.js` + Lua rate limiter), typed domain contracts, deterministic tests (`586 tests — 580 pass, 6 gated skips`, `npm run check` 152 gates clean), CSP-first control-plane web + Mission Control, TikTok Shop adapter parity + multi-platform webhook ingress (`/go/:slug` + `/webhooks/:platform`) with replay/dedupe, durable outbox dispatcher, and hardened self-host stack (`compose.selfhost.yaml` postgres:17 + redis:7, `no-new-privileges:true`).
+Canonical affiliate-commerce platform consolidating the legacy `cvsz/zaffhub`, `cvsz/ztsaff`, `cvsz/tiktok-shop-bot`, `cvsz/tiktok-shop-sdk`, `cvsz/tiktokshop-php`, `cvsz/zlttbots`, and `cvsz/zttlbots` repositories.
+
+## Current baseline (2026-09-17)
+
+`zaffiliate` now contains a runnable Node.js API with durable Postgres persistence (15 migrations, 35 RLS tables, `affiliate-core-repo` + `campaign-repo` + `conversion-reconciliation-repo` + `auth-repo`/`oauth-repo` + `shopee-th-repo`), hardened Redis production runtime (`node-redis-runtime.js` + Lua rate limiter), typed domain contracts, deterministic tests (`645 tests — 639 pass, 6 gated skips`, `npm run check` gates clean), CSP-first control-plane web + Mission Control, TikTok Shop adapter parity + multi-platform webhook ingress (`/go/:slug` + `/webhooks/:platform`) with replay/dedupe, durable outbox dispatcher, and hardened self-host stack (`compose.selfhost.yaml` postgres:17 + redis:7, `no-new-privileges:true`).
+
+Shopee Thailand Affiliate: verified product-feed contract (SLICE 1 complete) — `packages/adapters/src/shopee-th-constants.js` + `shopee-th-normalizer.js` (deterministic CSV normalization, fail-closed schema recognition, Thai quantity/money/rate parsing) with fixtures and 10 tests in `test/shopee-th-feed.test.js`. SLICE 2 durable products/offers schema implemented with migration `015_shopee_th_feed_persistence.sql` + `shopee-th-repo.js` (import batch ledger, tenant-scoped products/offers persistence).
 
 Hardened HTTP surface: `/api/v1/auth/*` (register/login/me/logout/recovery), `/api/v1/oauth/:provider/{authorize,callback}`, `/api/v1/campaigns`, `/api/v1/conversions`, `/go/:slug`, `/webhooks/:platform`, commerce/intelligence/analytics/automation/content — all tenant-gated with canonical error envelopes and Bearer/tenant-header auth where required.
 
