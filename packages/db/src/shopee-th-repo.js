@@ -89,8 +89,8 @@ export function createShopeeThRepo({ db, clock = () => Date.now() } = {}) {
            (tenant_id, runtime_id, platform, external_product_id, title, currency,
             source_type, source_filename, source_timestamp, source_row_key,
             shop_id, shop_name, source_url, affiliate_url, evidence_hash,
-            parser_version, import_batch_id, created_at, updated_at)
-         VALUES ($1, $2, 'shopee', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
+            import_batch_id, parser_version, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $18)
          ON CONFLICT (tenant_id, platform, external_product_id) DO UPDATE SET
            title = EXCLUDED.title,
            currency = EXCLUDED.currency,
@@ -103,16 +103,16 @@ export function createShopeeThRepo({ db, clock = () => Date.now() } = {}) {
            source_url = EXCLUDED.source_url,
            affiliate_url = EXCLUDED.affiliate_url,
            evidence_hash = EXCLUDED.evidence_hash,
-           parser_version = EXCLUDED.parser_version,
            import_batch_id = EXCLUDED.import_batch_id,
+           parser_version = EXCLUDED.parser_version,
            updated_at = EXCLUDED.updated_at
          RETURNING *`,
-        [id, productId, required(input.externalProductId, 'externalProductId'), required(input.title, 'title'),
+        [id, productId, 'shopee', required(input.externalProductId, 'externalProductId'), required(input.title, 'title'),
          input.currency ?? 'THB', input.sourceType ?? null, input.sourceFilename ?? null,
          input.sourceTimestamp ?? null, input.sourceRowKey ?? null, input.shopId ?? null,
          input.shopName ?? null, input.sourceUrl ?? null, input.affiliateUrl ?? null,
-         evidenceHash(input.evidenceHash ?? input.sourceRowKey), input.parserVersion ?? null,
-         input.importBatchId ?? null, occurredAt]
+         evidenceHash(input.evidenceHash ?? input.sourceRowKey), input.importBatchId ?? null,
+         input.parserVersion ?? null, occurredAt]
       );
       const row = rows(result)[0];
       return Object.freeze({

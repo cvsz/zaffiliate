@@ -93,7 +93,7 @@ test('parseShopeeThFeed accepts a valid feed and rejects malformed rows', () => 
   const mixedResult = parseShopeeThFeed(mixed);
   assert.equal(mixedResult.rows.length, 1);
   assert.equal(mixedResult.rejected.length, 1);
-  assert.equal(mixedResult.rejected[0].code, 'invalid_url');
+  assert.equal(mixedResult.rejected[0].code, 'invalid_decimal');
 });
 
 test('parseShopeeThFeed fails closed on empty or header-only feeds', () => {

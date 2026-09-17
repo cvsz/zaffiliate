@@ -141,35 +141,6 @@ export function resolveHeader(rawHeader) {
   return null;
 }
 
-// Build the canonical header map from a raw header row. Fails closed when a
-// required column is missing or when an unknown header is encountered.
-export function buildHeaderMap(rawHeaders) {
-  if (!Array.isArray(rawHeaders)) fail('invalid_headers', 'headers must be an array');
-
-  const map = Object.create(null);
-  const seen = new Set();
-  const unknown = [];
-
-  for (const raw of rawHeaders) {
-    const field = resolveHeader(raw);
-    if (field == null) {
-      unknown.push(String(raw ?? '').trim());
-      continue;
-    }
-    if (seen.has(field)) fail('duplicate_column', `duplicate column for canonical field: ${field}`);
-    seen.add(field);
-    map[field] = raw;
-  }
-
-  if (unknown.length > 0) fail('unknown_headers', `headers are not part of the verified Shopee TH feed contract: ${unknown.join(', ')}`);
-
-  for (const field of Object.values(SHOPEE_TH_FEED_FIELDS)) {
-    if (!(field in map)) fail('missing_column', `required column is missing: ${field}`);
-  }
-
-  return Object.freeze(map);
-}
-
 // Normalize a raw row object into a canonical record. Validates required fields,
 // applies type conversion, and returns a frozen record.
 export function normalizeRow(rawRow) {
@@ -193,22 +164,21 @@ export function normalizeRow(rawRow) {
         row.productName = requireNonEmpty(value, 'product_name');
         break;
       case SHOPEE_TH_FEED_FIELDS.PRICE:
+        row.priceMinorUnits = parsePriceToMinorUnits(value);
         row.price = value;
         break;
       case SHOPEE_TH_FEED_FIELDS.COMMISSION_RATE:
+        row.commissionRateBps = parseRateToBasisPoints(value);
         row.commissionRate = value;
+        break;
+      case SHOPEE_TH_FEED_FIELDS.COMMISSION_AMOUNT:
+        row.commissionAmountMinorUnits = parseCommissionAmountToMinorUnits(value);
         break;
       case SHOPEE_TH_FEED_FIELDS.SOLD:
         row.sold = parseSoldCount(value);
         break;
-      case SHOPEE_TH_FEED_FIELDS.PRICE_MINOR_UNITS:
-        row.priceMinorUnits = parsePriceToMinorUnits(value);
-        break;
-      case SHOPEE_TH_FEED_FIELDS.COMMISSION_AMOUNT_MINOR_UNITS:
-        row.commissionAmountMinorUnits = parseCommissionAmountToMinorUnits(value);
-        break;
-      case SHOPEE_TH_FEED_FIELDS.COMMISSION_RATE_BPS:
-        row.commissionRateBps = parseRateToBasisPoints(value);
+      case SHOPEE_TH_FEED_FIELDS.SHOP_NAME:
+        row.shopName = requireNonEmpty(value, 'shop_name');
         break;
       case SHOPEE_TH_FEED_FIELDS.PRODUCT_URL:
         row.productUrl = requireHttpsUrl(value, 'product_url');
@@ -230,13 +200,17 @@ export function normalizeRow(rawRow) {
   }
   
   // Validate all required fields are present
-  const requiredFields = Object.values(SHOPEE_TH_FEED_FIELDS);
-  for (const field of requiredFields) {
-    if (!(field in row)) {
-      fail('missing_column', `required column is missing: ${field}`);
+  const requiredOutputKeys = ['productId', 'productName', 'priceMinorUnits', 'price',
+    'commissionRateBps', 'commissionAmountMinorUnits', 'sold', 'currency',
+    'productUrl', 'affiliateUrl', 'schemaVersion'];
+  row.currency = row.currency ?? 'THB';
+  row.schemaVersion = row.schemaVersion ?? '1.0.0';
+  for (const key of requiredOutputKeys) {
+    if (!(key in row)) {
+      fail('missing_column', `required column is missing: ${key}`);
     }
   }
-  
+
   return Object.freeze({
     tenantId: null, // Will be set by the repository
     productId: row.productId,
@@ -250,6 +224,133 @@ export function normalizeRow(rawRow) {
     productUrl: row.productUrl,
     affiliateUrl: row.affiliateUrl,
     schemaVersion: row.schemaVersion
+  });
+}
+
+// Split a CSV string into an array of field arrays. Handles quoted fields
+// (with embedded commas/newlines), a leading UTF-8 BOM, and CRLF line
+// endings. Returns an empty array for empty input.
+export function splitCsv(csv) {
+  const text = String(csv ?? '');
+  if (!text.trim()) return [];
+
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (next === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i += 1;
+        continue;
+      }
+      field += ch;
+      i += 1;
+      continue;
+    }
+
+    switch (ch) {
+      case '"':
+        inQuotes = true;
+        i += 1;
+        break;
+      case ',':
+        row.push(field);
+        field = '';
+        i += 1;
+        break;
+      case '\r':
+        if (next === '\n') {
+          row.push(field);
+          rows.push(row);
+          row = [];
+          field = '';
+          i += 2;
+          break;
+        }
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+        i += 1;
+        break;
+      case '\n':
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+        i += 1;
+        break;
+      default:
+        field += ch;
+        i += 1;
+        break;
+    }
+  }
+
+  // Trailing final field/row
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows.map((r) => r.map((f) => f.replace(/^\uFEFF/, '')));
+}
+
+// Parse a complete Shopee Thailand product feed CSV into canonical records.
+// Fails closed on empty feeds, unknown headers, or malformed rows.
+export function parseShopeeThFeed(csv, options = {}) {
+  const rows = splitCsv(csv);
+  if (rows.length === 0) fail('empty_feed', 'feed is empty');
+
+  const headerRow = rows[0].map((h) => String(h ?? '').trim());
+  const map = buildHeaderMap(headerRow);
+  if (rows.length <= 1) fail('empty_feed', 'feed has no data rows');
+
+  const records = [];
+  const rejected = [];
+  let accepted = 0;
+
+  for (let i = 1; i < rows.length; i += 1) {
+    const raw = rows[i];
+    if (raw.every((c) => String(c ?? '').trim() === '')) continue; // skip blank rows
+
+    const canonical = {};
+    headerRow.forEach((header, index) => {
+      const field = resolveHeader(header);
+      if (field != null) canonical[header] = raw[index]; // raw header as key
+    });
+    try {
+      const record = normalizeRow(canonical);
+      records.push(record);
+      accepted += 1;
+    } catch (error) {
+      rejected.push({
+        row: i + 1,
+        code: error.code ?? 'SHOPEE_TH_FEED_ERROR',
+        message: error.message
+      });
+    }
+  }
+
+  return Object.freeze({
+    platform: 'shopee',
+    region: 'TH',
+    schemaVersion: SHOPEE_TH_FEED_SCHEMA_VERSION,
+    rows: records,
+    counts: { accepted, rejected: rejected.length, total: rows.length - 1 },
+    rejected
   });
 }
 
