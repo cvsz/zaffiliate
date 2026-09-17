@@ -23,6 +23,8 @@ jobs:
       - run: npm run release:manifest
       - run: node scripts/generate-sbom.mjs
       - name: Release-candidate gate
+        env:
+          RELEASE_PREFLIGHT_REQUIRED: 'true'
         run: |
           set -e
           RC_OUT=$(node scripts/release-candidate.mjs "${{ github.ref_name }}")

@@ -165,6 +165,8 @@ test('runReleaseCandidate: no .env.production skips preflight (CI mode) and stay
     fix.writeManifest();
     fix.writeSbom();
     const originalCwd = process.cwd();
+    const originalPreflightRequired = process.env.RELEASE_PREFLIGHT_REQUIRED;
+    delete process.env.RELEASE_PREFLIGHT_REQUIRED;
     process.chdir(fix.dir);
     try {
       const evidence = releaseCandidate.runReleaseCandidate({
@@ -178,6 +180,7 @@ test('runReleaseCandidate: no .env.production skips preflight (CI mode) and stay
       assert.match(evidence.checks.preflight.reason, /\.env\.production not found/);
     } finally {
       process.chdir(originalCwd);
+      if (originalPreflightRequired !== undefined) process.env.RELEASE_PREFLIGHT_REQUIRED = originalPreflightRequired;
     }
   } finally {
     fix.cleanup();

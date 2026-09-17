@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, sep } from 'node:path';
 import { controlPlaneManifest } from '../../packages/control-plane/src/navigation.js';
+import { randomBytes } from 'node:crypto';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(here, 'public');
@@ -10,6 +11,44 @@ const buildDir = resolve(here, 'dist/web');
 
 const isProduction = String(process.env.APP_ENV ?? 'development').trim().toLowerCase() === 'production';
 const fixtures = isProduction ? null : await import('./fixtures.js');
+
+const CSRF_TTL_MS = 60 * 60 * 1000;
+const csrfStore = new Map();
+
+function generateCsrfToken() {
+  return randomBytes(32).toString('base64url');
+}
+
+function storeCsrfToken(tenant, token) {
+  const expiry = Date.now() + CSRF_TTL_MS;
+  if (!csrfStore.has(tenant)) csrfStore.set(tenant, new Map());
+  csrfStore.get(tenant).set(token, expiry);
+}
+
+function validateCsrfToken(tenant, token) {
+  const tenantStore = csrfStore.get(tenant);
+  if (!tenantStore) return false;
+  const expiry = tenantStore.get(token);
+  if (!expiry) return false;
+  if (Date.now() > expiry) {
+    tenantStore.delete(token);
+    return false;
+  }
+  tenantStore.delete(token);
+  return true;
+}
+
+function cleanupExpiredCsrfTokens() {
+  const now = Date.now();
+  for (const [tenant, store] of csrfStore) {
+    for (const [token, expiry] of store) {
+      if (now > expiry) store.delete(token);
+    }
+    if (store.size === 0) csrfStore.delete(tenant);
+  }
+}
+
+setInterval(cleanupExpiredCsrfTokens, 15 * 60 * 1000);
 
 function getContentType(pathname) {
   const ext = pathname.split('.').pop()?.toLowerCase();
@@ -204,7 +243,8 @@ function isValidTenant(value) {
 }
 
 async function approveWorkflow(req, res, tenant) {
-  if (req.headers['x-zaff-csrf'] !== '1') {
+  const csrfToken = req.headers['x-csrf-token'] || req.headers['x-zaff-csrf'];
+  if (!csrfToken || !validateCsrfToken(tenant, String(csrfToken).trim())) {
     return sendJson(res, 403, { error: 'csrf_check_failed' });
   }
   const contentType = String(req.headers['content-type'] ?? '');
@@ -263,6 +303,11 @@ async function handleApi(req, res, pathname, state = {}) {
   const tenant = String(tenantHeader).trim();
   if (req.method === 'GET' || headOnly) {
     switch (pathname) {
+      case '/api/csrf-token': {
+        const token = generateCsrfToken();
+        storeCsrfToken(tenant, token);
+        return sendJson(res, 200, { token }, headOnly);
+      }
       case '/api/ui/overview':
         return sendJson(res, 200, await buildOverviewPayload({ tenant, dataProviders: state.dataProviders, approvals: approvalRecords }), headOnly);
       case '/api/ui/revenue-trend': {
