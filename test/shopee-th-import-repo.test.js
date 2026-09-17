@@ -40,10 +40,10 @@ test('persists normalized Shopee TH product/offer with tenant context and source
   const offerInsert = calls.find((call) => call.sql.includes('INSERT INTO offers'));
   assert.ok(offerInsert);
   assert.equal(offerInsert.params[0], TENANT);
-  assert.equal(offerInsert.params[2], 9950);
-  assert.equal(offerInsert.params[3], 0.12);
-  assert.equal(offerInsert.params[8], 'a'.repeat(64));
-  assert.equal(offerInsert.params[9], 1194);
+  assert.equal(offerInsert.params[3], 9950);
+  assert.equal(offerInsert.params[4], 1200);
+  assert.equal(offerInsert.params[9], 'a'.repeat(64));
+  assert.equal(offerInsert.params[10], 1194);
 });
 
 test('replay of the same tenant/evidence is idempotent and does not write product or offer', async () => {

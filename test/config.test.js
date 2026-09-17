@@ -13,7 +13,7 @@ test('development defaults parse without any environment variables', () => {
 });
 
 test('provided values are normalized and returned frozen', () => {
-  const config = loadConfig({ APP_ENV: ' PRODUCTION ', PORT: '9000', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://127.0.0.1:6379/0', LOG_LEVEL: 'warn', SESSION_SECRET: 's'.repeat(32) });
+  const config = loadConfig({ APP_ENV: ' PRODUCTION ', PORT: '9000', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://127.0.0.1:6379/0', LOG_LEVEL: 'warn', SESSION_SECRET: 's'.repeat(32), ENCRYPTION_KEY: 'e'.repeat(32) });
   assert.equal(config.appEnv, 'production');
   assert.equal(config.port, 9000);
   assert.equal(config.logLevel, 'warn');
@@ -54,7 +54,7 @@ test('production requires database, redis and a strong session secret', () => {
   const error = capture(() => loadConfig({ APP_ENV: 'production' }));
   assert.ok(error instanceof ConfigError);
   const paths = error.issues.map((issue) => issue.path).sort();
-  assert.deepEqual(paths, ['DATABASE_URL', 'REDIS_URL', 'SESSION_SECRET']);
+  assert.deepEqual(paths, ['DATABASE_URL', 'ENCRYPTION_KEY', 'REDIS_URL', 'SESSION_SECRET']);
 
   const weak = capture(() => loadConfig({ APP_ENV: 'production', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'short' }));
   assert.ok(weak.issues.some((issue) => issue.path === 'SESSION_SECRET'));

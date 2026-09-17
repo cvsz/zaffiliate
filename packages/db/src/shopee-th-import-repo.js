@@ -1,3 +1,9 @@
+import { randomUUID } from 'node:crypto';
+import {
+  SHOPEE_TH_MONEY_MINOR_UNITS,
+  SHOPEE_TH_RATE_BASIS_POINTS
+} from '../../adapters/src/shopee-th-constants.js';
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function required(value, name) {
@@ -15,7 +21,7 @@ function tenantId(value) {
 function toMinorUnits(value, name) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) throw new Error(`${name} must be a non-negative number`);
-  const minor = Math.round(number * 100);
+  const minor = Math.round(number * 10 ** SHOPEE_TH_MONEY_MINOR_UNITS);
   if (!Number.isSafeInteger(minor)) throw new Error(`${name} is outside the supported range`);
   return minor;
 }
@@ -55,11 +61,11 @@ export function createShopeeThImportRepo({ db } = {}) {
 
       const product = await tx.query(
         `INSERT INTO products (tenant_id, runtime_id, platform, external_product_id, title, currency, created_at)
-         VALUES ($1, 'prod_' || gen_random_uuid()::text, 'shopee', $2, $3, 'THB', $4)
+         VALUES ($1, $2, 'shopee', $3, $4, 'THB', $5)
          ON CONFLICT (tenant_id, platform, external_product_id)
          DO UPDATE SET title = EXCLUDED.title
          RETURNING id, runtime_id`,
-        [id, required(row.productId, 'productId'), required(row.name, 'name'), sourceTimestamp.toISOString()]
+        [id, 'prod_' + randomUUID(), required(row.productId, 'productId'), required(row.name, 'name'), sourceTimestamp.toISOString()]
       );
       const productRow = product.rows?.[0];
       if (!productRow) throw new Error('failed to persist Shopee TH product');
@@ -70,15 +76,17 @@ export function createShopeeThImportRepo({ db } = {}) {
            captured_at, created_at, source_type, source_timestamp, source_filename, source_row_number,
            source_evidence_sha256, observed_commission_minor_units, product_url, affiliate_url
          ) VALUES (
-           $1, 'off_' || gen_random_uuid()::text, $2, $3, $3, $4, 0, 'THB',
-           $5, $5, $6, $5, $7, $8, $9, $10, $11, $12
+           $1, $2, $3,
+           $4::numeric, $4::bigint, $5, 0, 'THB',
+           $6, $6, $7, $6, $8, $9, $10, $11, $12, $13
          )
          RETURNING id, runtime_id`,
         [
           id,
+          'off_' + randomUUID(),
           productRow.id,
           priceMinorUnits,
-          Number(row.commission.observedRate),
+          Math.round(Number(row.commission.observedRate) * SHOPEE_TH_RATE_BASIS_POINTS),
           sourceTimestamp.toISOString(),
           required(row.provenance.sourceType, 'provenance.sourceType'),
           row.provenance.sourceFilename ?? null,

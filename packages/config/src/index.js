@@ -76,7 +76,7 @@ export function loadConfig(env = process.env) {
   }
 
   const sessionSecretPresent = parseSecret(env.SESSION_SECRET, 'SESSION_SECRET', true, appEnv, issues);
-  const encryptionKeyPresent = parseSecret(env.ENCRYPTION_KEY, 'ENCRYPTION_KEY', false, appEnv, issues);
+  const encryptionKeyPresent = parseSecret(env.ENCRYPTION_KEY, 'ENCRYPTION_KEY', true, appEnv, issues);
 
   if (appEnv === 'production') {
     if (!String(env.DATABASE_URL ?? '').trim()) issues.push(issue('DATABASE_URL', 'is required in production'));

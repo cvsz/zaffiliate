@@ -26,11 +26,28 @@ function appRoleDb(pool) {
   };
 }
 
+async function cleanupTenant(pool, tenantId) {
+  await appRoleDb(pool).transaction(async (tx) => {
+    await tx.query("SET LOCAL ROLE zaffiliate_app_test");
+    await tx.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+    await tx.query("DELETE FROM auth_sessions WHERE tenant_id=$1", [tenantId]);
+    await tx.query("DELETE FROM local_auth_users WHERE tenant_id=$1", [tenantId]);
+    await tx.query("DELETE FROM tenant_memberships WHERE tenant_id=$1", [tenantId]);
+    await tx.query("DELETE FROM oauth_identity_directory WHERE tenant_id=$1", [tenantId]);
+    await tx.query("DELETE FROM audit_events WHERE tenant_id=$1", [tenantId]);
+    await tx.query("DELETE FROM tenants WHERE id=$1", [tenantId]);
+  });
+}
+
 test('OIDC login repo persists single-use state and creates/reuses the verified identity tenant', { skip: !RUN }, async (t) => {
   const { Pool } = pg;
   const pool = new Pool({ connectionString: CONNECTION });
   t.after(() => pool.end());
   const repo = createOAuthLoginRepo({ db: appRoleDb(pool) });
+
+  // Clean up before test
+  await cleanupTenant(pool, '40000000-0000-4000-8000-0000000000d4');
+  await cleanupTenant(pool, '50000000-0000-4000-8000-0000000000e5');
 
   const pending = await repo.createPendingLogin({
     provider: 'acme',
@@ -68,10 +85,14 @@ test('OIDC login repo persists single-use state and creates/reuses the verified 
     [identityHash]
   );
   assert.deepEqual(directory.rows[0], { tenantId: '40000000-0000-4000-8000-0000000000d4', userId: 'usr_oidc_d4' });
-  const storedUser = await pool.query(
-    'SELECT password_hash AS "passwordHash", email_verified AS "emailVerified" FROM local_auth_users WHERE tenant_id=$1 AND user_id=$2',
-    ['40000000-0000-4000-8000-0000000000d4', 'usr_oidc_d4']
-  );
+  const storedUser = await appRoleDb(pool).transaction(async (tx) => {
+    await tx.query("SET LOCAL ROLE zaffiliate_app_test");
+    await tx.query("SELECT set_config('app.tenant_id', $1, true)", ['40000000-0000-4000-8000-0000000000d4']);
+    return tx.query(
+      'SELECT password_hash AS "passwordHash", email_verified AS "emailVerified" FROM local_auth_users WHERE tenant_id=$1 AND user_id=$2',
+      ['40000000-0000-4000-8000-0000000000d4', 'usr_oidc_d4']
+    );
+  });
   assert.equal(storedUser.rows[0].emailVerified, true);
   assert.equal(storedUser.rows[0].passwordHash.startsWith('scrypt$'), false, 'OIDC-only bootstrap must not invent a usable local password');
 
@@ -94,7 +115,11 @@ test('OIDC login repo persists single-use state and creates/reuses the verified 
   assert.equal(second.user.email, 'oidc-d4@example.test', 'subsequent signed claims must not silently rewrite the local account email');
   const unusedTenant = await pool.query('SELECT count(*)::int AS count FROM tenants WHERE id=$1', ['50000000-0000-4000-8000-0000000000e5']);
   assert.equal(unusedTenant.rows[0].count, 0);
-  const sessions = await pool.query('SELECT count(*)::int AS count FROM auth_sessions WHERE tenant_id=$1 AND user_id=$2', [first.user.tenantId, first.user.userId]);
+  const sessions = await appRoleDb(pool).transaction(async (tx) => {
+    await tx.query("SET LOCAL ROLE zaffiliate_app_test");
+    await tx.query("SELECT set_config('app.tenant_id', $1, true)", [first.user.tenantId]);
+    return tx.query('SELECT count(*)::int AS count FROM auth_sessions WHERE tenant_id=$1 AND user_id=$2', [first.user.tenantId, first.user.userId]);
+  });
   assert.equal(sessions.rows[0].count, 2);
 });
 
@@ -104,9 +129,19 @@ test('verified email equality never auto-links a different tenant without an exi
   t.after(() => pool.end());
   const repo = createOAuthLoginRepo({ db: appRoleDb(pool) });
 
-  await pool.query("INSERT INTO tenants (id, slug, name) VALUES ('60000000-0000-4000-8000-0000000000f6','existing-email-f6','Existing Email')");
-  await pool.query("INSERT INTO tenant_memberships (tenant_id,user_id,role) VALUES ('60000000-0000-4000-8000-0000000000f6','usr_existing_email','owner')");
-  await pool.query("INSERT INTO local_auth_users (tenant_id,user_id,email,password_hash,email_verified) VALUES ('60000000-0000-4000-8000-0000000000f6','usr_existing_email','shared@example.test',$1,true)", ['z'.repeat(64)]);
+// Clean up before test
+  await cleanupTenant(pool, '60000000-0000-4000-8000-0000000000f6');
+  await cleanupTenant(pool, '70000000-0000-4000-8000-0000000000a7');
+
+  // Setup test data with app role and tenant context
+  await pool.query(
+    `INSERT INTO tenants (id, slug, name) VALUES ('60000000-0000-4000-8000-0000000000f6','existing-email-f6','Existing Email')`);
+  await appRoleDb(pool).transaction(async (tx) => {
+    await tx.query("SET LOCAL ROLE zaffiliate_app_test");
+    await tx.query("SELECT set_config('app.tenant_id', $1, true)", ['60000000-0000-4000-8000-0000000000f6']);
+    await tx.query("INSERT INTO tenant_memberships (tenant_id,user_id,role) VALUES ('60000000-0000-4000-8000-0000000000f6','usr_existing_email','owner')");
+    await tx.query("INSERT INTO local_auth_users (tenant_id,user_id,email,password_hash,email_verified) VALUES ('60000000-0000-4000-8000-0000000000f6','usr_existing_email','shared@example.test',$1,true)", ['z'.repeat(64)]);
+  });
 
   const result = await repo.completeOidcLogin({
     provider: 'acme',

@@ -49,7 +49,12 @@ function runPreflight(executor) {
   // This is documented in RELEASE-READINESS.md and the closure plan: B2/B7
   // are external gates; the production release host must run this step
   // explicitly with .env.production.
+  // Set RELEASE_PREFLIGHT_REQUIRED=true to fail instead of skipping.
+  const preflightRequired = String(process.env.RELEASE_PREFLIGHT_REQUIRED ?? '').trim().toLowerCase() === 'true';
   if (!existsSync('.env.production')) {
+    if (preflightRequired) {
+      return { passed: false, decision: null, reason: 'RELEASE_PREFLIGHT_REQUIRED=true but .env.production not found' };
+    }
     return { passed: true, decision: 'SKIPPED_NO_PROD_ENV', reason: '.env.production not found; preflight is an external gate' };
   }
   try {
