@@ -22,7 +22,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
     "pg": "8.23.0",
-    "react": "^19.2.8",
+    "react": "^19.3.0",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
     "redis": "6.2.1"
