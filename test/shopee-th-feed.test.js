@@ -82,6 +82,7 @@ test('Shopee TH CSV ingestion handles BOM, CRLF, commas and quoted newlines whil
 test('Shopee TH CSV ingestion fails closed on malformed rows and schema drift', () => {
   const valid = ShopeeThFeedHeaders.join(',');
   assert.throws(() => parseShopeeThFeedCsv(`${valid}\nTH-1,missing`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /row 2.*column count/i);
-  assert.throws(() => parseShopeeThFeedCsv(`${valid},unexpected\n`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /missing headers|unsupported Shopee TH feed schema/i);
+  const schemaDriftRow = ['TH-1', 'สินค้า', '100', '1', 'ร้าน', '10%', '10', 'https://shopee.co.th/x', 'https://s.shopee.co.th/x', 'unexpected-value'].join(',');
+  assert.throws(() => parseShopeeThFeedCsv(`${valid},unexpected\n${schemaDriftRow}\n`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /unexpected headers|unsupported Shopee TH feed schema/i);
   assert.throws(() => parseShopeeThFeedCsv(`${valid}\n"unterminated`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /unterminated quoted field/i);
 });
