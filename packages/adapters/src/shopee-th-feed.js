@@ -48,9 +48,15 @@ function httpsUrl(value, name) {
 }
 
 export function validateShopeeThFeedHeaders(headers) {
+  if (!Array.isArray(headers)) throw new TypeError('headers must be an array');
   const normalized = headers.map((header, index) => index === 0 ? String(header).replace(/^\uFEFF/, '').trim() : String(header).trim());
   const missing = ShopeeThFeedHeaders.filter((header) => !normalized.includes(header));
-  if (missing.length) throw new Error(`unsupported Shopee TH feed schema; missing headers: ${missing.join(', ')}`);
+  const unexpected = normalized.filter((header) => !ShopeeThFeedHeaders.includes(header));
+  if (missing.length || unexpected.length || normalized.length !== ShopeeThFeedHeaders.length) {
+    const details = [missing.length ? `missing headers: ${missing.join(', ')}` : null, unexpected.length ? `unexpected headers: ${unexpected.join(', ')}` : null].filter(Boolean).join('; ');
+    throw new Error(`unsupported Shopee TH feed schema${details ? `; ${details}` : ''}`);
+  }
+  if (new Set(normalized).size !== normalized.length) throw new Error('unsupported Shopee TH feed schema; duplicate headers');
   return Object.freeze(normalized);
 }
 
@@ -90,4 +96,57 @@ export function normalizeShopeeThFeedRow(row, { sourceTimestamp, sourceFilename 
       schemaVersion: 1
     })
   });
+}
+
+function splitCsvRecords(csv) {
+  const input = String(csv ?? '');
+  if (!input.trim()) throw new Error('Shopee TH feed CSV is empty');
+  const records = [];
+  let record = [];
+  let field = '';
+  let quoted = false;
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    const next = input[index + 1];
+    if (quoted) {
+      if (char === '"' && next === '"') { field += '"'; index += 1; continue; }
+      if (char === '"') { quoted = false; continue; }
+      field += char;
+      continue;
+    }
+    if (char === '"') {
+      if (field.length) throw new Error('malformed Shopee TH CSV: quote must start at field boundary');
+      quoted = true;
+    } else if (char === ',') {
+      record.push(field); field = '';
+    } else if (char === '\r' || char === '\n') {
+      if (char === '\r' && next === '\n') index += 1;
+      record.push(field); field = '';
+      records.push(record); record = [];
+    } else {
+      field += char;
+    }
+  }
+  if (quoted) throw new Error('malformed Shopee TH CSV: unterminated quoted field');
+  if (field.length || record.length) { record.push(field); records.push(record); }
+  return records.filter((row) => row.some((value) => String(value).trim() !== ''));
+}
+
+export function parseShopeeThFeedCsv(csv, { sourceTimestamp, sourceFilename = null } = {}) {
+  const records = splitCsvRecords(csv);
+  if (records.length < 2) throw new Error('Shopee TH feed CSV must contain a header and at least one data row');
+  const headers = validateShopeeThFeedHeaders(records[0]);
+  const normalized = [];
+  for (let index = 1; index < records.length; index += 1) {
+    const values = records[index];
+    const rowNumber = index + 1;
+    if (values.length !== headers.length) throw new Error(`Shopee TH CSV row ${rowNumber} column count does not match header`);
+    const row = Object.fromEntries(headers.map((header, column) => [header, values[column]]));
+    try {
+      normalized.push(normalizeShopeeThFeedRow(row, { sourceTimestamp, sourceFilename, rowNumber }));
+    } catch (error) {
+      throw new Error(`Shopee TH CSV row ${rowNumber}: ${error.message}`, { cause: error });
+    }
+  }
+  return Object.freeze(normalized);
 }
