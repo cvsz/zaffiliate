@@ -11,9 +11,23 @@ export async function action({ request }) {
   const formData = await request.formData();
   const approvalId = String(formData.get('approvalId') || '');
   const decision = String(formData.get('decision') || '');
+  const tenant = document.getElementById('tenant')?.value || 'tenant-acme';
+
+  const csrfResponse = await fetch('/api/csrf-token', {
+    headers: { 'x-tenant-id': tenant }
+  });
+  const csrfBody = await csrfResponse.json();
+  if (!csrfResponse.ok || typeof csrfBody.token !== 'string' || csrfBody.token.length === 0) {
+    return { error: csrfBody.error || 'CSRF token request failed', status: csrfResponse.status };
+  }
+
   const result = await fetch('/api/workflow/approve', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-zaff-csrf': '1', 'x-tenant-id': document.getElementById('tenant')?.value || 'tenant-acme' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-csrf-token': csrfBody.token,
+      'x-tenant-id': tenant
+    },
     body: JSON.stringify({ approvalId, decision })
   });
   const body = await result.json();

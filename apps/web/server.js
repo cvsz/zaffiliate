@@ -48,7 +48,8 @@ function cleanupExpiredCsrfTokens() {
   }
 }
 
-setInterval(cleanupExpiredCsrfTokens, 15 * 60 * 1000);
+const csrfCleanupTimer = setInterval(cleanupExpiredCsrfTokens, 15 * 60 * 1000);
+csrfCleanupTimer.unref();
 
 function getContentType(pathname) {
   const ext = pathname.split('.').pop()?.toLowerCase();
