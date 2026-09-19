@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ShopeeThFeedHeaders, normalizeShopeeThFeedRow, parseShopeeThSoldCount, validateShopeeThFeedHeaders } from '../packages/adapters/src/shopee-th-feed.js';
+import { ShopeeThFeedHeaders, normalizeShopeeThFeedRow, parseShopeeThFeedCsv, parseShopeeThSoldCount, validateShopeeThFeedHeaders } from '../packages/adapters/src/shopee-th-feed.js';
 
 test('Shopee TH feed headers accept BOM and fail closed on unknown/incomplete schema', () => {
   const headers = [...ShopeeThFeedHeaders];
@@ -63,4 +63,26 @@ test('Shopee TH normalization rejects malformed financial values, insecure URLs 
   assert.throws(() => normalizeShopeeThFeedRow({ ...base, ราคา: '-1' }, { sourceTimestamp: '2026-09-17T00:00:00Z' }), /non-negative number/);
   assert.throws(() => normalizeShopeeThFeedRow({ ...base, 'อัตราค่าคอมมิชชัน': '101%' }, { sourceTimestamp: '2026-09-17T00:00:00Z' }), /between 0 and 100/);
   assert.throws(() => normalizeShopeeThFeedRow({ ...base, 'ลิงก์ข้อเสนอ': 'http://example.test/x' }, { sourceTimestamp: '2026-09-17T00:00:00Z' }), /https URL/);
+});
+
+test('Shopee TH CSV ingestion handles BOM, CRLF, commas and quoted newlines while preserving row provenance', () => {
+  const csv = `\uFEFF${ShopeeThFeedHeaders.join(',')}\r\nTH-1,"สินค้า, รุ่น A",1299.50,1.2พัน+,"ร้าน\nทดสอบ",12.5%,162.44,https://shopee.co.th/product/1,https://s.shopee.co.th/a\r\n`;
+  const rows = parseShopeeThFeedCsv(csv, { sourceTimestamp: '2026-09-19T03:00:00Z', sourceFilename: 'feed.csv' });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].productId, 'TH-1');
+  assert.equal(rows[0].name, 'สินค้า, รุ่น A');
+  assert.equal(rows[0].shopName, 'ร้าน\nทดสอบ');
+  assert.equal(rows[0].commission.observedRate, 0.125);
+  assert.equal(rows[0].commission.observedAmount, 162.44);
+  assert.equal(rows[0].provenance.sourceFilename, 'feed.csv');
+  assert.equal(rows[0].provenance.rowNumber, 2);
+  assert.equal(rows[0].provenance.sourceTimestamp, '2026-09-19T03:00:00.000Z');
+});
+
+test('Shopee TH CSV ingestion fails closed on malformed rows and schema drift', () => {
+  const valid = ShopeeThFeedHeaders.join(',');
+  assert.throws(() => parseShopeeThFeedCsv(`${valid}\nTH-1,missing`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /row 2.*column count/i);
+  const schemaDriftRow = ['TH-1', 'สินค้า', '100', '1', 'ร้าน', '10%', '10', 'https://shopee.co.th/x', 'https://s.shopee.co.th/x', 'unexpected-value'].join(',');
+  assert.throws(() => parseShopeeThFeedCsv(`${valid},unexpected\n${schemaDriftRow}\n`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /unexpected headers|unsupported Shopee TH feed schema/i);
+  assert.throws(() => parseShopeeThFeedCsv(`${valid}\n"unterminated`, { sourceTimestamp: '2026-09-19T03:00:00Z' }), /unterminated quoted field/i);
 });
