@@ -63,11 +63,20 @@ export function createShopeeThRepo({ db, clock = () => Date.now() } = {}) {
         `INSERT INTO shopee_th_import_batches
            (tenant_id, batch_id, source_filename, source_type, parser_version, row_count, status, started_at)
          VALUES ($1, $2, $3, $4, $5, 0, 'started', $6)
-         ON CONFLICT (tenant_id, batch_id) DO UPDATE SET status = 'started', started_at = EXCLUDED.started_at
+         ON CONFLICT (tenant_id, batch_id) DO NOTHING
          RETURNING *`,
         [id, batchId, input.sourceFilename ?? null, required(input.sourceType, 'sourceType'), required(input.parserVersion, 'parserVersion'), occurredAt]
       );
-      return Object.freeze({ batchId: rows(result)[0].batch_id, tenantId: id, status: 'started', startedAt: occurredAt });
+      const row = rows(result)[0];
+      if (!row) {
+        const existing = rows(await tx.query(
+          'SELECT status FROM shopee_th_import_batches WHERE tenant_id = $1 AND batch_id = $2 LIMIT 1',
+          [id, batchId]
+        ))[0];
+        if (!existing) throw new Error(`import batch ${batchId} replay conflict`);
+        throw new Error(`import batch ${batchId} already exists with status ${existing.status}; replay refused`);
+      }
+      return Object.freeze({ batchId: row.batch_id, tenantId: id, status: row.status, startedAt: new Date(row.started_at).toISOString() });
     });
   }
 
