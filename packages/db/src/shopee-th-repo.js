@@ -32,6 +32,19 @@ function evidenceHash(raw) {
   return createHash('sha256').update(String(raw)).digest('hex');
 }
 
+function offerRuntimeId(id, input) {
+  const identity = [
+    id,
+    required(input.productId, 'productId'),
+    required(input.sourceType, 'sourceType'),
+    required(input.sourceFilename, 'sourceFilename'),
+    required(input.sourceTimestamp, 'sourceTimestamp'),
+    required(input.sourceRowKey, 'sourceRowKey')
+  ];
+  const digest = createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 32);
+  return `shp_${digest}`;
+}
+
 async function setTenant(tx, id) {
   await tx.query("SELECT set_config('app.tenant_id', $1, true)", [id]);
 }
@@ -119,7 +132,7 @@ export function createShopeeThRepo({ db, clock = () => Date.now() } = {}) {
       const productResult = await tx.query('SELECT id, runtime_id FROM products WHERE tenant_id = $1 AND runtime_id = $2', [id, productId]);
       const product = rows(productResult)[0];
       if (!product) throw new Error(`product ${productId} not found`);
-      const offerId = `shp_${randomUUID()}`;
+      const offerId = offerRuntimeId(id, input);
       const occurredAt = nowIso();
       const result = await tx.query(
         `INSERT INTO offers
