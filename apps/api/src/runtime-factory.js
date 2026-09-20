@@ -1,6 +1,7 @@
 import { createAffiliateRuntime } from '../../../packages/affiliate-core/src/runtime.js';
 import { createAffiliateCoreRepo } from '../../../packages/db/src/affiliate-core-repo.js';
 import { createDbClient } from '../../../packages/db/src/client.js';
+import { createOutboxRepo } from '../../../packages/db/src/outbox-repo.js';
 
 export function affiliateRuntimeBackend(env = process.env) {
   const explicit = String(env.AFFILIATE_RUNTIME_BACKEND ?? '').trim().toLowerCase();
@@ -22,5 +23,7 @@ export function createAffiliateRuntimeForEnv({ env = process.env, logger = null,
     throw error;
   }
   const db = createDbClient({ connectionString, logger });
-  return createAffiliateCoreRepo({ db, clock });
+  const core = createAffiliateCoreRepo({ db, clock });
+  const outbox = createOutboxRepo({ db });
+  return Object.freeze({ ...core, ...outbox });
 }
