@@ -29,8 +29,10 @@ function replayDb() {
           }
           if (sql.startsWith('INSERT INTO affiliate_clicks')) {
             const key = `${params[0]}:${params[1]}`;
-            if (!clicks.has(key)) clicks.set(key, { tenantId: params[0], clickId: params[1], touchpoint: params[3], recordedAt: params[4] });
-            return { rows: clicks.has(key) ? [clicks.get(key)] : [] };
+            if (clicks.has(key)) return { rows: [] };
+            const row = { tenantId: params[0], clickId: params[1], touchpoint: params[3], recordedAt: params[4] };
+            clicks.set(key, row);
+            return { rows: [row] };
           }
           if (sql.startsWith('INSERT INTO affiliate_domain_outbox')) {
             outbox.push({ tenantId: params[0], eventId: params[1], type: params[2], payload: params[3], occurredAt: params[4] });
