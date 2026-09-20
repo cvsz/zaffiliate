@@ -30,9 +30,19 @@ function replayDb() {
           if (sql.startsWith('INSERT INTO affiliate_clicks')) {
             const key = `${params[0]}:${params[1]}`;
             if (clicks.has(key)) return { rows: [] };
-            const row = { tenantId: params[0], clickId: params[1], touchpoint: params[3], recordedAt: params[4] };
+            const row = {
+              tenant_id: params[0],
+              runtime_id: params[1],
+              touchpoint: JSON.parse(params[3]),
+              recorded_at: params[4]
+            };
             clicks.set(key, row);
             return { rows: [row] };
+          }
+          if (sql.startsWith('SELECT tenant_id, runtime_id, touchpoint, recorded_at FROM affiliate_clicks')) {
+            const key = `${params[0]}:${params[1]}`;
+            const row = clicks.get(key);
+            return { rows: row ? [row] : [] };
           }
           if (sql.startsWith('INSERT INTO affiliate_domain_outbox')) {
             outbox.push({ tenantId: params[0], eventId: params[1], type: params[2], payload: params[3], occurredAt: params[4] });
