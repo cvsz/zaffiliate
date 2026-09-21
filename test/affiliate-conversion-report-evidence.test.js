@@ -45,6 +45,7 @@ function replayDb() {
               revenue_minor_units: params[10],
               gross_commission_minor_units: params[11],
               commission_rate: params[12],
+              commission_evidence: params[13],
               currency: params[8],
               occurred_at: params[9]
             };
