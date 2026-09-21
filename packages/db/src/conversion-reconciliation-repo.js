@@ -43,10 +43,33 @@ function optionalTimestamp(value, name) {
   return date.toISOString();
 }
 
-function evidence(value) {
+function objectEvidence(value, name) {
   if (value == null) return {};
-  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('reconciliationEvidence must be an object');
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`${name} must be an object`);
   return structuredClone(value);
+}
+
+function evidence(value) {
+  return objectEvidence(value, 'reconciliationEvidence');
+}
+
+function commissionEvidence(value) {
+  const result = objectEvidence(value, 'commissionEvidence');
+  required(result.source, 'commissionEvidence.source');
+  required(result.sourceRowId, 'commissionEvidence.sourceRowId');
+  return result;
+}
+
+function commissionRate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) throw new Error('commissionRate must be a non-negative finite number');
+  return number;
+}
+
+function minorUnits(value) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number)) throw new Error('grossCommissionMinorUnits must be a safe integer');
+  return number;
 }
 
 function rows(result) {
@@ -66,6 +89,7 @@ function mapConversion(row) {
     currency: row.currency,
     commissionRate: row.commission_rate == null ? null : Number(row.commission_rate),
     grossCommissionMinorUnits: row.gross_commission_minor_units == null ? null : Number(row.gross_commission_minor_units),
+    commissionEvidence: row.commission_evidence ?? {},
     reconciliationEvidence: row.reconciliation_evidence ?? {},
     status: row.status,
     occurredAt: new Date(row.occurred_at).toISOString(),
@@ -197,5 +221,68 @@ export function createConversionReconciliationRepo({ db, clock = () => Date.now(
     });
   }
 
-  return Object.freeze({ getConversion, listConversions, aggregateCommission, updateConversionStatus });
+  async function correctCommission({ tenantId: rawTenantId, conversionId: rawConversionId, commissionRate: rawRate, grossCommissionMinorUnits: rawGross, actorId, observedAt, commissionEvidence: rawEvidence } = {}) {
+    const id = conversionId(rawConversionId);
+    const rate = commissionRate(rawRate);
+    const gross = minorUnits(rawGross);
+    const actor = required(actorId, 'actorId');
+    const sourceObservedAt = optionalTimestamp(observedAt, 'observedAt');
+    if (!sourceObservedAt) throw new Error('observedAt is required');
+    const sourceEvidence = commissionEvidence(rawEvidence);
+    const evidenceObservedAt = optionalTimestamp(sourceEvidence.observedAt, 'commissionEvidence.observedAt');
+    if (evidenceObservedAt && evidenceObservedAt !== sourceObservedAt) throw new Error('commission evidence observedAt must match observedAt');
+
+    return inTenant(rawTenantId, async (tx, scopedTenant) => {
+      const currentResult = await tx.query(`${SELECT_CONVERSION} WHERE c.tenant_id=$1 AND c.runtime_id=$2 FOR UPDATE`, [scopedTenant, id]);
+      const current = rows(currentResult)[0];
+      if (!current) throw new ConversionNotFoundError();
+
+      const priorEvidence = current.commission_evidence ?? {};
+      if (priorEvidence.source === sourceEvidence.source && priorEvidence.sourceRowId === sourceEvidence.sourceRowId) {
+        if (Number(current.commission_rate) !== rate || Number(current.gross_commission_minor_units) !== gross || JSON.stringify(priorEvidence) !== JSON.stringify(sourceEvidence)) {
+          throw new Error('commission correction source row replay conflicts with persisted evidence');
+        }
+        return mapConversion(current);
+      }
+
+      const updateResult = await tx.query(
+        `UPDATE conversions
+         SET commission_rate=$3, gross_commission_minor_units=$4, commission_evidence=$5::jsonb
+         WHERE tenant_id=$1 AND runtime_id=$2
+         RETURNING *`,
+        [scopedTenant, id, rate, gross, JSON.stringify(sourceEvidence)]
+      );
+      const updated = {
+        ...rows(updateResult)[0],
+        commission_evidence: sourceEvidence,
+        link_runtime_id: current.link_runtime_id,
+        offer_runtime_id: current.offer_runtime_id,
+        product_runtime_id: current.product_runtime_id
+      };
+      const correction = {
+        observedAt: sourceObservedAt,
+        before: {
+          commissionRate: current.commission_rate == null ? null : Number(current.commission_rate),
+          grossCommissionMinorUnits: current.gross_commission_minor_units == null ? null : Number(current.gross_commission_minor_units),
+          commissionEvidence: priorEvidence
+        },
+        after: { commissionRate: rate, grossCommissionMinorUnits: gross, commissionEvidence: sourceEvidence }
+      };
+
+      await tx.query(
+        `INSERT INTO audit_events
+          (tenant_id, actor_id, action, resource_type, resource_id, outcome, reason, payload)
+         VALUES ($1,$2,'conversion.commission_corrected','conversion',$3,'allowed','commission corrected from source report',$4::jsonb)`,
+        [scopedTenant, actor, id, JSON.stringify(correction)]
+      );
+      await tx.query(
+        `INSERT INTO affiliate_domain_outbox (tenant_id, event_id, event_type, payload, occurred_at)
+         VALUES ($1,$2,'conversion.commission_corrected',$3::jsonb,$4)`,
+        [scopedTenant, `evt_${randomUUID()}`, JSON.stringify({ conversionId: id, ...correction, actorId: actor }), sourceObservedAt]
+      );
+      return mapConversion(updated);
+    });
+  }
+
+  return Object.freeze({ getConversion, listConversions, aggregateCommission, updateConversionStatus, correctCommission });
 }
