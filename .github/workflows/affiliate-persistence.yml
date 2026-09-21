@@ -5,6 +5,7 @@ on:
     paths:
       - 'db/migrations/007_affiliate_runtime_persistence.sql'
       - 'db/migrations/012_conversion_reconciliation.sql'
+      - 'db/migrations/017_conversion_reconciliation_evidence.sql'
       - 'db/tests/affiliate-persistence.sql'
       - 'db/tests/conversion-reconciliation.sql'
       - 'db/tests/bootstrap-role.sql'
@@ -24,6 +25,7 @@ on:
     paths:
       - 'db/migrations/007_affiliate_runtime_persistence.sql'
       - 'db/migrations/012_conversion_reconciliation.sql'
+      - 'db/migrations/017_conversion_reconciliation_evidence.sql'
       - 'packages/db/src/affiliate-core-repo.js'
       - 'packages/db/src/conversion-reconciliation-repo.js'
       - 'apps/api/src/conversion-api.js'
@@ -73,6 +75,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/007_affiliate_runtime_persistence.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/012_conversion_reconciliation.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/017_conversion_reconciliation_evidence.sql
       - name: Create application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify affiliate persistence RLS
