@@ -41,16 +41,15 @@ function timestamp(value, name) {
 
 function token() { return randomBytes(12).toString('base64url'); }
 function mint(prefix) { return `${prefix}_${token()}`; }
-function commissionFrom(revenueMinorUnits, rate) {
-  const basisPoints = Math.round(rate * 10_000);
-  return Number((BigInt(revenueMinorUnits) * BigInt(basisPoints) + 5_000n) / 10_000n);
-}
 function rows(result) { return Array.isArray(result?.rows) ? result.rows : []; }
 async function setTenant(tx, id) { await tx.query("SELECT set_config('app.tenant_id', $1, true)", [id]); }
 function mapProduct(row) { return Object.freeze({ tenantId: row.tenant_id, productId: row.runtime_id, platform: row.platform, externalProductId: row.external_product_id, title: row.title, currency: row.currency, createdAt: new Date(row.created_at).toISOString() }); }
 function mapOffer(row) { return Object.freeze({ tenantId: row.tenant_id, offerId: row.runtime_id, productId: row.product_runtime_id, priceMinorUnits: Number(row.price_minor_units), currency: row.currency, commissionRate: Number(row.commission_rate), capturedAt: new Date(row.captured_at ?? row.created_at).toISOString(), createdAt: new Date(row.created_at).toISOString() }); }
 function mapLink(row) { return Object.freeze({ tenantId: row.tenant_id, linkId: row.runtime_id, offerId: row.offer_runtime_id, productId: row.product_runtime_id, campaignId: row.campaign_id ?? null, destinationUrl: row.destination_url ?? row.url, deepLinkUrl: row.deep_link_url ?? row.url, subIds: Object.freeze(row.sub_ids ?? {}), slug: row.slug ?? null, expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null, createdAt: new Date(row.created_at).toISOString() }); }
-function mapConversion(row) { return Object.freeze({ tenantId: row.tenant_id, conversionId: row.runtime_id, linkId: row.link_runtime_id, offerId: row.offer_runtime_id, productId: row.product_runtime_id, orderRef: row.external_order_id, revenueMinorUnits: Number(row.revenue_minor_units), currency: row.currency, commissionRate: Number(row.commission_rate), grossCommissionMinorUnits: Number(row.gross_commission_minor_units), occurredAt: new Date(row.occurred_at).toISOString() }); }
+function mapConversion(row) {
+  const evidence = typeof row.commission_evidence === 'string' ? JSON.parse(row.commission_evidence) : (row.commission_evidence ?? {});
+  return Object.freeze({ tenantId: row.tenant_id, conversionId: row.runtime_id, linkId: row.link_runtime_id, offerId: row.offer_runtime_id, productId: row.product_runtime_id, orderRef: row.external_order_id, revenueMinorUnits: Number(row.revenue_minor_units), currency: row.currency, commissionRate: Number(row.commission_rate), grossCommissionMinorUnits: Number(row.gross_commission_minor_units), commissionEvidence: Object.freeze({ ...evidence }), occurredAt: new Date(row.occurred_at).toISOString() });
+}
 
 const LINK_SELECT = `
   SELECT l.*, o.runtime_id AS offer_runtime_id, p.runtime_id AS product_runtime_id
@@ -118,7 +117,31 @@ export function createAffiliateCoreRepo({ db, clock = () => Date.now() } = {}) {
   }
   async function recordConversion(rawTenantId, input) {
     if (!input || typeof input !== 'object') throw new TypeError('conversion input is required');
-    return inTenant(rawTenantId, async (tx, id) => { const linkResult = await tx.query(`${LINK_SELECT} WHERE l.tenant_id = $1 AND l.runtime_id = $2 LIMIT 1`, [id, required(input.linkId, 'linkId')]); const link = rows(linkResult)[0]; if (!link) throw new Error(`link ${input.linkId} not found`); const offerResult = await tx.query('SELECT id, runtime_id, commission_rate FROM offers WHERE tenant_id = $1 AND id = $2', [id, link.offer_id]); const offer = rows(offerResult)[0]; const orderRef = required(input.orderRef, 'orderRef'); const revenue = minorUnits(input.revenueMinorUnits, 'revenueMinorUnits'); const code = currency(input.currency); const rate = Number(offer.commission_rate); const commission = commissionFrom(revenue, rate); const conversionId = mint('cnv'); const occurredAt = nowIso(); const inserted = await tx.query(`INSERT INTO conversions (tenant_id, runtime_id, external_order_id, offer_id, affiliate_link_id, gross_revenue, commission, cost, currency, occurred_at, revenue_minor_units, gross_commission_minor_units, commission_rate) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, $9, $6, $7, $10) ON CONFLICT (tenant_id, external_order_id) DO NOTHING RETURNING *`, [id, conversionId, orderRef, offer.id, link.id, revenue, commission, code, occurredAt, rate]); let row = rows(inserted)[0]; if (!row) { const existing = await tx.query(`${CONVERSION_SELECT} WHERE c.tenant_id = $1 AND c.external_order_id = $2 LIMIT 1`, [id, orderRef]); return mapConversion(rows(existing)[0]); } row = { ...row, link_runtime_id: link.runtime_id, offer_runtime_id: link.offer_runtime_id, product_runtime_id: link.product_runtime_id }; await enqueue(tx, id, 'conversion.recorded', { conversionId, linkId: link.runtime_id, orderRef }, occurredAt); return mapConversion(row); });
+    return inTenant(rawTenantId, async (tx, id) => {
+      const linkResult = await tx.query(`${LINK_SELECT} WHERE l.tenant_id = $1 AND l.runtime_id = $2 LIMIT 1`, [id, required(input.linkId, 'linkId')]);
+      const link = rows(linkResult)[0];
+      if (!link) throw new Error(`link ${input.linkId} not found`);
+      const orderRef = required(input.orderRef, 'orderRef');
+      const revenue = minorUnits(input.revenueMinorUnits, 'revenueMinorUnits');
+      const code = currency(input.currency);
+      const rate = commissionRate(input.commissionRate);
+      const commission = minorUnits(input.grossCommissionMinorUnits, 'grossCommissionMinorUnits');
+      const occurredAt = timestamp(input.occurredAt, 'occurredAt');
+      const evidence = input.commissionEvidence;
+      if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) throw new TypeError('commissionEvidence must be an object');
+      const conversionId = mint('cnv');
+      const inserted = await tx.query(`INSERT INTO conversions (tenant_id, runtime_id, external_order_id, offer_id, affiliate_link_id, gross_revenue, commission, cost, currency, occurred_at, revenue_minor_units, gross_commission_minor_units, commission_rate, commission_evidence) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb) ON CONFLICT (tenant_id, external_order_id) DO NOTHING RETURNING *`, [id, conversionId, orderRef, link.offer_id, link.id, revenue, commission, 0, code, occurredAt, revenue, commission, rate, JSON.stringify(evidence)]);
+      let row = rows(inserted)[0];
+      if (!row) {
+        const existing = await tx.query(`${CONVERSION_SELECT} WHERE c.tenant_id = $1 AND c.external_order_id = $2 LIMIT 1`, [id, orderRef]);
+        row = rows(existing)[0];
+        if (!row) throw new Error(`conversion ${orderRef} replay could not be resolved`);
+        return mapConversion(row);
+      }
+      row = { ...row, link_runtime_id: link.runtime_id, offer_runtime_id: link.offer_runtime_id, product_runtime_id: link.product_runtime_id };
+      await enqueue(tx, id, 'conversion.recorded', { conversionId, linkId: link.runtime_id, orderRef }, occurredAt);
+      return mapConversion(row);
+    });
   }
   async function computeMargin(rawTenantId, input) {
     if (!input || typeof input !== 'object') throw new TypeError('margin input is required');
