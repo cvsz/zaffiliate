@@ -43,6 +43,12 @@ function optionalTimestamp(value, name) {
   return date.toISOString();
 }
 
+function evidence(value) {
+  if (value == null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('reconciliationEvidence must be an object');
+  return structuredClone(value);
+}
+
 function rows(result) {
   return Array.isArray(result?.rows) ? result.rows : [];
 }
@@ -60,6 +66,7 @@ function mapConversion(row) {
     currency: row.currency,
     commissionRate: row.commission_rate == null ? null : Number(row.commission_rate),
     grossCommissionMinorUnits: row.gross_commission_minor_units == null ? null : Number(row.gross_commission_minor_units),
+    reconciliationEvidence: row.reconciliation_evidence ?? {},
     status: row.status,
     occurredAt: new Date(row.occurred_at).toISOString(),
     recordedAt: new Date(row.created_at).toISOString(),
@@ -146,41 +153,45 @@ export function createConversionReconciliationRepo({ db, clock = () => Date.now(
     });
   }
 
-  async function updateConversionStatus({ tenantId: rawTenantId, conversionId: rawConversionId, status: rawStatus, actorId } = {}) {
+  async function updateConversionStatus({ tenantId: rawTenantId, conversionId: rawConversionId, status: rawStatus, actorId, observedAt, reconciliationEvidence } = {}) {
     const id = conversionId(rawConversionId);
     const target = status(rawStatus);
     const actor = required(actorId, 'actorId');
+    const sourceObservedAt = optionalTimestamp(observedAt, 'observedAt');
+    const sourceEvidence = evidence(reconciliationEvidence);
     return inTenant(rawTenantId, async (tx, scopedTenant) => {
       const currentResult = await tx.query(`${SELECT_CONVERSION} WHERE c.tenant_id=$1 AND c.runtime_id=$2 FOR UPDATE`, [scopedTenant, id]);
       const current = rows(currentResult)[0];
       if (!current) throw new ConversionNotFoundError();
       if (current.status === target) return mapConversion(current);
 
-      const occurredAt = new Date(clock()).toISOString();
+      const statusUpdatedAt = sourceObservedAt ?? new Date(clock()).toISOString();
       const updateResult = await tx.query(
         `UPDATE conversions
-         SET status=$3, status_updated_at=$4
+         SET status=$3, status_updated_at=$4, reconciliation_evidence=$5::jsonb
          WHERE tenant_id=$1 AND runtime_id=$2
          RETURNING *`,
-        [scopedTenant, id, target, occurredAt]
+        [scopedTenant, id, target, statusUpdatedAt, JSON.stringify(sourceEvidence)]
       );
       const updated = {
         ...rows(updateResult)[0],
+        reconciliation_evidence: sourceEvidence,
         link_runtime_id: current.link_runtime_id,
         offer_runtime_id: current.offer_runtime_id,
         product_runtime_id: current.product_runtime_id
       };
+      const transitionEvidence = { from: current.status, to: target, observedAt: statusUpdatedAt, reconciliationEvidence: sourceEvidence };
 
       await tx.query(
         `INSERT INTO audit_events
           (tenant_id, actor_id, action, resource_type, resource_id, outcome, reason, payload)
          VALUES ($1,$2,'conversion.status_changed','conversion',$3,'allowed','conversion reconciliation status changed',$4::jsonb)`,
-        [scopedTenant, actor, id, JSON.stringify({ from: current.status, to: target })]
+        [scopedTenant, actor, id, JSON.stringify(transitionEvidence)]
       );
       await tx.query(
         `INSERT INTO affiliate_domain_outbox (tenant_id, event_id, event_type, payload, occurred_at)
          VALUES ($1,$2,'conversion.status_changed',$3::jsonb,$4)`,
-        [scopedTenant, `evt_${randomUUID()}`, JSON.stringify({ conversionId: id, from: current.status, to: target, actorId: actor }), occurredAt]
+        [scopedTenant, `evt_${randomUUID()}`, JSON.stringify({ conversionId: id, ...transitionEvidence, actorId: actor }), statusUpdatedAt]
       );
       return mapConversion(updated);
     });
