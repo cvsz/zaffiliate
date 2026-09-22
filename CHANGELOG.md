@@ -4,6 +4,19 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-22
+
+### Added
+- Threat-model review: SSRF (#5) and supply-chain (#6) attack trees plus per-gate evidence mapping in `docs/security/threat-model.md`; all 8 security gates PASS (`docs/PRODUCTION-READINESS.md`).
+- Architecture boundary contract: `docs/ARCHITECTURE-BOUNDARY.md` + AGENTS.md section (affiliate core vs TikTok distribution).
+
+### Changed
+- Dependencies: react/react-dom 19.2.8 → 19.3.0, vite 8.2.2 → 8.3.0 (dependabot #56/#57/#58 merged; verified: 695-test suite green, web build 278ms).
+- Evidence refresh: production-readiness gates re-executed — `verify.sh` ALL GATES GREEN, restore-rehearsal PASSED on live Postgres, real-API load 5910 req p95=190ms, cutover rehearsal all four phases.
+
+### Fixed
+- Corrected suite counts across docs to verified HEAD numbers (695 tests, 687 pass, 0 fail, 8 skipped; 151 syntax gates).
+
 ### Added / Fixed (SWEEP-002 — complete all incomplete — 2026-08-31)
 
 - Publishing orchestrator HTTP: `apps/api/src/publication-api.js` (`POST /api/v1/publications` + `GET ?status` + `POST /api/v1/publications/claim` + `GET /:id` + `POST /:id/transition`) via `production-server.js` (`/api/v1/publications`, Bearer+tenant UUID, owner/admin write guard, rate-limited `publication:` key, bounded 16 KiB JSON, 404/409/422 envelopes), `packages/db/src/publication-jobs-repo.js` `claimDue` skip-locked exactly-once; tested `test/publication-api.test.js` 5/5.
