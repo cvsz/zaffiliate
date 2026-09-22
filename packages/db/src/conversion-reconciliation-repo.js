@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CONVERSION_ID_PATTERN = /^cnv_[A-Za-z0-9_-]{1,160}$/;
@@ -239,7 +240,7 @@ export function createConversionReconciliationRepo({ db, clock = () => Date.now(
 
       const priorEvidence = current.commission_evidence ?? {};
       if (priorEvidence.source === sourceEvidence.source && priorEvidence.sourceRowId === sourceEvidence.sourceRowId) {
-        if (Number(current.commission_rate) !== rate || Number(current.gross_commission_minor_units) !== gross || JSON.stringify(priorEvidence) !== JSON.stringify(sourceEvidence)) {
+        if (Number(current.commission_rate) !== rate || Number(current.gross_commission_minor_units) !== gross || !isDeepStrictEqual(priorEvidence, sourceEvidence)) {
           throw new Error('commission correction source row replay conflicts with persisted evidence');
         }
         return mapConversion(current);
