@@ -7,6 +7,8 @@ export class ConfigError extends Error {
   }
 }
 
+const TIKTOK_ENVIRONMENTS = Object.freeze(['development', 'test', 'sandbox', 'production']);
+
 const APP_ENVIRONMENTS = Object.freeze(['development', 'test', 'production']);
 const LOG_LEVELS = Object.freeze(['debug', 'info', 'warn', 'error']);
 const MIN_SECRET_LENGTH = 32;
@@ -81,6 +83,32 @@ export function loadConfig(env = process.env) {
   if (appEnv === 'production') {
     if (!String(env.DATABASE_URL ?? '').trim()) issues.push(issue('DATABASE_URL', 'is required in production'));
     if (!String(env.REDIS_URL ?? '').trim()) issues.push(issue('REDIS_URL', 'is required in production'));
+  }
+
+  const tiktokEnvironment = String(env.TIKTOK_ENVIRONMENT ?? '').trim().toLowerCase();
+  if (tiktokEnvironment && !TIKTOK_ENVIRONMENTS.includes(tiktokEnvironment)) {
+    issues.push(issue('TIKTOK_ENVIRONMENT', `must be one of ${TIKTOK_ENVIRONMENTS.join(', ')}`));
+  }
+  const tiktokConfigured = Boolean(String(env.TIKTOK_CLIENT_KEY ?? '').trim() || String(env.TIKTOK_CLIENT_SECRET ?? '').trim() || String(env.TIKTOK_APP_KEY ?? '').trim() || String(env.TIKTOK_APP_SECRET ?? '').trim());
+  if (tiktokConfigured) {
+    if (!String(env.TIKTOK_CLIENT_KEY ?? '').trim() && (String(env.TIKTOK_APP_KEY ?? '').trim() || String(env.TIKTOK_CLIENT_SECRET ?? '').trim())) {
+      issues.push(issue('TIKTOK_CLIENT_KEY', 'required when TikTok credentials are partially configured (use canonical name)'));
+    }
+    if (!String(env.TIKTOK_CLIENT_SECRET ?? '').trim() && (String(env.TIKTOK_APP_SECRET ?? '').trim() || String(env.TIKTOK_CLIENT_KEY ?? '').trim())) {
+      issues.push(issue('TIKTOK_CLIENT_SECRET', 'required when TikTok credentials are partially configured (use canonical name)'));
+    }
+    if (tiktokEnvironment === 'production' && !String(env.TIKTOK_CLIENT_KEY ?? '').trim()) {
+      issues.push(issue('TIKTOK_CLIENT_KEY', 'is required in production when TikTok is configured'));
+    }
+    if (String(env.TIKTOK_REDIRECT_URI ?? '').trim()) {
+      const allowedSchemes = appEnv === 'production' ? ['https'] : ['https', 'http'];
+      const redirectValidator = parseServiceUrl(env.TIKTOK_REDIRECT_URI, 'TIKTOK_REDIRECT_URI', allowedSchemes);
+      if (redirectValidator.error) issues.push(redirectValidator.error);
+    }
+    const scopes = String(env.TIKTOK_SCOPES ?? '').trim();
+    if (scopes && !scopes.includes(',')) {
+      issues.push(issue('TIKTOK_SCOPES', 'must be comma-separated when multiple scopes are used'));
+    }
   }
 
   if (issues.length > 0) throw new ConfigError(issues);

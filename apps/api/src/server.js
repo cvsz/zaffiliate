@@ -116,6 +116,26 @@ export function readiness(env = process.env) {
   });
 }
 
+export function validateConfig(env = process.env) {
+  const failures = [];
+  for (const key of ['DATABASE_URL', 'REDIS_URL', 'SESSION_SECRET', 'ENCRYPTION_KEY']) {
+    if (!String(env[key] || '').trim()) {
+      failures.push(key);
+    }
+  }
+  if (failures.length > 0) {
+    const error = new Error(`critical configuration missing: ${failures.join(', ')}`);
+    error.code = 'CONFIG_VALIDATION_FAILED';
+    throw error;
+  }
+  const appEnv = String(env.APP_ENV || 'development').toLowerCase();
+  if (!['development', 'test', 'staging', 'production'].includes(appEnv)) {
+    const error = new Error(`invalid APP_ENV: ${appEnv}`);
+    error.code = 'CONFIG_VALIDATION_FAILED';
+    throw error;
+  }
+}
+
 function defaultWebhookSecrets() {
   return createSecretManager({ backend: createInMemorySecretBackend() });
 }
@@ -205,6 +225,10 @@ export function buildServer({
     const throttled = (route) => {
       return json(429, route, { error: { code: 'RATE_LIMITED', message: 'too many requests', request_id: context.requestId } }, undefined, { 'retry-after': '1' });
     };
+
+    if (req.method === 'GET' && pathname === '/live') {
+      return json(200, '/live', { alive: true, service: 'zaffiliate-api' });
+    }
 
     if (req.method === 'GET' && pathname === '/healthz') {
       return json(200, '/healthz', { ok: true, service: 'zaffiliate-api' });

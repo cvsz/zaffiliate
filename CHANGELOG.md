@@ -4,9 +4,34 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Added (TikTok Developer integration — 2026-09-21)
+
+- **Database**: `db/migrations/016_tiktok_developer_accounts.sql` — `tiktok_accounts` table with RLS FORCE, `open_id` unique constraint per tenant, AES-GCM ciphertext columns for access/refresh tokens, `token_version` integer for lock-based concurrency, `status` CHECK enum (`active|reauth_required|disconnected|error`), indexes for sync/dispatch and open_id lookup; `db/migrations/ROLLBACK.md` 016 classified `FORWARD_FIX_REQUIRED post-data`.
+- **DB repo**: `packages/db/src/tiktok-accounts-repo.js` — `upsertAccount`, `getAccountById`, `getAccountByOpenId`, `listAccounts`, `updateAccountStatus`, `disconnectAccount`, `refreshTokenWithLock` (SELECT FOR UPDATE, no-op if token still valid, marks `reauth_required` on REAUTH_REQUIRED error); exported from `packages/db/src/index.js`.
+- **TikTok OAuth 2.0 (PKCE)**: `packages/tiktok-developer/src/auth.js` — `generatePkceBundle`, `generateOAuthState`, `buildTikTokAuthorizationUrl` (`https://www.tiktok.com/v2/auth/authorize/`), `normalizeTikTokTokenPayload`, `exchangeTikTokCode`, `refreshTikTokToken` (classifies 400/401 as REAUTH_REQUIRED), `revokeTikTokToken`, `fetchTikTokUserInfo`; all HTTP calls SSRF-validated via `createUrlValidator`.
+- **Token service**: `packages/tiktok-developer/src/token-service.js` — `createTikTokTokenService` with AES-256-GCM envelope encryption (AAD-bound per tenant/account/direction), `getValidAccessToken` (5-min refresh buffer, concurrency-safe via `refreshTokenWithLock`), `disconnectAccount` with best-effort revocation.
+- **Content Posting adapter**: `packages/adapters/src/tiktok-publisher.js` — `createTikTokPublisher` exposing `getCreatorInfo`, `directPost` (PULL_FROM_URL), `initializeFileUpload` (FILE_UPLOAD chunked), `uploadChunkBytes`, `fetchPublishStatus`; `classifyTikTokError` categorizes into RATE_LIMIT/AUTHENTICATION/AUTHORIZATION/VALIDATION/PROVIDER_UNAVAILABLE; `generatePublishingIdempotencyKey` produces deterministic `ttpub_` keys.
+- **Publish worker**: `packages/workflow/src/tiktok-publish-worker.js` — `createTikTokPublishWorker` with `processSingleJob` (resolve account → get valid token under lock → query creator info → validate privacy level → directPost → transition job to published/failed) and `runTick` (SKIP LOCKED claim, exponential backoff with jitter, tiktok platform filter).
+- **Showcase pipeline**: `packages/ai-content/src/tiktok-showcase.js` — `createTikTokShowcaseService` with `generateShowcasePackage` (Thai/EN hooks with scores, 30s 9:16 structured script with beats, compliant captions with `#TikTokMadeMeBuyIt`/`#ad` disclosures, SHA-256 provenance hash) and `createShowcasePublicationJob` (idempotent `scheduled` job creation).
+- **API surface**: `apps/api/src/tiktok-api.js` — `createTikTokApi` with routes: `GET /api/v1/tiktok/health`, `GET /api/v1/tiktok/auth/authorize` (PKCE init, encrypted state, 302 redirect), `GET /api/v1/tiktok/auth/callback` (state consume, code exchange, user info fetch, account upsert — tokens never in response), `GET /api/v1/tiktok/accounts` (sanitized list), `GET/DELETE/POST /api/v1/tiktok/accounts/:id`, `POST /api/v1/tiktok/publish`; all routes auth-gated + rate-limited + RBAC (owner/admin for mutations).
+- **Server wiring**: `apps/api/src/production-server.js` — `getTikTokApi()` lazy factory, `isTikTok` path guard, injected `tiktokRepository`/`tiktokTokenService`.
+- **Environment**: `.env.example` — added `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`, `TIKTOK_SCOPES`, `TIKTOK_ENVIRONMENT` with documentation; legacy `TIKTOK_APP_KEY`/`TIKTOK_APP_SECRET` aliases preserved for `tiktok-sandbox-probe.mjs`.
+
+### Verification (TikTok Developer integration)
+
+- `test/tiktok-accounts-repo.test.js` 7/7 PASS
+- `test/tiktok-developer-auth.test.js` 9/9 PASS
+- `test/tiktok-publisher.test.js` 9/9 PASS
+- `test/tiktok-publish-worker.test.js` 6/6 PASS
+- `test/tiktok-showcase.test.js` 3/3 PASS
+- `test/tiktok-api.test.js` 7/7 PASS
+- `npm run check` exit 0 — all syntax gates clean
+- Full suite: **731 tests — 723 pass, 0 fail, 8 gated skips** (2026-09-21)
+
 ### Added / Fixed (SWEEP-002 — complete all incomplete — 2026-08-31)
 
 - Publishing orchestrator HTTP: `apps/api/src/publication-api.js` (`POST /api/v1/publications` + `GET ?status` + `POST /api/v1/publications/claim` + `GET /:id` + `POST /:id/transition`) via `production-server.js` (`/api/v1/publications`, Bearer+tenant UUID, owner/admin write guard, rate-limited `publication:` key, bounded 16 KiB JSON, 404/409/422 envelopes), `packages/db/src/publication-jobs-repo.js` `claimDue` skip-locked exactly-once; tested `test/publication-api.test.js` 5/5.
+
 - Trend & opportunity scoring: `packages/trend/src/index.js` `createTrendStore` (tenant-partitioned, `ingest` with category/source/score validation, `listRecent` ranked, `scoreOpportunity` composite 0.6 trend + 0.3 base + volume log10 + HIGH/MEDIUM/LOW confidence, tenant isolation with frozen outputs), tested `test/trend.test.js` 4/4; closes checklist #17 MISSING.
 - Automation durable state: `db/migrations/013_automation_state.sql` (`automation_policies` + `automation_kill_switches` RLS with `app_current_tenant_id()` policies) + `packages/db/src/automation-repo.js` (transaction with `app.tenant_id` set_config, `getPolicy`/`upsertPolicy`/`listKillSwitches`/`setKillSwitch` with scope CHECK, frozen rows); `ROLLBACK.md` 013 `FORWARD_FIX_REQUIRED`.
 - Web Mission Control extended: `apps/web/server.js` `GET /api/ui/revenue-trend` (7-day `netCommissionMinorUnits` series), `GET /api/ui/integration-health` (provider manifests), `GET /api/ui/worker-health` (queue depth) — closes checklist #36 remaining surfaces.

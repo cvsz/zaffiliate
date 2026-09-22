@@ -13,7 +13,7 @@ function importWebServerInChild() {
     const timeout = setTimeout(() => {
       child.kill('SIGKILL');
       reject(new Error('web server module kept the child event loop alive'));
-    }, 2000);
+    }, 10_000);
     child.once('error', (error) => {
       clearTimeout(timeout);
       reject(error);

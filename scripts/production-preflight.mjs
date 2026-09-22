@@ -75,13 +75,37 @@ if (endpoint) {
   }
 }
 
-const tiktokKey = String(process.env.TIKTOK_APP_KEY ?? '').trim();
-const tiktokSecret = String(process.env.TIKTOK_APP_SECRET ?? '').trim();
-if (tiktokKey && tiktokSecret) {
-  add('TIKTOK_LIVE_CREDENTIAL_PAIR', 'READY_TO_PROBE', 'credentials present; run the live provider probe in the approved environment');
-} else {
-  add('TIKTOK_LIVE_CREDENTIAL_PAIR', 'BLOCKED', 'production/review credentials not fully provisioned');
-}
+  const tiktokKey = String(process.env.TIKTOK_CLIENT_KEY ?? process.env.TIKTOK_APP_KEY ?? '').trim();
+  const tiktokSecret = String(process.env.TIKTOK_CLIENT_SECRET ?? process.env.TIKTOK_APP_SECRET ?? '').trim();
+  if (tiktokKey && tiktokSecret) {
+    add('TIKTOK_LIVE_CREDENTIAL_PAIR', 'READY_TO_PROBE', 'credentials present; run the live provider probe in the approved environment');
+  } else {
+    add('TIKTOK_LIVE_CREDENTIAL_PAIR', 'BLOCKED', 'production/review credentials not fully provisioned');
+  }
+
+  const tiktokEnvironment = String(process.env.TIKTOK_ENVIRONMENT ?? '').trim().toLowerCase();
+  if (tiktokEnvironment && !['development', 'test', 'sandbox', 'production'].includes(tiktokEnvironment)) {
+    mutateStatus('TIKTOK_ENVIRONMENT', 'FAIL', 'must be one of development, test, sandbox, production');
+  }
+
+  if (tiktokEnvironment === 'production' && !tiktokKey) {
+    mutateStatus('TIKTOK_CLIENT_KEY', 'FAIL', 'required in production when TikTok is configured');
+  }
+
+  const redirectUri = String(process.env.TIKTOK_REDIRECT_URI ?? '').trim();
+  if (redirectUri) {
+    if (!redirectUri.startsWith('https://')) {
+      mutateStatus('TIKTOK_REDIRECT_URI', 'FAIL', 'must use https://');
+    }
+  }
+
+  const tiktokScopes = String(process.env.TIKTOK_SCOPES ?? '').trim();
+  if (tiktokScopes) {
+    const scopeList = tiktokScopes.split(',').map((s) => s.trim()).filter(Boolean);
+    if (scopeList.length === 0) {
+      mutateStatus('TIKTOK_SCOPES', 'FAIL', 'must contain at least one valid scope');
+    }
+  }
 
 optionalRef('META_CREDENTIALS_REF');
 optionalRef('YOUTUBE_CREDENTIALS_REF');

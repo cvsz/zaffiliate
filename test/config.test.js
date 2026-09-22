@@ -80,3 +80,45 @@ test('config never echoes secret material in issue messages', () => {
   const error = capture(() => loadConfig({ APP_ENV: 'production', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'short-but-secret-value' }));
   assert.ok(!JSON.stringify(error.issues).includes('secret-value'));
 });
+
+test('TIKTOK_ENVIRONMENT accepts valid values', () => {
+  for (const env of ['development', 'test', 'sandbox', 'production']) {
+    const config = loadConfig({ APP_ENV: 'development', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_ENVIRONMENT: env });
+    assert.equal(config.appEnv, 'development');
+  }
+});
+
+test('TIKTOK_ENVIRONMENT rejects invalid values', () => {
+  const error = capture(() => loadConfig({ APP_ENV: 'development', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_ENVIRONMENT: 'staging' }));
+  assert.ok(error instanceof ConfigError);
+  assert.ok(error.issues.some((issue) => issue.path === 'TIKTOK_ENVIRONMENT'));
+});
+
+test('TIKTOK_APP_KEY without TIKTOK_CLIENT_KEY is flagged', () => {
+  const error = capture(() => loadConfig({ APP_ENV: 'development', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_APP_KEY: 'key' }));
+  assert.ok(error instanceof ConfigError);
+  assert.ok(error.issues.some((issue) => issue.path === 'TIKTOK_CLIENT_KEY'));
+});
+
+test('TIKTOK_APP_SECRET without TIKTOK_CLIENT_SECRET is flagged', () => {
+  const error = capture(() => loadConfig({ APP_ENV: 'development', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_APP_SECRET: 'secret' }));
+  assert.ok(error instanceof ConfigError);
+  assert.ok(error.issues.some((issue) => issue.path === 'TIKTOK_CLIENT_SECRET'));
+});
+
+test('TIKTOK_REDIRECT_URI must be https in production', () => {
+  const error = capture(() => loadConfig({ APP_ENV: 'production', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_CLIENT_KEY: 'k', TIKTOK_CLIENT_SECRET: 's', TIKTOK_REDIRECT_URI: 'http://localhost:3000/callback' }));
+  assert.ok(error instanceof ConfigError);
+  assert.ok(error.issues.some((issue) => issue.path === 'TIKTOK_REDIRECT_URI'));
+});
+
+test('TIKTOK_REDIRECT_URI accepts http in development', () => {
+  const config = loadConfig({ APP_ENV: 'development', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_CLIENT_KEY: 'k', TIKTOK_CLIENT_SECRET: 's', TIKTOK_REDIRECT_URI: 'http://localhost:3000/callback' });
+  assert.equal(config.appEnv, 'development');
+});
+
+test('TIKTOK_SCOPES must be comma-separated', () => {
+  const error = capture(() => loadConfig({ APP_ENV: 'development', DATABASE_URL: DEV_DB, REDIS_URL: 'redis://r:6379/0', SESSION_SECRET: 'a'.repeat(32), ENCRYPTION_KEY: 'b'.repeat(32), TIKTOK_CLIENT_KEY: 'k', TIKTOK_CLIENT_SECRET: 's', TIKTOK_SCOPES: 'user.info.basic video.publish' }));
+  assert.ok(error instanceof ConfigError);
+  assert.ok(error.issues.some((issue) => issue.path === 'TIKTOK_SCOPES'));
+});
