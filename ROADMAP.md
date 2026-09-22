@@ -109,4 +109,4 @@ Consolidate seven overlapping affiliate/social-commerce repositories into one se
 | 6 Intelligence | COMPLETE (INTEL-0..2 + trend) — `packages/trend/src/index.js` ingest + scoreOpportunity composite, feature store + `portfolio.js` baseline ranker + evaluation; trained models INTEL-3+ deferred pending production data |
 | 7 Automation | COMPLETE — workflow approvals + capability-state gating + local auth + campaign/conversion RLS + durable `013_automation_state.sql` (`automation-repo.js`) + calendar |
 | 8 Optimization | COMPLETE (seeded) — bandits + min-sample winner gating + `trend` opportunity scoring + evaluation hitRate/correlation contract-enforced |
-| 9 Hardening | COMPLETE — release/SBOM/attestation/drill + CodeQL + dependabot + self-host hardening (`no-new-privileges:true`, `160 gates`, `595 tests 589/6`, + new `014` calendar); k8s minimal present (full TF multi-region deferred) |
+| 9 Hardening | COMPLETE — release/SBOM/attestation/drill + CodeQL + dependabot + self-host hardening (`no-new-privileges:true`, `160 gates`, `735 tests 735 pass 0 fail`, + new `014` calendar); k8s minimal present (full TF multi-region deferred) |
