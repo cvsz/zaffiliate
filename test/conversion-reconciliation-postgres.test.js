@@ -38,7 +38,7 @@ async function seed(db) {
   );
 }
 
-test('conversion reconciliation repository persists status audit/outbox and currency-safe aggregates', async (t) => {
+test('conversion reconciliation repository persists status and commission correction evidence with idempotent outbox and currency-safe aggregates', async (t) => {
   const db = createDbClient({ connectionString: DATABASE_URL || null });
   const probe = await db.check();
   if (!probe.reachable) {
@@ -80,6 +80,52 @@ test('conversion reconciliation repository persists status audit/outbox and curr
   );
   assert.equal(outboxAfterRetry.rows[0].count, 1, 'same-status retry must not emit a duplicate event');
 
+  const observedAt = '2026-08-31T13:15:00.000Z';
+  const commissionEvidence = {
+    source: 'shopee_affiliate_report',
+    sourceRowId: 'shopee-row-correction-001',
+    observedAt,
+    reportId: 'shopee-report-2026-08-31'
+  };
+  const corrected = await repo.correctCommission({
+    tenantId: TENANT,
+    conversionId: 'cnv_repo_thb',
+    commissionRate: 0.125,
+    grossCommissionMinorUnits: 1250,
+    actorId: 'usr_reconciler',
+    observedAt,
+    commissionEvidence
+  });
+  assert.equal(corrected.commissionRate, 0.125);
+  assert.equal(corrected.grossCommissionMinorUnits, 1250);
+  assert.deepEqual(corrected.commissionEvidence, commissionEvidence);
+
+  const correctionAudit = await db.query(
+    "SELECT count(*)::int AS count FROM audit_events WHERE tenant_id=$1 AND action='conversion.commission_corrected' AND resource_id='cnv_repo_thb'",
+    [TENANT]
+  );
+  const correctionOutbox = await db.query(
+    "SELECT count(*)::int AS count FROM affiliate_domain_outbox WHERE tenant_id=$1 AND event_type='conversion.commission_corrected' AND payload->>'conversionId'='cnv_repo_thb'",
+    [TENANT]
+  );
+  assert.equal(correctionAudit.rows[0].count, 1);
+  assert.equal(correctionOutbox.rows[0].count, 1);
+
+  await repo.correctCommission({
+    tenantId: TENANT,
+    conversionId: 'cnv_repo_thb',
+    commissionRate: 0.125,
+    grossCommissionMinorUnits: 1250,
+    actorId: 'usr_reconciler',
+    observedAt,
+    commissionEvidence
+  });
+  const correctionOutboxAfterReplay = await db.query(
+    "SELECT count(*)::int AS count FROM affiliate_domain_outbox WHERE tenant_id=$1 AND event_type='conversion.commission_corrected' AND payload->>'conversionId'='cnv_repo_thb'",
+    [TENANT]
+  );
+  assert.equal(correctionOutboxAfterReplay.rows[0].count, 1, 'same source-row replay must not emit a duplicate correction event');
+
   const confirmed = await repo.listConversions({ tenantId: TENANT, status: 'confirmed' });
   assert.equal(confirmed.length, 1);
   assert.equal(confirmed[0].conversionId, 'cnv_repo_thb');
@@ -87,6 +133,6 @@ test('conversion reconciliation repository persists status audit/outbox and curr
   const summary = await repo.aggregateCommission({ tenantId: TENANT });
   assert.equal(summary.length, 2);
   assert.deepEqual(summary.map((row) => row.currency).sort(), ['THB', 'USD']);
-  assert.equal(summary.find((row) => row.currency === 'THB').totalGrossCommissionMinorUnits, '1000');
+  assert.equal(summary.find((row) => row.currency === 'THB').totalGrossCommissionMinorUnits, '1250');
   assert.equal(summary.find((row) => row.currency === 'USD').totalGrossCommissionMinorUnits, '2000');
 });
