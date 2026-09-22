@@ -7,7 +7,7 @@ This document defines evidence required before `zaffiliate` can be called produc
 ## Quality gates
 
 - [x] all required CI jobs green on release candidate SHA — `./scripts/verify.sh` → ALL GATES GREEN (2026-09-22);
-- [x] unit/contract/integration/e2e suites green — **687 pass / 0 fail / 8 skipped** (`npm test` 695 total, 2026-09-22, verified after dependabot #56/#57/#58 merges on pristine install); skips are environment-gated integrations (live-Postgres/optional backends);
+- [x] unit/contract/integration/e2e suites green — **740 pass / 0 fail / 8 skipped** (`npm test` 748 total, 2026-09-22, verified after TikTok merge #69); skips are environment-gated integrations (live-Postgres/optional backends);
 - [x] Postgres RLS cross-tenant negative suite green — `test/tenancy.test.js` cross-tenant denied fail-closed, `test/commerce.test.js` cross-tenant offer denied, `test/multi-tenant-golden-e2e.test.js` cross-tenant replay creates zero records across 12+ test files;
 - [x] provider adapter contract fixtures green — `test/contracts.test.js` 5/5, `test/runtime-factory.test.js` 6/6, `test/api-security-ingress.test.js` 5/5;
 - [x] webhook signature/replay/idempotency tests green — `test/ssrf-validation.test.js` covers transport boundary; test suite includes webhook verification accept/reject (pass in full run);
@@ -42,7 +42,7 @@ This document defines evidence required before `zaffiliate` can be called produc
 
 | Gate | Evidence reference | Date | Verifier | Status |
 |------|-------------------|------|----------|--------|
-| Quality gates green | `./scripts/verify.sh` ALL GATES GREEN (2026-09-22); npm test 687/695 pass | 2026-09-22 | auto | PASS |
+| Quality gates green | `./scripts/verify.sh` ALL GATES GREEN (2026-09-22); npm test 740/748 pass | 2026-09-22 | auto | PASS |
 | Security gates green | `./scripts/security-check.sh` PASS; SBOM v1.0.0; 0 audit vulns | 2026-09-22 | auto | PASS |
 | Reliability gates green | Load p95=190ms/0 errors (5910 req, real API); Soak 100% success; fault-inject all PASS; backup-restore-drill executed; restore-rehearsal PASSED | 2026-09-22 | auto | PASS |
 | RPO/RTO proven | RPO 5min/RTO 30min documented; backup-restore-drill executed; restore-rehearsal: cross-tenant isolation + golden flow verified | 2026-09-22 | auto | PASS |

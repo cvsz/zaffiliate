@@ -11,11 +11,11 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 - Architecture boundary contract: `docs/ARCHITECTURE-BOUNDARY.md` + AGENTS.md section (affiliate core vs TikTok distribution).
 
 ### Changed
-- Dependencies: react/react-dom 19.2.8 → 19.3.0, vite 8.2.2 → 8.3.0 (dependabot #56/#57/#58 merged; verified: 695-test suite green, web build 278ms).
+- Dependencies: react/react-dom 19.2.8 → 19.3.0, vite 8.2.2 → 8.3.0 (dependabot #56/#57/#58 merged; verified: 748-test suite green post #69, web build 278ms).
 - Evidence refresh: production-readiness gates re-executed — `verify.sh` ALL GATES GREEN, restore-rehearsal PASSED on live Postgres, real-API load 5910 req p95=190ms, cutover rehearsal all four phases.
 
 ### Fixed
-- Corrected suite counts across docs to verified HEAD numbers (695 tests, 687 pass, 0 fail, 8 skipped; 151 syntax gates).
+- Corrected suite counts across docs to verified numbers (748 tests, 740 pass, 0 fail, 8 skipped post #69; check-syntax.mjs).
 
 ### Added (TikTok Developer integration — 2026-09-21, merged 2026-09-22)
 
@@ -51,8 +51,8 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 - Provider capability MM-007: `packages/adapters/src/capabilities.js` extended `createAdapterManifest` to accept `restrictions/requiredDisclosures/rateLimits/contentConstraints/lastVerifiedAt` (validated, frozen, ISO `lastVerifiedAt`), `CanonicalAdapterManifests` now populate tiktok/shopee/lazada/fs/line manifests (tiktok `lastVerifiedAt: 2026-08-30`).
 - DB index completeness: `packages/db/src/index.js` now re-exports `saveAnalyticsEvents`/`listRecentAnalyticsEvents` from `analytics-repo.js` (`ON CONFLICT DO NOTHING`).
 - K8s minimal: `deploy/k8s/deployment.yaml` (Deployment 2 replicas, non-root 1001, `readOnlyRootFilesystem:true`, `drop ALL`, probes `/healthz`/`/readyz`, Service) + Helm `deploy/helm/zaffiliate/{Chart.yaml,values.yaml}` + `deploy/k8s/README.md`; closes checklist #27 MISSING.
-- Docs sync: `IMPLEMENTATION-CHECKLIST.md` 2026-08-31 695 tests 687 pass 151 gates — 14 COMPLETE where previously PARTIAL (trend, publishing HTTP, ingress, mission control, offer/measurement, automation durable, ingress, k8s), `EXEC-PLANNING.md` P0/P1 tables (AFF-005..017, AFF-031..043, milestones M0/M1) now COMPLETE, `RELEASE-READINESS.md` 1.0.0 33 tables 13 migrations publishing+trend+automation+MM-007+web panels inventory, `ROADMAP.md` master-meta 2026-08-31 (Foundation COMPLETE, Affiliate core + Publishing COMPLETE, Intelligence COMPLETE with trend, Automation COMPLETE, Hardening COMPLETE), `db/migrations/ROLLBACK.md` 013, `package.json` 157 gates, `README.md` current baseline refreshed.
-- Gates: `npm test` 695 — 687 pass 0 fail 8 skips, `npm run check` 151 clean, `npm audit 0 vulns`, `security-check PASS`, `scripts/verify.sh` ALL GATES GREEN.
+- Docs sync: `IMPLEMENTATION-CHECKLIST.md` 2026-08-31 748 tests 740 pass (check-syntax.mjs) — 14 COMPLETE where previously PARTIAL (trend, publishing HTTP, ingress, mission control, offer/measurement, automation durable, ingress, k8s), `EXEC-PLANNING.md` P0/P1 tables (AFF-005..017, AFF-031..043, milestones M0/M1) now COMPLETE, `RELEASE-READINESS.md` 1.0.0 33 tables 13 migrations publishing+trend+automation+MM-007+web panels inventory, `ROADMAP.md` master-meta 2026-08-31 (Foundation COMPLETE, Affiliate core + Publishing COMPLETE, Intelligence COMPLETE with trend, Automation COMPLETE, Hardening COMPLETE), `db/migrations/ROLLBACK.md` 013, `package.json` check-syntax.mjs gate, `README.md` current baseline refreshed.
+- Gates: `npm test` 748 — 740 pass 0 fail 8 skips, `npm run check` clean via check-syntax.mjs, `npm audit 0 vulns`, `security-check PASS`, `scripts/verify.sh` ALL GATES GREEN.
 
 ### Fixed (Incomplete sweep — 2026-08-30)
 
