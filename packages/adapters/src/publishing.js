@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { AdapterPlatforms, CanonicalAdapterManifests } from './capabilities.js';
 
 const PublishingPlatforms = Object.freeze(['facebook', 'instagram', 'youtube']);
@@ -38,6 +39,15 @@ function validateContent(content) {
     scheduledAt = new Date(parsed).toISOString();
   }
   return Object.freeze({ text: content.text, mediaUrls, scheduledAt });
+}
+
+export function generatePublishingIdempotencyKey({ tenantId, accountId, contentId, operation = 'direct_post', salt = '' }) {
+  const t = String(tenantId ?? '').trim();
+  const a = String(accountId ?? '').trim();
+  const c = String(contentId ?? '').trim();
+  if (!t || !a || !c) throw new Error('tenantId, accountId, and contentId are required');
+  const digest = createHash('sha256').update(`${t}:${a}:${c}:${operation}:${salt}`, 'utf8').digest('hex');
+  return `ttpub_${digest.slice(0, 32)}`;
 }
 
 export function createPublishingAdapter({ platform, credentialsRef, transport } = {}) {

@@ -17,12 +17,12 @@ Updated: 2026-08-30
 | Copyright/trademark | no third-party media ingestion path exists; storage adapter (future) will carry license metadata before publish |
 | Privacy | tenant isolation (RLS), consent/suppression registry in outreach, privacy-conscious click attribution (visitor hash only), log redaction, `ref:` secret manager keeps secrets out of payloads/logs |
 | Data retention / DR | backup-restore drill + cutover + reconcile scripts under `scripts/`; migration contract forbids legacy deletion without evidence |
-| Platform rules | per-platform capability manifests (`capabilities.js CanonicalAdapterManifests`) + rate-limit token bucket; policy registry versioning = TODO (MM-007) |
+| Platform rules | per-platform capability manifests (`capabilities.js CanonicalAdapterManifests`) + rate-limit token bucket + policy registry (`policy-registry.js`, v1.0.0, MM-007 complete) |
 | Auditability | append-only hash-chained audit events for every authorization decision |
 
 ## Provider policy registry requirements (master meta §25)
 
-Each provider entry must eventually expose: capabilities, restrictions, required_disclosures, rate_limits, content_constraints, last_verified_at. Current manifests cover capabilities + idempotency/webhook flags; restrictions/disclosure/rate fields are **MISSING** — tracked as MM-007.
+Each provider entry exposes: capabilities, restrictions, required_disclosures, rate_limits, content_constraints, last_verified_at. Manifests (`capabilities.js`) and policy registry (`policy-registry.js`) both carry MM-007 fields; restrictions/disclosure/rate fields are populated for all 7 platforms (tiktok `lastVerifiedAt: 2026-08-30`).
 
 ## Verification
 
@@ -32,5 +32,5 @@ Each provider entry must eventually expose: capabilities, restrictions, required
 
 ## Deferred
 
-- Provider policy registry versioning (MM-007) — manifests cover capabilities + idempotency/webhook; restrictions/disclosures/rate fields remain backlog.
+- Provider policy registry versioning (MM-007) — `policy-registry.js` provides versioned entries with restrictions/disclosures/rate/content constraints/lastVerifiedAt; all 7 platforms populated in canonical registry.
 - Image/video FFmpeg render + storage writes (B7 403).

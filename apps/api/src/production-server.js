@@ -10,6 +10,7 @@ import { createCampaignApi } from './campaign-api.js';
 import { createConversionApi } from './conversion-api.js';
 import { createPublicationApi } from './publication-api.js';
 import { createCalendarApi } from './calendar-api.js';
+import { createTikTokApi } from './tiktok-api.js';
 import {
   createDbClient,
   createAuthRepo,
@@ -18,10 +19,13 @@ import {
   createCampaignRepo,
   createConversionReconciliationRepo,
   createPublicationJobsRepo,
-  createCalendarRepo
+  createCalendarRepo,
+  createTikTokAccountsRepo
 } from '../../../packages/db/src/index.js';
+import { createTikTokTokenService } from '../../../packages/tiktok-developer/src/index.js';
 import { createIngressRateLimiter } from '../../../packages/security/src/rate-limit-api.js';
 import { createLogger } from '../../../packages/observability/src/index.js';
+import { validateConfig } from './server.js';
 
 function sendJson(res, result) {
   res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -47,8 +51,11 @@ export function createProductionServer({
   conversionRepository = null,
   publicationRepository = null,
   calendarRepository = null,
+  tiktokRepository = null,
+  tiktokTokenService = null,
   rateLimiter = createIngressRateLimiter({ requestsPerMinute: 120, burst: 60 }),
-  db = null
+  db = null,
+  validateConfigOnStart = true
 } = {}) {
   const affiliateRuntime = runtime ?? createAffiliateRuntimeForEnv({ env, logger });
   const inner = buildServer({ env, logger, runtime: affiliateRuntime, rateLimiter });
@@ -121,6 +128,34 @@ export function createProductionServer({
     return calendarApi;
   };
 
+  let tiktokApi = null;
+  const getTikTokApi = () => {
+    if (!tiktokApi) {
+      const tiktokRepo = tiktokRepository ?? createTikTokAccountsRepo({ db: database });
+      const tService = tiktokTokenService ?? createTikTokTokenService({
+        repo: tiktokRepo,
+        encryptionKey: env.ENCRYPTION_KEY,
+        clientKey: env.TIKTOK_CLIENT_KEY || env.TIKTOK_APP_KEY,
+        clientSecret: env.TIKTOK_CLIENT_SECRET || env.TIKTOK_APP_SECRET
+      });
+      tiktokApi = createTikTokApi({
+        accountsRepo: tiktokRepo,
+        tokenService: tService,
+        oauthRepo: oauthRepository ?? createOAuthRepo({ db: database }),
+        publicationJobsRepo: publicationRepository ?? createPublicationJobsRepo({ query: (text, params) => database.query(text, params) }),
+        localAuthService: authService,
+        rateLimiter,
+        clientKey: env.TIKTOK_CLIENT_KEY || env.TIKTOK_APP_KEY,
+        clientSecret: env.TIKTOK_CLIENT_SECRET || env.TIKTOK_APP_SECRET,
+        redirectUri: env.TIKTOK_REDIRECT_URI,
+        scopes: env.TIKTOK_SCOPES ? env.TIKTOK_SCOPES.split(',') : undefined,
+        encryptionKey: env.ENCRYPTION_KEY,
+        environment: env.TIKTOK_ENVIRONMENT || env.APP_ENV || 'development'
+      });
+    }
+    return tiktokApi;
+  };
+
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     const isAuth = pathname.startsWith('/api/v1/auth/');
@@ -129,7 +164,8 @@ export function createProductionServer({
     const isConversion = pathname === '/api/v1/conversions' || pathname.startsWith('/api/v1/conversions/');
     const isPublication = pathname === '/api/v1/publications' || pathname.startsWith('/api/v1/publications/');
     const isCalendar = pathname === '/api/v1/calendar' || pathname.startsWith('/api/v1/calendar/');
-    if (!isAuth && !isOAuth && !isCampaign && !isConversion && !isPublication && !isCalendar) {
+    const isTikTok = pathname === '/api/v1/tiktok' || pathname.startsWith('/api/v1/tiktok/');
+    if (!isAuth && !isOAuth && !isCampaign && !isConversion && !isPublication && !isCalendar && !isTikTok) {
       inner.emit('request', req, res);
       return;
     }
@@ -165,6 +201,12 @@ export function createProductionServer({
           pathname,
           tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
         });
+      } else if (isTikTok) {
+        result = await getTikTokApi().handle({
+          req,
+          pathname,
+          tenantHeader: String(req.headers['x-tenant-id'] ?? '').trim()
+        });
       } else {
         result = await getCalendarApi().handle({
           req,
@@ -175,7 +217,7 @@ export function createProductionServer({
       if (result) return sendJson(res, result);
       return sendJson(res, { status: 404, body: { error: { code: 'NOT_FOUND', message: 'not found' } } });
     } catch (error) {
-      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : isPublication ? 'publication' : isCalendar ? 'calendar' : 'auth';
+      const surface = isOAuth ? 'oauth' : isCampaign ? 'campaign' : isConversion ? 'conversion' : isPublication ? 'publication' : isCalendar ? 'calendar' : isTikTok ? 'tiktok' : 'auth';
       logger.error(`${surface}_request_failed`, { message: String(error?.message ?? error) });
       return sendJson(res, {
         status: 500,
@@ -196,9 +238,32 @@ export function createProductionServer({
   return server;
 }
 
+function attachGracefulShutdown(server, logger) {
+  let shuttingDown = false;
+  function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info('shutdown_initiated', { signal });
+    server.close(() => {
+      logger.info('shutdown_complete', { signal });
+      process.exit(0);
+    });
+    setTimeout(() => {
+      logger.error('shutdown_timeout', { signal });
+      process.exit(1);
+    }, 10_000);
+  }
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
+  validateConfigOnStart && validateConfig(process.env);
   const logger = createLogger();
-  const server = createProductionServer({ env: process.env, logger });
+  const server = createProductionServer({ env: process.env, logger, validateConfigOnStart: false });
   const port = Number(process.env.PORT || 8080);
-  server.listen(port, '0.0.0.0', () => logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true, publications: true, calendar: true }));
+  server.listen(port, '0.0.0.0', () => {
+    logger.info('server_started', { port, auth: 'local+oauth', campaigns: true, conversions: true, publications: true, calendar: true });
+  });
+  attachGracefulShutdown(server, logger);
 }
