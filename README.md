@@ -2,10 +2,6 @@
 
 Canonical affiliate-commerce platform consolidating the legacy `cvsz/zaffhub`, `cvsz/ztsaff`, `cvsz/tiktok-shop-bot`, `cvsz/tiktok-shop-sdk`, `cvsz/tiktokshop-php`, `cvsz/zlttbots`, and `cvsz/zttlbots` repositories.
 
-# zaffiliate
-
-Canonical affiliate-commerce platform consolidating the legacy `cvsz/zaffhub`, `cvsz/ztsaff`, `cvsz/tiktok-shop-bot`, `cvsz/tiktok-shop-sdk`, `cvsz/tiktokshop-php`, `cvsz/zlttbots`, and `cvsz/zttlbots` repositories.
-
 ## Current baseline (2026-09-17)
 
 `zaffiliate` now contains a runnable Node.js API with durable Postgres persistence (15 migrations, 35 RLS tables, `affiliate-core-repo` + `campaign-repo` + `conversion-reconciliation-repo` + `auth-repo`/`oauth-repo` + `shopee-th-repo`), hardened Redis production runtime (`node-redis-runtime.js` + Lua rate limiter), typed domain contracts, deterministic tests (`645 tests — 639 pass, 6 gated skips`, `npm run check` gates clean), CSP-first control-plane web + Mission Control, TikTok Shop adapter parity + multi-platform webhook ingress (`/go/:slug` + `/webhooks/:platform`) with replay/dedupe, durable outbox dispatcher, and hardened self-host stack (`compose.selfhost.yaml` postgres:17 + redis:7, `no-new-privileges:true`).
