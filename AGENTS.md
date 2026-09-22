@@ -53,6 +53,12 @@ zero-runtime-dependency-by-default philosophy.
 - **Docs**: `README.md` (golden path), `ARCHITECTURE.md` (authoritative), `CONTRIBUTING.md`
   (ground rules), `docs/developer/` (handbook), `docs/operator/` (runbooks).
 
+## Architecture Boundary
+
+Affiliate and TikTok are strictly separated bounded contexts.
+Affiliate is the business core; TikTok is a distribution integration.
+See `docs/ARCHITECTURE-BOUNDARY.md` for the full boundary contract.
+
 ## Repository layout
 
 ```

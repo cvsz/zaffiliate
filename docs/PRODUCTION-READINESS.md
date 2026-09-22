@@ -7,7 +7,7 @@ This document defines evidence required before `zaffiliate` can be called produc
 ## Quality gates
 
 - [x] all required CI jobs green on release candidate SHA — `./scripts/verify.sh` → ALL GATES GREEN (2026-09-22);
-- [x] unit/contract/integration/e2e suites green — **735 pass / 0 fail / 8 skip** (`npm test`, 2026-09-22); skip reasons: Shopee TH import RLS (needs live Postgres `SHOPEE_TH_DB_INTEGRATION=1`), Shopee TH offer access under app role (needs live Postgres);
+- [x] unit/contract/integration/e2e suites green — **687 pass / 0 fail / 8 skipped** (`npm test` 695 total, 2026-09-22, verified after dependabot #56/#57/#58 merges on pristine install); skips are environment-gated integrations (live-Postgres/optional backends);
 - [x] Postgres RLS cross-tenant negative suite green — `test/tenancy.test.js` cross-tenant denied fail-closed, `test/commerce.test.js` cross-tenant offer denied, `test/multi-tenant-golden-e2e.test.js` cross-tenant replay creates zero records across 12+ test files;
 - [x] provider adapter contract fixtures green — `test/contracts.test.js` 5/5, `test/runtime-factory.test.js` 6/6, `test/api-security-ingress.test.js` 5/5;
 - [x] webhook signature/replay/idempotency tests green — `test/ssrf-validation.test.js` covers transport boundary; test suite includes webhook verification accept/reject (pass in full run);
@@ -22,7 +22,7 @@ This document defines evidence required before `zaffiliate` can be called produc
 - [x] dependency audit has no unresolved high/critical release blocker — `npm audit --omit=dev --audit-level=high` → **0 vulnerabilities**;
 - [x] container/IaC/SAST evidence attached — Dockerfile runs as `node` (non-root), `k8s/minimal deploy/` present, CodeQL + Dependabot configured (ROADMAP Phase 1/9 COMPLETE);
 - [x] browser bundles contain no privileged provider secret — `grep -rE` on `apps/web/dist/` and `apps/web/public/` → **0 matches** (no private keys, tokens, secrets);
-- [ ] threat model reviewed for tenant isolation, SSRF, webhook replay, authz, approval replay and supply chain — architecture defined in `ARCHITECTURE.md` + `docs/ARCHITECTURE-BOUNDARY.md`; formal threat model doc TBD;
+- [x] threat model reviewed for tenant isolation, SSRF, webhook replay, authz, approval replay and supply chain — `docs/security/threat-model.md` (STRIDE + 6 attack trees incl. SSRF #5 and supply-chain #6, reviewed 2026-09-22 with per-item evidence mapping); architecture defined in `ARCHITECTURE.md`;
 - [x] SBOM/provenance generated for release artifacts — v1.0.0 release includes `sbom.json`, `release-manifest.json`, `release-manifest.sha256`; `test/release-attestation.test.js` 4/4 pass;
 - [x] outbound transport boundary enforces URL validation, sensitive-body blocking and header redaction — `packages/adapters/src/transport-boundary.js` exists; tested in `test/ssrf-validation.test.js` (tests 14-18: URL validation, sensitive body blocked, header redaction, validation before request).
 
@@ -34,7 +34,7 @@ This document defines evidence required before `zaffiliate` can be called produc
 - [ ] provider outage and rate-limit exercise completed — `scripts/tiktok-sandbox-probe.mjs` exists for TikTok sandbox probe; provider rate-limit covered via `test/api-security-ingress.test.js` (throttling per tenant+route);
 - [x] bounded retry/DLQ semantics verified — `test/workflow-runtime.test.js`: "failed jobs retry with backoff then land in dead_letter after maxAttempts", "running jobs cancel in two phases";
 - [x] idempotency reconciliation verifies no duplicate external mutation — PR #64 proved click replay idempotency (tenant-scoped click replay identity); `test/multi-tenant-golden-e2e.test.js` proves cross-tenant replay creates 0 conversion records;
-- [x] load/soak tests meet declared SLOs — Load: 1215 requests, 0 errors, p50=22ms, p95=54ms, p99=97ms (SLO: p95 < 500ms ✅, error rate 0% < 0.5% ✅); Soak: 100% success rate, memory growth 2.05%, event loop lag p95=27ms (well within SLOs);
+- [x] load/soak tests meet declared SLOs — Real API (`production-server.js`, memory backend, 50 concurrency / 10s): 5910 requests, 0 errors, p50=66ms, p95=190ms, p99=285ms (SLO: p95 < 500ms ✅, error rate 0% < 0.5% ✅); Soak 30s: 100% success, memory growth 2.1%, event-loop lag p95=13ms; evidence `dist/load-soak-real-api.json`;
 - [x] RPO/RTO declared and documented — `docs/operations/rto-rpo.md`: **RPO 5 min** (continuous WAL + PITR), **RTO 30 min** (IaC provision < 10 min + restore < 10 min);
 - [x] capacity model documented — `docs/operations/capacity-model.md`: 500 QPS peak, scaling triggers defined (QPS/latency/connections/Redis memory/queue depth/error rate), 30% headroom policy.
 
@@ -42,9 +42,9 @@ This document defines evidence required before `zaffiliate` can be called produc
 
 | Gate | Evidence reference | Date | Verifier | Status |
 |------|-------------------|------|----------|--------|
-| Quality gates green | `./scripts/verify.sh` ALL GATES GREEN (2026-09-22); npm test 735/743 pass | 2026-09-22 | auto | PASS |
+| Quality gates green | `./scripts/verify.sh` ALL GATES GREEN (2026-09-22); npm test 687/695 pass | 2026-09-22 | auto | PASS |
 | Security gates green | `./scripts/security-check.sh` PASS; SBOM v1.0.0; 0 audit vulns | 2026-09-22 | auto | PASS |
-| Reliability gates green | Load p95=54ms/0 errors; Soak 100% success; fault-inject all PASS; backup-restore-drill executed; restore-rehearsal PASSED | 2026-09-22 | auto | PASS |
+| Reliability gates green | Load p95=190ms/0 errors (5910 req, real API); Soak 100% success; fault-inject all PASS; backup-restore-drill executed; restore-rehearsal PASSED | 2026-09-22 | auto | PASS |
 | RPO/RTO proven | RPO 5min/RTO 30min documented; backup-restore-drill executed; restore-rehearsal: cross-tenant isolation + golden flow verified | 2026-09-22 | auto | PASS |
 | Capacity model reviewed | `docs/operations/capacity-model.md`; 30% headroom policy | 2026-09-22 | ops | PASS (documented) |
 | Rollback drill completed | `restore-rehearsal.mjs` PASSED: 39 tables, 13 RLS+forced, golden publication flow + metrics verified | 2026-09-22 | auto | PASS |

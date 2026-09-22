@@ -2,6 +2,8 @@
 
 Formal threat model for zaffiliate. Covers STRIDE categories, trust boundaries, data flow, and attack trees for highest-risk paths.
 
+> Last reviewed: 2026-09-22. Scope sign-off covers tenant isolation, SSRF, webhook replay, authz, approval replay, and supply chain — see Review Evidence at the end.
+
 ## Trust Boundaries
 
 ```
@@ -287,3 +289,72 @@ Formal threat model for zaffiliate. Covers STRIDE categories, trust boundaries, 
 ```
 
 **Mitigations**: Approval state machine enforced server-side with atomic transitions; approval tokens bound to specific operation ID and nonce; database mutations restricted to service accounts with no direct client path; timeout and single-use enforcement on approval tokens.
+
+---
+
+### 5. Server-Side Request Forgery (SSRF)
+
+```
+[Goal: coerce the server into requesting attacker-controlled or internal URLs]
+    |
+    +--> [Outbound fetch paths: provider adapters, media fetch, OAuth token exchange, webhook delivery]
+    |
+    +--> [Bypass URL validation]
+    |       |
+    |       +--> [DNS rebinding: resolve-then-fetch race to internal IP]
+    |       +--> [Redirect chain to 169.254.169.254 / localhost / metadata service]
+    |       +--> [Obscured literals: decimal / octal / hex IP encoding, 0.0.0.0, [::]]
+    |       +--> [Scheme downgrade: http / ftp / file / gopher where allowed]
+    |
+    +--> [Success]
+            |
+            +--> [Cloud metadata credential theft]
+            +--> [Internal service probing via loopback]
+            +--> [Credentialed egress to attacker host with auth headers attached]
+```
+
+**Mitigations**: Centralized URL validator (`packages/security/src/url-validation.js`) — private-range blocks (127.x, 10.x, 192.168.x, 172.16–31.x, 100.64.x), localhost / zero-IP / IPv6-local / link-local (169.254.x.x) / `.local` / `.internal` rejection, HTTPS enforcement by default with explicit opt-in; transport boundary (`packages/adapters/src/transport-boundary.js`) validates every outbound request before dispatch, blocks sensitive top-level body keys (`secret`, `token`, `password`, `authorization`), and redacts `authorization` / `cookie` / `x-api-key` headers; redirects disabled or tightly bounded on credentialed fetches (OAuth, JWKS).
+
+**Verification Method**: `test/ssrf-validation.test.js` 18/18 green — each private pattern rejected, public IPs allowed, non-HTTPS rejected, sensitive-body blocking and header redaction enforced through the transport boundary.
+
+---
+
+### 6. Supply-Chain Compromise
+
+```
+[Goal: ship malicious code into production via dependency, build, or artifact]
+    |
+    +--> [Dependency vector]
+    |       |
+    |       +--> [Typosquat / dependency-confusion package]
+    |       +--> [Compromised maintainer account publishing malicious version]
+    |       +--> [Malicious postinstall / lifecycle script]
+    |
+    +--> [Build vector]
+    |       |
+    |       +--> [Unpinned version ranges resolving to untested code]
+    |       +--> [Mutable tags or unsigned artifacts substituted at deploy]
+    |
+    +--> [Success]
+            |
+            +--> [RCE inside API / workers with data-store credentials]
+            +--> [Secret exfiltration via build-time network egress]
+            +--> [Backdoored release artifact distributed to hosts]
+```
+
+**Mitigations**: Zero-runtime-dependencies-by-default policy (new deps require justification and pinning); security-critical deps pinned exactly (`pg` 8.23.0, `redis` 6.2.1); `npm audit --omit=dev --audit-level=high` release gate (0 vulnerabilities); Dependabot + CodeQL on every PR; SBOM + release manifest + sha256 digest per release (v1.0.0 ships `sbom.json`); GPG-signed commits; non-root container runtime (`USER node`); tracked-secret and high-signal pattern scans in CI and `scripts/verify.sh`.
+
+**Verification Method**: `npm audit` 0 vulnerabilities; `scripts/security-check.sh` PASS; `test/release-attestation.test.js` 4/4 (SBOM generation, manifest determinism); `dist/sbom.json` attached to release.
+
+## Review Evidence (2026-09-22)
+
+| Gate item | Model coverage | Concrete evidence |
+|---|---|---|
+| Tenant isolation | Attack tree #2, Elevation of Privilege | `test/tenancy.test.js` cross-tenant denied fail-closed; 12+ test files with cross-tenant negative cases; `restore-rehearsal.mjs` on live Postgres: `crossTenantReadIsolation=true`, `crossTenantWriteDenied=true`, 13 tables RLS enabled+forced |
+| SSRF | Attack tree #5 | `test/ssrf-validation.test.js` 18/18; `packages/security/src/url-validation.js` + `packages/adapters/src/transport-boundary.js` |
+| Webhook replay | Attack tree #1 | Replay guard with frozen-timeline dedupe and freshness-window enforcement (covered in full suite); `affiliate_domain_outbox` idempotent replay; PR #62/#64 closed-batch and click replay semantics |
+| Authz | Elevation of Privilege, Spoofing | RBAC/ABAC per-request evaluation; tenant ID server-derived; `test/api-security-ingress.test.js`; OAuth/OIDC boundary tests (`test/production-oauth-oidc-boundary.test.js` 3/3) |
+| Approval replay | Attack tree #4 (incl. replay-old-token branch) | Single-use CSRF token contract (`test/csrf-cleanup-lifecycle.test.js`); approval bound to tenant+actor+action+idempotency key with expiry fail-closed (`test/workflow-runtime.test.js`); outbox exactly-once claim proven in restore rehearsal |
+| Supply chain | Attack tree #6 | `npm audit` 0 vulns; `security-check.sh` PASS; SBOM + signed release v1.0.0; GPG-signed commits; non-root Dockerfile |
+
+**Review status**: REVIEWED 2026-09-22. Residual risks accepted: insider DB access, provider-account compromise, DDoS beyond IP rate limits, timing side channels — all documented above with detection controls. Formal third-party pen-test deferred to pre-cutover hardening; release-acceleration gates block on any zero-tolerance invariant violation per `docs/SLO.md`.

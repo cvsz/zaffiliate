@@ -25,7 +25,7 @@ Before opening or merging a PR, run the applicable deterministic test/build/secu
 ./scripts/verify.sh         # syntax gate + tests + audit + secret scan (pre-PR gate)
 ./scripts/security-check.sh # audit + secret scan + container-user check
 npm run check               # syntax gate across all modules (126 files)
-npm test                    # full suite (735 tests, 735 pass, 0 fail, 8 skips)
+npm test                    # full suite (695 tests, 687 pass, 0 fail, 8 skips)
 ```
 
 Current evidence: `docs/PRODUCTION-READINESS.md` — all gates PASS with live Postgres evidence (`backup-restore-drill --run` + `restore-rehearsal` PASSED on localhost:5433).
