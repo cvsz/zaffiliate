@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ZEAZ Affiliate Autopilot",
+  "version": "0.1.0",
+  "identifier": "dev.zeaz.affiliate.autopilot",
+  "build": {
+    "beforeDevCommand": "npm run dev:web -- --host 127.0.0.1",
+    "devUrl": "http://127.0.0.1:3000",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../../../apps/web/dist/web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ZEAZ Affiliate Autopilot",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 720
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "shortDescription": "Affiliate campaign control plane for Windows"
+  }
+}
