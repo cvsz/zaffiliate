@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "dev.zeaz.affiliate.autopilot",
   "build": {
-    "beforeDevCommand": "npm run dev:web -- --host 127.0.0.1",
+    "beforeDevCommand": "npm --prefix ../.. run dev:web -- --host 127.0.0.1",
     "devUrl": "http://127.0.0.1:3000",
-    "beforeBuildCommand": "npm run build:web",
+    "beforeBuildCommand": "npm --prefix ../.. run build:web",
     "frontendDist": "../../../apps/web/dist/web"
   },
   "app": {
