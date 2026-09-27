@@ -292,14 +292,14 @@ async function approveWorkflow(req, res, tokenScope, actorId = null) {
   }
   record.status = decision === 'approve' ? 'approved' : 'rejected';
   record.decidedAt = new Date().toISOString();
-  record.decidedBy = actorId ? `op://${actorId}` : 'op://development';
+  record.decidedBy = `op://${actorId ?? tokenScope}`;
   return sendJson(res, 200, { ok: true, approval: clone(record) });
 }
 
 async function authorizeControlPlane(req, tenant, state) {
   if (!state.isProduction) return { tenant, role: 'development' };
   if (!TENANT_UUID.test(tenant)) return null;
-  const match = /^Bearer\\s+(zs_[A-Za-z0-9_-]+)$/i.exec(String(req.headers.authorization ?? ''));
+  const match = /^Bearer\s+(zs_[A-Za-z0-9_-]+)$/i.exec(String(req.headers.authorization ?? ''));
   if (!match) return null;
   const token = match[1];
   let session;
@@ -453,8 +453,14 @@ async function handleStatic(req, res, pathname) {
     }
   }
 
-  // Only extensionless browser paths can receive the SPA document.
-  if (!decoded.split('/').pop()?.includes('.') && !decoded.startsWith('/api/')) {
+  // Allow only declared client-side routes to receive the SPA document.
+  const spaRoutes = new Set([
+    '', 'overview', 'dashboard', 'autopilot-review', 'connections', 'products',
+    'campaigns', 'creators', 'links', 'content', 'publishing', 'outreach',
+    'workflows', 'analytics', 'commissions', 'billing', 'audit', 'security',
+    'admin', 'publications', 'conversions', 'settings'
+  ]);
+  if (spaRoutes.has(decoded.replace(/^\//, ''))) {
     try {
       const entry = await readFile(join(buildDir, 'index.html'));
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
