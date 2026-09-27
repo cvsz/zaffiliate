@@ -101,8 +101,10 @@ services:
       dockerfile: Dockerfile
     command: ["node", "apps/web/server.js"]
     environment:
+      APP_ENV: production
       NODE_ENV: production
       WEB_PORT: 3100
+      CONTROL_PLANE_AUTH_URL: http://api:8080/api/v1/auth/me
     ports:
       - "127.0.0.1:${ZAFFILIATE_WEB_PORT:-3100}:3100"
     depends_on:
