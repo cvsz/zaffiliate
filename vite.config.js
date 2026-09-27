@@ -10,7 +10,7 @@ export default defineConfig({
     outDir: 'dist/web',
     emptyOutDir: true,
     rollupOptions: {
-      input: 'apps/web/public/index.html'
+      input: 'apps/web/index.html'
     }
   },
   server: {
