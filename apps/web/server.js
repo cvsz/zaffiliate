@@ -244,9 +244,9 @@ function isValidTenant(value) {
   return trimmed.length > 0 && trimmed.length <= 128;
 }
 
-async function approveWorkflow(req, res, tenant) {
+async function approveWorkflow(req, res, tokenScope, actorId = null) {
   const csrfToken = req.headers['x-csrf-token'] || req.headers['x-zaff-csrf'];
-  if (!csrfToken || !validateCsrfToken(tenant, String(csrfToken).trim())) {
+  if (!csrfToken || !validateCsrfToken(tokenScope, String(csrfToken).trim())) {
     return sendJson(res, 403, { error: 'csrf_check_failed' });
   }
   const contentType = String(req.headers['content-type'] ?? '');
@@ -292,7 +292,7 @@ async function approveWorkflow(req, res, tenant) {
   }
   record.status = decision === 'approve' ? 'approved' : 'rejected';
   record.decidedAt = new Date().toISOString();
-  record.decidedBy = `op://${tenant}`;
+  record.decidedBy = actorId ? `op://${actorId}` : 'op://development';
   return sendJson(res, 200, { ok: true, approval: clone(record) });
 }
 
@@ -348,8 +348,12 @@ async function handleApi(req, res, pathname, state = {}) {
         return sendJson(res, 200, { token }, headOnly);
       }
       case '/api/ui/overview':
+        if (state.isProduction && typeof state.dataProviders?.analyticsSummary !== 'function') {
+          return sendJson(res, 503, { error: 'analytics_unavailable' }, headOnly);
+        }
         return sendJson(res, 200, await buildOverviewPayload({ tenant, dataProviders: state.dataProviders, approvals: approvalRecords }), headOnly);
       case '/api/ui/revenue-trend': {
+        if (state.isProduction) return sendJson(res, 503, { error: 'revenue_trend_provider_unavailable' }, headOnly);
         let base = 0;
         try { const s = await state.dataProviders?.analyticsSummary?.(tenant); base = Math.max(0, Number(s?.netCommissionMinorUnits ?? 0)); } catch { base = 0; }
         const points = Array.from({ length: 7 }, (_, i) => ({
@@ -360,39 +364,51 @@ async function handleApi(req, res, pathname, state = {}) {
         return sendJson(res, 200, { tenant, points }, headOnly);
       }
       case '/api/ui/integration-health': {
+        if (state.isProduction && typeof state.dataProviders?.providerHealth !== 'function') {
+          return sendJson(res, 503, { error: 'provider_health_unavailable' }, headOnly);
+        }
         const registry = state.dataProviders?.providerHealth ? await state.dataProviders.providerHealth(tenant).catch(() => []) : [];
         const integrations = registry.length ? registry : [{ platform: 'tiktok', status: 'degraded', lastVerifiedAt: new Date().toISOString(), reason: 'sandbox credential probe 40006' }, { platform: 'shopee', status: 'unknown', lastVerifiedAt: null }];
         return sendJson(res, 200, { tenant, integrations }, headOnly);
       }
       case '/api/ui/worker-health': {
+        if (state.isProduction) return sendJson(res, 503, { error: 'worker_health_provider_unavailable' }, headOnly);
         const queues = state.dataProviders?.queueDepth ? await state.dataProviders.queueDepth(tenant).catch(() => ({})) : {};
         return sendJson(res, 200, { tenant, workers: [{ name: 'outbox-dispatcher', status: 'healthy', depth: queues.outbox ?? 0 }, { name: 'publication-claimer', status: 'healthy', depth: queues.publications ?? 0 }] }, headOnly);
       }
       case '/api/navigation':
         return sendJson(res, 200, { ...controlPlaneManifest(), tenant }, headOnly);
       case '/api/audit':
+        if (state.isProduction) return sendJson(res, 503, { error: 'audit_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, rows: clone(auditRows) }, headOnly);
       case '/api/billing/summary':
+        if (state.isProduction) return sendJson(res, 503, { error: 'billing_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, ...clone(billingSummary) }, headOnly);
       case '/api/workflow/pending-approvals':
+        if (state.isProduction) return sendJson(res, 503, { error: 'approval_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, approvals: clone(approvalRecords.filter((record) => record.status === 'pending')) }, headOnly);
       case '/api/outreach/attempts':
+        if (state.isProduction) return sendJson(res, 503, { error: 'outreach_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, attempts: clone(outreachAttempts) }, headOnly);
       case '/api/analytics/funnel':
+        if (state.isProduction) return sendJson(res, 503, { error: 'funnel_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, ...clone(funnelSnapshot) }, headOnly);
       case '/api/creator-studio/overview':
+        if (state.isProduction) return sendJson(res, 503, { error: 'creator_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, creators: [{ id: 'cr_4417', status: 'active', campaigns: 2 }, { id: 'cr_5093', status: 'pending', campaigns: 0 }], note: 'minimal creator-studio surface — full UI deferred but API now present' }, headOnly);
       case '/api/ai-studio/overview':
+        if (state.isProduction) return sendJson(res, 503, { error: 'ai_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, agents: ['product-research','copy-script','publisher'], mockProviders: ['mock-llm','mock-image','mock-video'], note: 'minimal ai-studio surface — deterministic mock transport, real LLM bindings BLOCKED B2' }, headOnly);
       default:
         return sendJson(res, 404, { error: 'not_found' }, headOnly);
     }
   }
   if (req.method === 'POST' && pathname === '/api/workflow/approve') {
+    if (state.isProduction) return sendJson(res, 503, { error: 'approval_provider_unavailable' });
     if (state.isProduction && !['owner', 'admin'].includes(principal.role)) {
       return sendJson(res, 403, { error: 'approval_permission_required' });
     }
-    return approveWorkflow(req, res, tokenScope);
+    return approveWorkflow(req, res, tokenScope, principal.userId);
   }
   return sendJson(res, 405, { error: 'method_not_allowed' }, headOnly, { allow: 'GET, HEAD, POST' });
 }
