@@ -1,29 +1,31 @@
-import { createBrowserRouter, RouterProvider, ScrollRestoration } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import App from './App';
-import Dashboard from './pages/Dashboard';
+import Dashboard, { loader as dashboardLoader } from './pages/Dashboard';
 import AutopilotReview from './pages/AutopilotReview';
 import Connections from './pages/Connections';
 import Products from './pages/Products';
-import Campaigns from './pages/Campaigns';
+import Campaigns, { loader as campaignsLoader } from './pages/Campaigns';
 import Creators from './pages/Creators';
 import Links from './pages/Links';
 import Content from './pages/Content';
 import Publishing from './pages/Publishing';
-import Outreach from './pages/Outreach';
-import Workflows from './pages/Workflows';
-import Analytics from './pages/Analytics';
-import Commissions from './pages/Commissions';
-import Billing from './pages/Billing';
-import Audit from './pages/Audit';
+import Outreach, { loader as outreachLoader } from './pages/Outreach';
+import Workflows, { loader as workflowsLoader, action as workflowAction } from './pages/Workflows';
+import Analytics, { loader as analyticsLoader } from './pages/Analytics';
+import Commissions, { loader as commissionsLoader } from './pages/Commissions';
+import Billing, { loader as billingLoader } from './pages/Billing';
+import Audit, { loader as auditLoader } from './pages/Audit';
 import Security from './pages/Security';
-import Admin from './pages/Admin';
-import Publications from './pages/Publications';
-import Conversions from './pages/Conversions';
-import Settings from './pages/Settings';
+import Admin, { loader as adminLoader } from './pages/Admin';
+import Publications, { loader as publicationsLoader } from './pages/Publications';
+import Conversions, { loader as conversionsLoader } from './pages/Conversions';
+import Settings, { loader as settingsLoader } from './pages/Settings';
 import ErrorBoundary from './ErrorBoundary';
+import Unavailable from './pages/Unavailable';
 import * as api from './api';
 
-const tenantFromDom = () => document.getElementById('tenant')?.value || 'tenant-acme';
+const demo = import.meta.env.DEV;
+const demoComponent = (Component) => demo ? Component : Unavailable;
 
 const router = createBrowserRouter([
   {
@@ -31,28 +33,28 @@ const router = createBrowserRouter([
     Component: App,
     ErrorBoundary,
     children: [
-      { index: true, Component: Dashboard },
-      { path: 'overview', Component: Dashboard },
-      { path: 'dashboard', Component: Dashboard },
+      { index: true, Component: Dashboard, loader: dashboardLoader },
+      { path: 'overview', Component: Dashboard, loader: dashboardLoader },
+      { path: 'dashboard', Component: Dashboard, loader: dashboardLoader },
       { path: 'autopilot-review', Component: AutopilotReview },
-      { path: 'connections', Component: Connections },
-      { path: 'products', Component: Products },
-      { path: 'campaigns', Component: Campaigns },
-      { path: 'creators', Component: Creators },
-      { path: 'links', Component: Links },
-      { path: 'content', Component: Content },
-      { path: 'publishing', Component: Publishing },
-      { path: 'outreach', Component: Outreach },
-      { path: 'workflows', Component: Workflows },
-      { path: 'analytics', Component: Analytics },
-      { path: 'commissions', Component: Commissions },
-      { path: 'billing', Component: Billing },
-      { path: 'audit', Component: Audit },
-      { path: 'security', Component: Security },
-      { path: 'admin', Component: Admin },
-      { path: 'publications', Component: Publications },
-      { path: 'conversions', Component: Conversions },
-      { path: 'settings', Component: Settings }
+      { path: 'connections', Component: demoComponent(Connections) },
+      { path: 'products', Component: demoComponent(Products) },
+      { path: 'campaigns', Component: demoComponent(Campaigns), ...(demo ? { loader: campaignsLoader } : {}) },
+      { path: 'creators', Component: demoComponent(Creators) },
+      { path: 'links', Component: demoComponent(Links) },
+      { path: 'content', Component: demoComponent(Content) },
+      { path: 'publishing', Component: demoComponent(Publishing) },
+      { path: 'outreach', Component: demoComponent(Outreach), ...(demo ? { loader: outreachLoader } : {}) },
+      { path: 'workflows', Component: demoComponent(Workflows), ...(demo ? { loader: workflowsLoader, action: workflowAction } : {}) },
+      { path: 'analytics', Component: demoComponent(Analytics), ...(demo ? { loader: analyticsLoader } : {}) },
+      { path: 'commissions', Component: demoComponent(Commissions), ...(demo ? { loader: commissionsLoader } : {}) },
+      { path: 'billing', Component: demoComponent(Billing), ...(demo ? { loader: billingLoader } : {}) },
+      { path: 'audit', Component: demoComponent(Audit), ...(demo ? { loader: auditLoader } : {}) },
+      { path: 'security', Component: demoComponent(Security) },
+      { path: 'admin', Component: demoComponent(Admin), ...(demo ? { loader: adminLoader } : {}) },
+      { path: 'publications', Component: demoComponent(Publications), ...(demo ? { loader: publicationsLoader } : {}) },
+      { path: 'conversions', Component: demoComponent(Conversions), ...(demo ? { loader: conversionsLoader } : {}) },
+      { path: 'settings', Component: demoComponent(Settings), ...(demo ? { loader: settingsLoader } : {}) }
     ]
   }
 ], {
@@ -63,7 +65,6 @@ export default function Root() {
   return (
     <>
       <RouterProvider router={router} />
-      <ScrollRestoration />
     </>
   );
 }
