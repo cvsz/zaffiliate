@@ -28,6 +28,13 @@ jobs:
         run: npm run check
       - name: Unit and contract tests
         run: npm test
+      - name: Compile production frontend
+        run: |
+          npm run build:web
+          test -s apps/web/dist/web/index.html
+          test -d apps/web/dist/web/assets
+          ! grep -q '/src/main.jsx' apps/web/dist/web/index.html
+
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Reject tracked runtime secrets

@@ -27,16 +27,26 @@ function appRoleDb(pool) {
 }
 
 async function cleanupTenant(pool, tenantId) {
-  await appRoleDb(pool).transaction(async (tx) => {
-    await tx.query("SET LOCAL ROLE zaffiliate_app_test");
-    await tx.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
-    await tx.query("DELETE FROM auth_sessions WHERE tenant_id=$1", [tenantId]);
-    await tx.query("DELETE FROM local_auth_users WHERE tenant_id=$1", [tenantId]);
-    await tx.query("DELETE FROM tenant_memberships WHERE tenant_id=$1", [tenantId]);
-    await tx.query("DELETE FROM oauth_identity_directory WHERE tenant_id=$1", [tenantId]);
-    await tx.query("DELETE FROM audit_events WHERE tenant_id=$1", [tenantId]);
-    await tx.query("DELETE FROM tenants WHERE id=$1", [tenantId]);
-  });
+  // Test fixture teardown uses the PostgreSQL test administrator, never the
+  // application role. The global identity directory and append-only audit
+  // table must not gain application DELETE privileges for test convenience.
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM auth_sessions WHERE tenant_id=$1', [tenantId]);
+    await client.query('DELETE FROM auth_user_identities WHERE tenant_id=$1', [tenantId]);
+    await client.query('DELETE FROM oauth_identity_directory WHERE tenant_id=$1', [tenantId]);
+    await client.query('DELETE FROM audit_events WHERE tenant_id=$1', [tenantId]);
+    await client.query('DELETE FROM local_auth_users WHERE tenant_id=$1', [tenantId]);
+    await client.query('DELETE FROM tenant_memberships WHERE tenant_id=$1', [tenantId]);
+    await client.query('DELETE FROM tenants WHERE id=$1', [tenantId]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 test('OIDC login repo persists single-use state and creates/reuses the verified identity tenant', { skip: !RUN }, async (t) => {
