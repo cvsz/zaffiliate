@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, ScrollRestoration } from 'react-router-dom';
 import App from './App';
 import Dashboard from './pages/Dashboard';
+import AutopilotReview from './pages/AutopilotReview';
 import Connections from './pages/Connections';
 import Products from './pages/Products';
 import Campaigns from './pages/Campaigns';
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: 'overview', Component: Dashboard },
       { path: 'dashboard', Component: Dashboard },
+      { path: 'autopilot-review', Component: AutopilotReview },
       { path: 'connections', Component: Connections },
       { path: 'products', Component: Products },
       { path: 'campaigns', Component: Campaigns },
