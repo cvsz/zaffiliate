@@ -258,7 +258,7 @@ function attachGracefulShutdown(server, logger) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  validateConfigOnStart && validateConfig(process.env);
+  validateConfig(process.env);
   const logger = createLogger();
   const server = createProductionServer({ env: process.env, logger, validateConfigOnStart: false });
   const port = Number(process.env.PORT || 8080);
