@@ -3,6 +3,7 @@ import './index.css';
 
 const sections = [
   ['dashboard', 'Dashboard'],
+  ['autopilot-review', 'Autopilot Review'],
   ['campaigns', 'Campaigns'],
   ['publications', 'Publications'],
   ['conversions', 'Conversions'],
