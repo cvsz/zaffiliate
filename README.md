@@ -10,6 +10,11 @@ Shopee Thailand Affiliate: verified product-feed contract (SLICE 1 complete) —
 
 Hardened HTTP surface: `/api/v1/auth/*` (register/login/me/logout/recovery), `/api/v1/oauth/:provider/{authorize,callback}`, `/api/v1/campaigns`, `/api/v1/conversions`, `/go/:slug`, `/webhooks/:platform`, commerce/intelligence/analytics/automation/content — all tenant-gated with canonical error envelopes and Bearer/tenant-header auth where required.
 
+
+## Production release gate (2026-09-28)
+
+The [Production Release Gate](docs/release/PRODUCTION-RELEASE-GATE.md) records mandatory remaining security, browser-session, provider, restore, and operator evidence. Web API hardening deliberately rejects unauthenticated production requests and returns 503 for operational surfaces that still lack real data providers. A compiled frontend or green CI does not mean the control plane is ready for customer access.
+
 ## Local development (golden path)
 
 Requirements: Node.js 22+, npm 10+, Docker Engine + compose plugin. Windows: PowerShell 7+ (`pwsh`).
