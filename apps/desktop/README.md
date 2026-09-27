@@ -4,13 +4,17 @@ This is an **unverified Tauri 2 scaffold** for the existing React/Vite control p
 
 Prerequisites: Windows 11, Node.js 22+, Rust stable (MSVC), Microsoft C++ Build Tools and WebView2. Tauri CLI is a development dependency, not a production runtime dependency.
 
-From repository root:
+From repository root, install the existing web dependencies; then run the desktop CLI in its own package:
 
 ```powershell
 npm ci
-npm run desktop:dev
-npm run desktop:build
+cd apps/desktop
+npm install
+npm run dev
+npm run build
 ```
+
+The desktop package lockfile must be committed after dependency resolution on a trusted development machine. CI should use `npm ci` in both locations once that lockfile exists.
 
 The development shell uses Vite on http://127.0.0.1:3000. Vite proxies /api to http://127.0.0.1:8080; start the API separately with `npm start` or the documented Compose stack. **Do not point this shell at production accounts until security review.**
 
