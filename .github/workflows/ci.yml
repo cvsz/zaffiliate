@@ -155,6 +155,17 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f db/tests/durable-workflow.sql
       - name: Execute billing AI analytics assertions
         run: psql -v ON_ERROR_STOP=1 -f db/tests/billing-ai-analytics.sql
+      - name: Backup and restore an isolated PostgreSQL database
+        shell: bash
+        run: bash scripts/postgres-isolated-restore-ci.sh
+      - name: Retain isolated restore evidence
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: postgres-isolated-restore-${{ github.sha }}
+          path: dist/postgres-isolated-restore-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
 
   container:
     runs-on: ubuntu-latest
