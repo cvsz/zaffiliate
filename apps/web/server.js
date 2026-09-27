@@ -3,13 +3,14 @@ import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, sep } from 'node:path';
 import { controlPlaneManifest } from '../../packages/control-plane/src/navigation.js';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(here, 'public');
 const buildDir = resolve(here, 'dist/web');
 
 const isProduction = String(process.env.APP_ENV ?? 'development').trim().toLowerCase() === 'production';
+const TENANT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const fixtures = isProduction ? null : await import('./fixtures.js');
 
 const CSRF_TTL_MS = 60 * 60 * 1000;
@@ -295,6 +296,35 @@ async function approveWorkflow(req, res, tenant) {
   return sendJson(res, 200, { ok: true, approval: clone(record) });
 }
 
+async function authorizeControlPlane(req, tenant, state) {
+  if (!state.isProduction) return { tenant, role: 'development' };
+  if (!TENANT_UUID.test(tenant)) return null;
+  const match = /^Bearer\\s+(zs_[A-Za-z0-9_-]+)$/i.exec(String(req.headers.authorization ?? ''));
+  if (!match) return null;
+  const token = match[1];
+  let session;
+  if (typeof state.authenticate === 'function') {
+    session = await state.authenticate({ tenantId: tenant, token });
+  } else {
+    const endpoint = process.env.CONTROL_PLANE_AUTH_URL;
+    if (!endpoint) throw new Error('control_plane_auth_not_configured');
+    const url = new URL(endpoint);
+    if (url.pathname !== '/api/v1/auth/me' || url.search || url.hash ||
+        !['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('control_plane_auth_endpoint_invalid');
+    }
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenant },
+      signal: AbortSignal.timeout(3000)
+    });
+    if (!response.ok) return null;
+    session = await response.json();
+  }
+  if (!session?.user || String(session.user.tenantId).toLowerCase() !== tenant.toLowerCase()) return null;
+  return { tenant, userId: session.user.userId, role: String(session.user.role ?? '').toLowerCase(), tokenHash: createHash('sha256').update(token).digest('hex') };
+}
+
 async function handleApi(req, res, pathname, state = {}) {
   const headOnly = req.method === 'HEAD';
   const tenantHeader = req.headers['x-tenant-id'];
@@ -302,11 +332,19 @@ async function handleApi(req, res, pathname, state = {}) {
     return sendJson(res, 400, { error: 'tenant_header_required' }, headOnly);
   }
   const tenant = String(tenantHeader).trim();
+  let principal;
+  try {
+    principal = await authorizeControlPlane(req, tenant, state);
+  } catch {
+    return sendJson(res, 503, { error: 'authentication_unavailable' }, headOnly);
+  }
+  if (!principal) return sendJson(res, 401, { error: 'authentication_required' }, headOnly);
+  const tokenScope = principal.tokenHash ? `${tenant}:${principal.tokenHash}` : tenant;
   if (req.method === 'GET' || headOnly) {
     switch (pathname) {
       case '/api/csrf-token': {
         const token = generateCsrfToken();
-        storeCsrfToken(tenant, token);
+        storeCsrfToken(tokenScope, token);
         return sendJson(res, 200, { token }, headOnly);
       }
       case '/api/ui/overview':
@@ -351,7 +389,10 @@ async function handleApi(req, res, pathname, state = {}) {
     }
   }
   if (req.method === 'POST' && pathname === '/api/workflow/approve') {
-    return approveWorkflow(req, res, tenant);
+    if (state.isProduction && !['owner', 'admin'].includes(principal.role)) {
+      return sendJson(res, 403, { error: 'approval_permission_required' });
+    }
+    return approveWorkflow(req, res, tokenScope);
   }
   return sendJson(res, 405, { error: 'method_not_allowed' }, headOnly, { allow: 'GET, HEAD, POST' });
 }
@@ -385,7 +426,7 @@ async function handleStatic(req, res, pathname) {
   }
 
   const entry = files.get(pathname) ?? files.get(decoded);
-  if (entry) {
+  if (entry && !(isProduction && (pathname === '/' || pathname === '/index.html'))) {
     const [filename, contentType] = entry;
     try {
       const body = await readFile(join(publicDir, filename));
@@ -396,11 +437,22 @@ async function handleStatic(req, res, pathname) {
     }
   }
 
+  // Only extensionless browser paths can receive the SPA document.
+  if (!decoded.split('/').pop()?.includes('.') && !decoded.startsWith('/api/')) {
+    try {
+      const entry = await readFile(join(buildDir, 'index.html'));
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(headOnly ? undefined : entry);
+    } catch {
+      // Missing build: return a service error, never the untransformed Vite source.
+      return sendJson(res, 503, { error: 'web_build_unavailable' }, headOnly);
+    }
+  }
   return sendJson(res, 404, { error: 'not_found' }, headOnly);
 }
 
-export function buildWebServer({ dataProviders = {} } = {}) {
-  const state = { dataProviders };
+export function buildWebServer({ dataProviders = {}, appEnv = process.env.APP_ENV, authenticate = null } = {}) {
+  const state = { dataProviders, isProduction: String(appEnv ?? 'development').toLowerCase() === 'production', authenticate };
   return http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     let pathname;
