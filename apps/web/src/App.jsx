@@ -54,13 +54,17 @@ export default function App() {
             <h1 id="title">{title}</h1>
           </div>
           <div className="status-group">
-            <label className="tenant-picker" htmlFor="tenant">
-              Tenant
-              <select id="tenant" defaultValue="tenant-acme">
-                <option value="tenant-acme">tenant-acme</option>
-                <option value="tenant-northwind">tenant-northwind</option>
-              </select>
-            </label>
+            {import.meta.env.DEV ? (
+              <label className="tenant-picker" htmlFor="tenant">
+                Demo tenant
+                <select id="tenant" defaultValue="tenant-acme">
+                  <option value="tenant-acme">tenant-acme</option>
+                  <option value="tenant-northwind">tenant-northwind</option>
+                </select>
+              </label>
+            ) : (
+              <div className="status" role="status">Production mode — operator sign-in integration required</div>
+            )}
             <div className="status" id="status">API status: checking</div>
           </div>
         </header>
