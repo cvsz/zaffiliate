@@ -323,3 +323,28 @@ jobs:
             fi
             echo 'Manual IaC validation: no violations'
           fi
+
+  code-scanning-alert-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Require Code Scanning Alert #2 to be resolved with evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CODE_SCANNING_ALERT_NUMBER: '2'
+        run: node scripts/verify-code-scanning-alert.mjs
+      - name: Upload code scanning gate evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: code-scanning-alert-gate-${{ github.sha }}
+          path: dist/release-evidence/code-scanning-alert.json
+          if-no-files-found: warn
+          retention-days: 30
