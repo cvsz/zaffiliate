@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, sep } from 'node:path';
 import { controlPlaneManifest } from '../../packages/control-plane/src/navigation.js';
 import { randomBytes, createHash } from 'node:crypto';
+import { createSessionBridge } from './session-bridge.js';
+import { createProductionDataProviders } from './production-data-providers.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(here, 'public');
@@ -297,41 +299,50 @@ async function approveWorkflow(req, res, tokenScope, actorId = null) {
 }
 
 async function authorizeControlPlane(req, tenant, state) {
-  if (!state.isProduction) return { tenant, role: 'development' };
+  if (!state.isProduction) return { tenant, role: 'development', userId: 'development' };
   if (!TENANT_UUID.test(tenant)) return null;
-  const match = /^Bearer\s+(zs_[A-Za-z0-9_-]+)$/i.exec(String(req.headers.authorization ?? ''));
-  if (!match) return null;
-  const token = match[1];
-  let session;
   if (typeof state.authenticate === 'function') {
-    session = await state.authenticate({ tenantId: tenant, token });
-  } else {
-    const endpoint = process.env.CONTROL_PLANE_AUTH_URL;
-    if (!endpoint) throw new Error('control_plane_auth_not_configured');
-    const url = new URL(endpoint);
-    if (url.pathname !== '/api/v1/auth/me' || url.search || url.hash ||
-        !['http:', 'https:'].includes(url.protocol)) {
-      throw new Error('control_plane_auth_endpoint_invalid');
-    }
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenant },
-      signal: AbortSignal.timeout(3000)
-    });
-    if (!response.ok) return null;
-    session = await response.json();
+    const session = await state.authenticate({ tenantId: tenant, req });
+    if (!session?.user || String(session.user.tenantId).toLowerCase() !== tenant.toLowerCase()) return null;
+    return { tenant, userId: session.user.userId, role: String(session.user.role ?? '').toLowerCase(), tokenHash: session.tokenHash ?? null };
   }
-  if (!session?.user || String(session.user.tenantId).toLowerCase() !== tenant.toLowerCase()) return null;
-  return { tenant, userId: session.user.userId, role: String(session.user.role ?? '').toLowerCase(), tokenHash: createHash('sha256').update(token).digest('hex') };
+  const resolved = await state.sessionBridge.resolve(req);
+  if (!resolved || resolved.tenantId !== tenant) return null;
+  return {
+    tenant,
+    userId: resolved.session.user.userId,
+    role: String(resolved.session.user.role ?? '').toLowerCase(),
+    tokenHash: createHash('sha256').update(resolved.token).digest('hex')
+  };
 }
 
 async function handleApi(req, res, pathname, state = {}) {
   const headOnly = req.method === 'HEAD';
-  const tenantHeader = req.headers['x-tenant-id'];
-  if (!isValidTenant(tenantHeader)) {
-    return sendJson(res, 400, { error: 'tenant_header_required' }, headOnly);
+
+  if (pathname === '/api/session/login' && req.method === 'POST') {
+    if (!state.isProduction) return sendJson(res, 404, { error: 'not_found' });
+    try {
+      const result = await state.sessionBridge.login(req);
+      return sendJson(res, result.status, result.body, false, result.headers ?? {});
+    } catch (error) {
+      return sendJson(res, Number(error?.status || 503), { error: error?.message === 'payload_too_large' ? 'payload_too_large' : 'authentication_unavailable' });
+    }
   }
-  const tenant = String(tenantHeader).trim();
+  if (pathname === '/api/session/logout' && req.method === 'POST') {
+    const result = await state.sessionBridge.logout(req);
+    return sendJson(res, result.status, result.body, false, result.headers ?? {});
+  }
+  if (pathname === '/api/session/me' && req.method === 'GET') {
+    const resolved = state.isProduction ? await state.sessionBridge.resolve(req).catch(() => null) : null;
+    if (!resolved) return sendJson(res, 401, { error: 'authentication_required' }, headOnly);
+    return sendJson(res, 200, { user: resolved.session.user, expiresAt: resolved.session.expiresAt }, headOnly);
+  }
+
+  const resolvedSession = state.isProduction ? await state.sessionBridge.resolve(req).catch(() => null) : null;
+  const tenantHeader = req.headers['x-tenant-id'];
+  const tenant = String(tenantHeader ?? resolvedSession?.tenantId ?? '').trim().toLowerCase();
+  if (!isValidTenant(tenant)) return sendJson(res, 400, { error: 'tenant_header_required' }, headOnly);
+  if (resolvedSession && tenantHeader && tenant !== resolvedSession.tenantId) return sendJson(res, 403, { error: 'tenant_mismatch' }, headOnly);
   let principal;
   try {
     principal = await authorizeControlPlane(req, tenant, state);
@@ -353,7 +364,8 @@ async function handleApi(req, res, pathname, state = {}) {
         }
         return sendJson(res, 200, await buildOverviewPayload({ tenant, dataProviders: state.dataProviders, approvals: approvalRecords }), headOnly);
       case '/api/ui/revenue-trend': {
-        if (state.isProduction) return sendJson(res, 503, { error: 'revenue_trend_provider_unavailable' }, headOnly);
+        if (state.isProduction && typeof state.dataProviders?.revenueTrend !== 'function') return sendJson(res, 503, { error: 'revenue_trend_provider_unavailable' }, headOnly);
+        if (state.isProduction) return sendJson(res, 200, { tenant, points: await state.dataProviders.revenueTrend(tenant) }, headOnly);
         let base = 0;
         try { const s = await state.dataProviders?.analyticsSummary?.(tenant); base = Math.max(0, Number(s?.netCommissionMinorUnits ?? 0)); } catch { base = 0; }
         const points = Array.from({ length: 7 }, (_, i) => ({
@@ -372,27 +384,28 @@ async function handleApi(req, res, pathname, state = {}) {
         return sendJson(res, 200, { tenant, integrations }, headOnly);
       }
       case '/api/ui/worker-health': {
-        if (state.isProduction) return sendJson(res, 503, { error: 'worker_health_provider_unavailable' }, headOnly);
+        if (state.isProduction && typeof state.dataProviders?.workerHealth !== 'function') return sendJson(res, 503, { error: 'worker_health_provider_unavailable' }, headOnly);
+        if (state.isProduction) return sendJson(res, 200, { tenant, workers: await state.dataProviders.workerHealth(tenant) }, headOnly);
         const queues = state.dataProviders?.queueDepth ? await state.dataProviders.queueDepth(tenant).catch(() => ({})) : {};
         return sendJson(res, 200, { tenant, workers: [{ name: 'outbox-dispatcher', status: 'healthy', depth: queues.outbox ?? 0 }, { name: 'publication-claimer', status: 'healthy', depth: queues.publications ?? 0 }] }, headOnly);
       }
       case '/api/navigation':
         return sendJson(res, 200, { ...controlPlaneManifest(), tenant }, headOnly);
       case '/api/audit':
-        if (state.isProduction) return sendJson(res, 503, { error: 'audit_provider_unavailable' }, headOnly);
-        return sendJson(res, 200, { tenant, rows: clone(auditRows) }, headOnly);
+        if (state.isProduction && typeof state.dataProviders?.audit !== 'function') return sendJson(res, 503, { error: 'audit_provider_unavailable' }, headOnly);
+        return sendJson(res, 200, { tenant, rows: state.isProduction ? await state.dataProviders.audit(tenant) : clone(auditRows) }, headOnly);
       case '/api/billing/summary':
-        if (state.isProduction) return sendJson(res, 503, { error: 'billing_provider_unavailable' }, headOnly);
-        return sendJson(res, 200, { tenant, ...clone(billingSummary) }, headOnly);
+        if (state.isProduction && typeof state.dataProviders?.billing !== 'function') return sendJson(res, 503, { error: 'billing_provider_unavailable' }, headOnly);
+        return sendJson(res, 200, { tenant, ...(state.isProduction ? await state.dataProviders.billing(tenant) : clone(billingSummary)) }, headOnly);
       case '/api/workflow/pending-approvals':
-        if (state.isProduction) return sendJson(res, 503, { error: 'approval_provider_unavailable' }, headOnly);
-        return sendJson(res, 200, { tenant, approvals: clone(approvalRecords.filter((record) => record.status === 'pending')) }, headOnly);
+        if (state.isProduction && typeof state.dataProviders?.pendingApprovals !== 'function') return sendJson(res, 503, { error: 'approval_provider_unavailable' }, headOnly);
+        return sendJson(res, 200, { tenant, approvals: state.isProduction ? await state.dataProviders.pendingApprovals(tenant) : clone(approvalRecords.filter((record) => record.status === 'pending')) }, headOnly);
       case '/api/outreach/attempts':
         if (state.isProduction) return sendJson(res, 503, { error: 'outreach_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, attempts: clone(outreachAttempts) }, headOnly);
       case '/api/analytics/funnel':
-        if (state.isProduction) return sendJson(res, 503, { error: 'funnel_provider_unavailable' }, headOnly);
-        return sendJson(res, 200, { tenant, ...clone(funnelSnapshot) }, headOnly);
+        if (state.isProduction && typeof state.dataProviders?.funnel !== 'function') return sendJson(res, 503, { error: 'funnel_provider_unavailable' }, headOnly);
+        return sendJson(res, 200, { tenant, ...(state.isProduction ? await state.dataProviders.funnel(tenant) : clone(funnelSnapshot)) }, headOnly);
       case '/api/creator-studio/overview':
         if (state.isProduction) return sendJson(res, 503, { error: 'creator_provider_unavailable' }, headOnly);
         return sendJson(res, 200, { tenant, creators: [{ id: 'cr_4417', status: 'active', campaigns: 2 }, { id: 'cr_5093', status: 'pending', campaigns: 0 }], note: 'minimal creator-studio surface — full UI deferred but API now present' }, headOnly);
@@ -404,11 +417,16 @@ async function handleApi(req, res, pathname, state = {}) {
     }
   }
   if (req.method === 'POST' && pathname === '/api/workflow/approve') {
-    if (state.isProduction) return sendJson(res, 503, { error: 'approval_provider_unavailable' });
-    if (state.isProduction && !['owner', 'admin'].includes(principal.role)) {
-      return sendJson(res, 403, { error: 'approval_permission_required' });
-    }
-    return approveWorkflow(req, res, tokenScope, principal.userId);
+    if (state.isProduction && !['owner', 'admin'].includes(principal.role)) return sendJson(res, 403, { error: 'approval_permission_required' });
+    if (!state.isProduction) return approveWorkflow(req, res, tokenScope, principal.userId);
+    const csrfToken = req.headers['x-csrf-token'] || req.headers['x-zaff-csrf'];
+    if (!csrfToken || !validateCsrfToken(tokenScope, String(csrfToken).trim())) return sendJson(res, 403, { error: 'csrf_check_failed' });
+    if (!String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return sendJson(res, 403, { error: 'csrf_check_failed' });
+    let parsed;
+    try { parsed = JSON.parse(await readJsonBody(req)); } catch { return sendJson(res, 400, { error: 'invalid_json' }); }
+    if (!parsed || typeof parsed !== 'object' || !['approve','reject'].includes(parsed.decision) || typeof parsed.approvalId !== 'string') return sendJson(res, 400, { error: 'invalid_body' });
+    const result = await state.dataProviders.decideApproval({ tenantId: tenant, jobId: parsed.approvalId, userId: principal.userId, decision: parsed.decision });
+    return sendJson(res, result.status, result.error ? { error: result.error } : { ok: true, approval: result.approval });
   }
   return sendJson(res, 405, { error: 'method_not_allowed' }, headOnly, { allow: 'GET, HEAD, POST' });
 }
@@ -473,8 +491,11 @@ async function handleStatic(req, res, pathname) {
   return sendJson(res, 404, { error: 'not_found' }, headOnly);
 }
 
-export function buildWebServer({ dataProviders = {}, appEnv = process.env.APP_ENV, authenticate = null } = {}) {
-  const state = { dataProviders, isProduction: String(appEnv ?? 'development').toLowerCase() === 'production', authenticate };
+export function buildWebServer({ dataProviders = null, appEnv = process.env.APP_ENV, authenticate = null, sessionBridge = null } = {}) {
+  const production = String(appEnv ?? 'development').toLowerCase() === 'production';
+  const resolvedProviders = dataProviders ?? (production ? createProductionDataProviders() : {});
+  const resolvedBridge = sessionBridge ?? (production ? createSessionBridge({ authOrigin: process.env.CONTROL_PLANE_AUTH_ORIGIN }) : null);
+  const state = { dataProviders: resolvedProviders, isProduction: production, authenticate, sessionBridge: resolvedBridge };
   return http.createServer(async (req, res) => {
     applySecurityHeaders(res);
     let pathname;
