@@ -54,7 +54,7 @@ jobs:
       - name: Install pinned Chromium for release browser checks
         run: npx --yes playwright@1.55.1 install --with-deps chromium
       - name: Run real-browser production smoke and accessibility checks
-        run: npx --yes @playwright/test@1.55.1 test test/live-site.browser.spec.js --reporter=line
+        run: npx --yes @playwright/test@1.55.1 test browser-tests/live-site.playwright.js --reporter=line
       - name: Upload immutable release evidence bundle
         if: always()
         uses: actions/upload-artifact@v7
