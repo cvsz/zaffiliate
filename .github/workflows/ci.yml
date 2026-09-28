@@ -335,11 +335,17 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Require Code Scanning Alert #2 to be resolved with evidence
+      - name: Record Code Scanning Alert #2 and enforce closure on main
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CODE_SCANNING_ALERT_NUMBER: '2'
-        run: node scripts/verify-code-scanning-alert.mjs
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            node scripts/verify-code-scanning-alert.mjs --report-only
+          else
+            node scripts/verify-code-scanning-alert.mjs
+          fi
       - name: Upload code scanning gate evidence
         if: always()
         uses: actions/upload-artifact@v7
