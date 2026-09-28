@@ -2,7 +2,7 @@
 
 This is an **unverified Tauri 2 scaffold** for the existing React/Vite control plane. It does not enable platform publishing, embed OAuth secrets, or start the production API. Run the existing Node API separately.
 
-Prerequisites: Windows 11, Node.js 22+, Rust stable (MSVC), Microsoft C++ Build Tools and WebView2. Tauri CLI is a development dependency, not a production runtime dependency.
+Prerequisites: Windows 11, Node.js 22+, Rust stable (MSVC), Microsoft C++ Build Tools with the Desktop development with C++ workload, Windows SDK and WebView2.\n\nRecommended from repository root: `pwsh -NoProfile -File .\\scripts\\bootstrap-windows.ps1` (or `powershell -NoProfile -File .\\scripts\\bootstrap-windows.ps1` for Windows PowerShell 5.1). Add `-InstallPrerequisites` to request winget installation of Node/Rust/Git, or `-BuildDesktop` to attempt an unsigned NSIS build. The bootstrap is fail-fast and never deploys or publishes content. Tauri CLI is a development dependency, not a production runtime dependency.
 
 From repository root, install the existing web dependencies; then run the desktop CLI in its own package:
 
