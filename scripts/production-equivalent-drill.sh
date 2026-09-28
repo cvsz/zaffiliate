@@ -36,10 +36,21 @@ dump_ms="$(( $(date +%s%3N) - dump_start ))"
 dump_sha="$(sha256sum dist/release-evidence/production-equivalent.dump | awk '{print $1}')"
 
 docker run -d --name zaff-dr-restore -e POSTGRES_DB=zaffiliate_restore -e POSTGRES_USER=zaffiliate   -e POSTGRES_PASSWORD="$db_password" -p 127.0.0.1:55432:5432 postgres:17-alpine >/dev/null
-for _ in $(seq 1 60); do
-  if docker exec zaff-dr-restore pg_isready -U zaffiliate -d zaffiliate_restore >/dev/null 2>&1; then break; fi
+stable_ready=0
+for _ in $(seq 1 90); do
+  if docker exec zaff-dr-restore pg_isready -U zaffiliate -d zaffiliate_restore >/dev/null 2>&1; then
+    stable_ready=$((stable_ready + 1))
+    if [[ "$stable_ready" -ge 4 ]]; then break; fi
+  else
+    stable_ready=0
+  fi
   sleep 1
 done
+if [[ "$stable_ready" -lt 4 ]]; then
+  docker logs zaff-dr-restore >&2 || true
+  echo "restore PostgreSQL did not become stably ready" >&2
+  exit 1
+fi
 
 restore_start="$(date +%s%3N)"
 docker exec -i zaff-dr-restore pg_restore -U zaffiliate -d zaffiliate_restore --exit-on-error --no-owner --no-privileges < dist/release-evidence/production-equivalent.dump
