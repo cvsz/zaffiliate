@@ -12,14 +12,20 @@ const requirements = {
 };
 const forbiddenKeys = /token|secret|password|cookie|authorization/i;
 const results = [];
+let bundled = null;
+if (process.env.PROVIDER_ENTITLEMENT_EVIDENCE_JSON) {
+  try { bundled = JSON.parse(process.env.PROVIDER_ENTITLEMENT_EVIDENCE_JSON); }
+  catch { throw new Error('PROVIDER_ENTITLEMENT_EVIDENCE_JSON must be valid JSON'); }
+}
 
 for (const [provider, required] of Object.entries(requirements)) {
-  let evidence = null;
-  try {
-    evidence = JSON.parse(await readFile(resolve(dir, provider + '.json'), 'utf8'));
-  } catch {
-    results.push({ provider, status: 'BLOCKED', reason: 'evidence_missing', required });
-    continue;
+  let evidence = bundled?.[provider] ?? null;
+  if (!evidence) {
+    try { evidence = JSON.parse(await readFile(resolve(dir, provider + '.json'), 'utf8')); }
+    catch {
+      results.push({ provider, status: 'BLOCKED', reason: 'evidence_missing', required });
+      continue;
+    }
   }
   const serializedKeys = [];
   function walk(value, prefix = '') {
