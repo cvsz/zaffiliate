@@ -154,6 +154,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/006_tenants_rls_force.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/020_tenants_rls_enable.sql
       - name: Create non-superuser application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Execute core cross-tenant RLS assertions
