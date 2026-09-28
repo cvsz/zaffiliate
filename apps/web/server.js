@@ -97,10 +97,10 @@ export function escapeHtml(value) {
     .replaceAll('"', '&quot;');
 }
 
-async function countPublished(dataProviders) {
+async function countPublished(dataProviders, tenant) {
   try {
     if (!dataProviders.publishedContentCount) return 0;
-    const value = Number(await dataProviders.publishedContentCount());
+    const value = Number(await dataProviders.publishedContentCount(tenant));
     return Number.isFinite(value) ? value : 0;
   } catch {
     return 0;
@@ -136,7 +136,7 @@ export async function buildOverviewPayload({ tenant, dataProviders = {}, approva
     { id: 'net_commission', label: 'Net Commission', valueMinorUnits: safe(summary?.netCommissionMinorUnits), currency: summary?.currency ?? 'USD' },
     { id: 'conversions', label: 'Conversions', value: safe(summary?.conversions) },
     { id: 'affiliate_clicks', label: 'Affiliate Clicks', value: safe(summary?.clicks) },
-    { id: 'published_content', label: 'Published Content', value: await countPublished(dataProviders) },
+    { id: 'published_content', label: 'Published Content', value: await countPublished(dataProviders, tenant) },
     { id: 'pending_approvals', label: 'Pending Approvals', value: pendingApprovals },
     { id: 'critical_failures', label: 'Critical Failures', value: criticalFailures }
   ]);
@@ -370,11 +370,15 @@ async function handleApi(req, res, pathname, state = {}) {
         storeCsrfToken(tokenScope, token);
         return sendJson(res, 200, { token }, headOnly);
       }
-      case '/api/ui/overview':
+      case '/api/ui/overview': {
         if (state.isProduction && typeof state.dataProviders?.analyticsSummary !== 'function') {
           return sendJson(res, 503, { error: 'analytics_unavailable' }, headOnly);
         }
-        return sendJson(res, 200, await buildOverviewPayload({ tenant, dataProviders: state.dataProviders, approvals: approvalRecords }), headOnly);
+        const approvals = state.isProduction && typeof state.dataProviders?.pendingApprovals === 'function'
+          ? await state.dataProviders.pendingApprovals(tenant)
+          : approvalRecords;
+        return sendJson(res, 200, await buildOverviewPayload({ tenant, dataProviders: state.dataProviders, approvals }), headOnly);
+      }
       case '/api/ui/revenue-trend': {
         if (state.isProduction && typeof state.dataProviders?.revenueTrend !== 'function') return sendJson(res, 503, { error: 'revenue_trend_provider_unavailable' }, headOnly);
         if (state.isProduction) return sendJson(res, 200, { tenant, points: await state.dataProviders.revenueTrend(tenant) }, headOnly);
@@ -390,6 +394,14 @@ async function handleApi(req, res, pathname, state = {}) {
       case '/api/ui/integration-health': {
         if (state.isProduction && typeof state.dataProviders?.providerHealth !== 'function') {
           return sendJson(res, 503, { error: 'provider_health_unavailable' }, headOnly);
+        }
+        if (state.isProduction) {
+          try {
+            const integrations = await state.dataProviders.providerHealth(tenant);
+            return sendJson(res, 200, { tenant, integrations }, headOnly);
+          } catch {
+            return sendJson(res, 503, { error: 'provider_health_unavailable' }, headOnly);
+          }
         }
         const registry = state.dataProviders?.providerHealth ? await state.dataProviders.providerHealth(tenant).catch(() => []) : [];
         const integrations = registry.length ? registry : [{ platform: 'tiktok', status: 'degraded', lastVerifiedAt: new Date().toISOString(), reason: 'sandbox credential probe 40006' }, { platform: 'shopee', status: 'unknown', lastVerifiedAt: null }];
