@@ -1,3 +1,5 @@
+> **Live-permission notice (2026-09-28):** This table describes code-level capability manifests and fallback policy; A/AR is **not** proof of approved credentials, provider account scopes, live success, or support in the deployed website. Shopee Affiliate/CSV import does not grant Shopee Video/Live publishing rights. See [Feature Catalog](FEATURES.md) and [Release Gate](release/PRODUCTION-RELEASE-GATE.md).
+
 # Provider Capability Matrix
 
 Derived from `packages/adapters/src/capabilities.js` (canonical manifests) + `packages/adapters/src/provider-registry.js` state resolution. Defaults: read-only → `available`; mutating/publishing/messaging → `approval_required` until an approval id is presented; explicit overrides may pin `manual`, `unsupported` or `temporarily_disabled`.

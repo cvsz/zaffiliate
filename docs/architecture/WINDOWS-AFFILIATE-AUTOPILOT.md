@@ -1,3 +1,5 @@
+> **Update (2026-09-28):** AUTO-WIN-01 Tauri 2 scaffold and PowerShell bootstrap were merged to `main` in PR #77. This updates the original PLANNED baseline below for shell-file existence only. Signed installer, valid CSP, packaged production API origin/session and clean Windows UAT remain incomplete. See [AUTO-WIN-01 Acceptance](AUTO-WIN-01-ACCEPTANCE.md) and [Feature Catalog](../FEATURES.md).
+
 # ZEAZ Affiliate Autopilot — Windows delivery contract
 
 Status: PLANNED (not production-ready). Owner: ZEAZDEV. Target: Windows 11, with always-on server deployment as a separate operational decision.

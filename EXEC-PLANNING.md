@@ -512,3 +512,14 @@ Tests: `test/shopee-th-feed.test.js` 10/10 RED→GREEN (header code points, quan
 Evidence: full suite 639 tests — 633 pass, 0 fail, 6 gated skips; `npm run check` clean. Next bounded slice: SLICE 2 durable products/offers schema + migration + RLS + repositories.
 External artifact noted: `docs/SHOPEE-PRODUCT-EXPORT.md` points at a real Shopee Thailand product export (Google Drive). It is the verified fixture for SLICE 1 header recognition and must be used to confirm the product-feed contract; the Click Report and Order Report parsers (SLICES 6–7) remain explicitly gated until their own real export fixtures are available.
 Files: packages/adapters/src/shopee-th-{constants,normalizer}.js, test/fixtures/shopee-th-feed.js, test/shopee-th-feed.test.js, docs/SHOPEE-PRODUCT-EXPORT.md, README.md, docs/EXEC-INTERGRADETION-SHOPEE.md.
+
+## DOC-BRAND-20260928 — Feature catalog, badges and social preview
+
+- **Priority:** P1 documentation accuracy. **Status:** IN_PROGRESS. **Owner:** ZEAZDEV. **Base SHA:** `34bfb9be6a485c8a72fbd28eacba50d89392dae3`.
+- **Scope:** Replace stale root README with source-backed product overview and current GitHub workflow badges; add a feature-by-feature documentation index, explicit live-site verification boundary for `https://zaff.zeaz.dev/`, an editable vector social preview and a 1280×640 upload-ready PNG delivered for manual GitHub Settings upload. Correct any actively misleading readme/desktop claims without rewriting historical audit logs.
+- **Non-goals:** No runtime behavior, provider permissions, account integration, production deployment, security-alert dismissal, or direct repository social-preview setting mutation (GitHub settings UI is not exposed through the connected action set).
+- **Acceptance:** Every customer-visible capability clearly distinguishes source implementation, UI placeholder, live-provider blocked and desktop scaffold; badges use GitHub Actions source of truth rather than static PASS; preview image meets GitHub dimension requirements and does not show fake revenue; README links actual docs and release gates.
+- **Tests:** Verify changed Markdown links/target paths, local 1280×640 PNG dimensions and visual preview; review CI/CodeQL outcomes on the PR SHA before merge. No runtime claim from documentation-only changes.
+- **Security:** Avoid exposing real secrets or suggesting unsupported provider publishing; maintain Code Scanning Alert #2 and browser-session/restore release blockers.
+- **Observability:** No changes to runtime metrics or alerting. GitHub workflow badges represent workflow outcomes only.
+- **Rollback:** Revert documentation and brand-file commits; no migrations or external posts.

@@ -1,3 +1,5 @@
+> **Documentation map (2026-09-28):** Source-backed user-visible feature/status matrix: [docs/FEATURES.md](docs/FEATURES.md). Deployed `zaff.zeaz.dev` verification: [docs/LIVE-SITE-STATUS.md](docs/LIVE-SITE-STATUS.md). Neither design diagram nor a green CI run proves production customer readiness.
+
 # zaffiliate Architecture
 
 ## Principles

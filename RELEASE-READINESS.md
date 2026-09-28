@@ -1,3 +1,5 @@
+> **Historical evidence notice (2026-09-28):** This document preserves release-gate records from August and September; some version/test-count claims below are dated. It does not override [Current Production Release Gate](docs/release/PRODUCTION-RELEASE-GATE.md), [Feature Catalog](docs/FEATURES.md), or [Live Site Verification](docs/LIVE-SITE-STATUS.md). CI success does not close authenticated Code Scanning Alert #2, provider permissions or desktop/customer UAT.
+
 # RELEASE-READINESS — zaffiliate Affiliate Automation OS
 
 Updated: 2026-09-06 · Release source of truth (Gold Master master-spec §3). This document states exactly one release decision backed by evidence. Feature count never implies readiness.

@@ -1,3 +1,5 @@
+> **2026-09-28 interpretation:** COMPLETE in this historical implementation matrix means repository code/contract scope, not completed browser E2E, live provider approval, rendered video or customer production readiness. The current [Feature Catalog](docs/FEATURES.md), [Live Site Status](docs/LIVE-SITE-STATUS.md) and [Production Release Gate](docs/release/PRODUCTION-RELEASE-GATE.md) take precedence for user-visible readiness claims.
+
 # zaffiliate Gap Analysis vs Master Meta Architecture
 
 Updated: 2026-09-22 · Evidence base: `npm test` 748 tests — 740 pass, 0 fail, 8 skips; `npm run check` clean via check-syntax.mjs (126 files incl. affiliate persistence, campaign, conversion reconciliation, outbox dispatcher, publication API, trend engine, automation repo, AI mock/video factory, analytics warehouse, calendar, rate-limit, secret envelope, transport boundary); `scripts/verify.sh` ALL GATES GREEN; `scripts/backup-restore-drill.mjs --run` executed; `scripts/restore-rehearsal.mjs` PASSED; slice records in `EXEC-PLANNING.md`; release decision in `RELEASE-READINESS.md`.
