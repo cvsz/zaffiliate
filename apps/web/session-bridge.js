@@ -65,6 +65,11 @@ export function createSessionBridge({ authOrigin, timeoutMs = 4000, fetchImpl = 
       body: { user: payload.user, expiresAt: payload.expiresAt }
     };
   }
+  function peekTenant(req) {
+    const tenantId = String(parseCookies(req.headers.cookie)[TENANT_COOKIE] ?? '').toLowerCase();
+    return TENANT_UUID.test(tenantId) ? tenantId : null;
+  }
+
   async function resolve(req) {
     const cookies = parseCookies(req.headers.cookie);
     const token = cookies[SESSION_COOKIE];
@@ -85,5 +90,5 @@ export function createSessionBridge({ authOrigin, timeoutMs = 4000, fetchImpl = 
       body: { ok: true }
     };
   }
-  return Object.freeze({ login, resolve, logout });
+  return Object.freeze({ login, resolve, logout, peekTenant });
 }
