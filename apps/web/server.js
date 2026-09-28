@@ -351,7 +351,8 @@ async function handleApi(req, res, pathname, state = {}) {
 
   const resolvedSession = state.isProduction && state.sessionBridge ? await state.sessionBridge.resolve(req).catch(() => null) : null;
   const tenantHeader = req.headers['x-tenant-id'];
-  const tenant = String(tenantHeader ?? resolvedSession?.tenantId ?? '').trim().toLowerCase();
+  const cookieTenant = state.isProduction && state.sessionBridge?.peekTenant ? state.sessionBridge.peekTenant(req) : null;
+  const tenant = String(tenantHeader ?? resolvedSession?.tenantId ?? cookieTenant ?? '').trim().toLowerCase();
   if (!isValidTenant(tenant)) return sendJson(res, 400, { error: 'tenant_header_required' }, headOnly);
   if (resolvedSession && tenantHeader && tenant !== resolvedSession.tenantId) return sendJson(res, 403, { error: 'tenant_mismatch' }, headOnly);
   let principal;
