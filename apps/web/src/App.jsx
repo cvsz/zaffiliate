@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { getSession, logoutSession } from './api';
 import './index.css';
 
 const sections = [
@@ -26,6 +28,14 @@ const sections = [
 
 export default function App() {
   const location = useLocation();
+  const [session, setSession] = useState(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV) getSession().then((r) => setSession(r.ok ? r.body : null));
+  }, []);
+  async function signOut() {
+    await logoutSession();
+    window.location.assign('/login');
+  }
   const path = location.pathname.replace(/^\/+|\/+$/g, '') || 'dashboard';
   const title = sections.find(([p]) => p === path)?.[1] || 'Dashboard';
 
@@ -62,8 +72,13 @@ export default function App() {
                   <option value="tenant-northwind">tenant-northwind</option>
                 </select>
               </label>
+            ) : session?.user ? (
+              <div className="status-group">
+                <div className="status" role="status">{session.user.email} · {session.user.role}</div>
+                <button className="btn" type="button" onClick={signOut}>Sign out</button>
+              </div>
             ) : (
-              <div className="status" role="status">Production mode — operator sign-in integration required</div>
+              <a className="btn" href="/login">Sign in</a>
             )}
             <div className="status" id="status">API status: checking</div>
           </div>
