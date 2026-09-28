@@ -37,12 +37,12 @@ dump_sha="$(sha256sum dist/release-evidence/production-equivalent.dump | awk '{p
 
 docker run -d --name zaff-dr-restore -e POSTGRES_DB=zaffiliate_restore -e POSTGRES_USER=zaffiliate   -e POSTGRES_PASSWORD="$db_password" -p 127.0.0.1:55432:5432 postgres:17-alpine >/dev/null
 for _ in $(seq 1 60); do
-  if PGPASSWORD="$db_password" pg_isready -h 127.0.0.1 -p 55432 -U zaffiliate -d zaffiliate_restore >/dev/null 2>&1; then break; fi
+  if docker exec zaff-dr-restore pg_isready -U zaffiliate -d zaffiliate_restore >/dev/null 2>&1; then break; fi
   sleep 1
 done
 
 restore_start="$(date +%s%3N)"
-PGPASSWORD="$db_password" pg_restore -h 127.0.0.1 -p 55432 -U zaffiliate -d zaffiliate_restore   --exit-on-error --no-owner --no-privileges dist/release-evidence/production-equivalent.dump
+docker exec -i zaff-dr-restore pg_restore -U zaffiliate -d zaffiliate_restore --exit-on-error --no-owner --no-privileges < dist/release-evidence/production-equivalent.dump
 RESTORED_DATABASE_URL="postgresql://zaffiliate:$db_password@127.0.0.1:55432/zaffiliate_restore"   node scripts/restore-rehearsal.mjs
 restore_ms="$(( $(date +%s%3N) - restore_start ))"
 
