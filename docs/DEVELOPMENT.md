@@ -1,3 +1,5 @@
+> **Current release note (2026-09-28):** The historical test evidence below applies to its dated repository SHA, not the deployed website. Customer release still requires the [Production Release Gate](release/PRODUCTION-RELEASE-GATE.md) and [Live Site E2E verification](LIVE-SITE-STATUS.md).
+
 # Development
 
 ## Prerequisites
