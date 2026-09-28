@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'db/migrations/008_local_auth_recovery.sql'
+      - 'db/migrations/020_tenants_rls_enable.sql'
       - 'db/tests/auth-persistence.sql'
       - 'db/tests/bootstrap-role.sql'
       - 'packages/db/src/auth-repo.js'
@@ -67,6 +68,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/006_tenants_rls_force.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/008_local_auth_recovery.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/020_tenants_rls_enable.sql
       - name: Create application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify auth persistence RLS

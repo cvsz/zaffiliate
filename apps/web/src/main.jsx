@@ -22,12 +22,14 @@ import Conversions, { loader as conversionsLoader } from './pages/Conversions';
 import Settings, { loader as settingsLoader } from './pages/Settings';
 import ErrorBoundary from './ErrorBoundary';
 import Unavailable from './pages/Unavailable';
+import Login from './pages/Login';
 import * as api from './api';
 
 const demo = import.meta.env.DEV;
 const demoComponent = (Component) => demo ? Component : Unavailable;
 
 const router = createBrowserRouter([
+  { path: '/login', Component: Login },
   {
     path: '/',
     Component: App,
@@ -45,11 +47,11 @@ const router = createBrowserRouter([
       { path: 'content', Component: demoComponent(Content) },
       { path: 'publishing', Component: demoComponent(Publishing) },
       { path: 'outreach', Component: demoComponent(Outreach), ...(demo ? { loader: outreachLoader } : {}) },
-      { path: 'workflows', Component: demoComponent(Workflows), ...(demo ? { loader: workflowsLoader, action: workflowAction } : {}) },
-      { path: 'analytics', Component: demoComponent(Analytics), ...(demo ? { loader: analyticsLoader } : {}) },
-      { path: 'commissions', Component: demoComponent(Commissions), ...(demo ? { loader: commissionsLoader } : {}) },
-      { path: 'billing', Component: demoComponent(Billing), ...(demo ? { loader: billingLoader } : {}) },
-      { path: 'audit', Component: demoComponent(Audit), ...(demo ? { loader: auditLoader } : {}) },
+      { path: 'workflows', Component: Workflows, loader: workflowsLoader, action: workflowAction },
+      { path: 'analytics', Component: Analytics, loader: analyticsLoader },
+      { path: 'commissions', Component: Commissions, loader: commissionsLoader },
+      { path: 'billing', Component: Billing, loader: billingLoader },
+      { path: 'audit', Component: Audit, loader: auditLoader },
       { path: 'security', Component: demoComponent(Security) },
       { path: 'admin', Component: demoComponent(Admin), ...(demo ? { loader: adminLoader } : {}) },
       { path: 'publications', Component: demoComponent(Publications), ...(demo ? { loader: publicationsLoader } : {}) },

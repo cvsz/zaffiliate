@@ -1,0 +1,65 @@
+name: Production Release Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      live_url:
+        description: HTTPS deployment URL to verify
+        required: true
+        default: https://zaff.zeaz.dev
+      provider_evidence_max_age_days:
+        description: Maximum provider entitlement evidence age
+        required: true
+        default: '30'
+
+permissions:
+  contents: read
+  security-events: read
+
+jobs:
+  release-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LIVE_SITE_URL: ${{ inputs.live_url }}
+      PROVIDER_EVIDENCE_MAX_AGE_DAYS: ${{ inputs.provider_evidence_max_age_days }}
+      PROVIDER_ENTITLEMENT_EVIDENCE_JSON: ${{ secrets.PROVIDER_ENTITLEMENT_EVIDENCE_JSON }}
+      LEGACY_CREDENTIAL_ROTATION_AT: ${{ vars.LEGACY_CREDENTIAL_ROTATION_AT }}
+      LEGACY_CREDENTIAL_ROTATION_EVIDENCE_SHA256: ${{ vars.LEGACY_CREDENTIAL_ROTATION_EVIDENCE_SHA256 }}
+      LEGACY_CREDENTIAL_INCIDENT_REF: ${{ vars.LEGACY_CREDENTIAL_INCIDENT_REF }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install deterministic dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify exact source
+        run: |
+          npm run check
+          npm test
+          npm run build:web
+      - name: Verify Code Scanning Alert #2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CODE_SCANNING_ALERT_NUMBER: '2'
+        run: node scripts/verify-code-scanning-alert.mjs
+      - name: Verify legacy credential rotation evidence
+        run: node scripts/verify-legacy-rotation.mjs
+      - name: Verify provider publishing entitlements
+        run: node scripts/provider-entitlement-gate.mjs --check
+      - name: Verify live DNS TLS headers and protected routes
+        run: node scripts/live-site-verify.mjs
+      - name: Install pinned Chromium for release browser checks
+        run: npx --yes playwright@1.55.1 install --with-deps chromium
+      - name: Run real-browser production smoke and accessibility checks
+        run: npx --yes @playwright/test@1.55.1 test browser-tests/live-site.playwright.js --reporter=line
+      - name: Upload immutable release evidence bundle
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-release-evidence-${{ github.sha }}-${{ github.run_id }}
+          path: dist/release-evidence/
+          if-no-files-found: warn
+          retention-days: 90

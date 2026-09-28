@@ -1,19 +1,20 @@
 import { useLoaderData } from 'react-router-dom';
+import { getOverview, getRevenueTrend, getIntegrationHealth, getWorkerHealth } from '../api';
 
 export async function loader() {
-  const [overviewRes, trendRes, integrationsRes, workersRes] = await Promise.all([
-    fetch('/api/ui/overview', { headers: { 'x-tenant-id': document.getElementById('tenant')?.value || 'tenant-acme' } }),
-    fetch('/api/ui/revenue-trend', { headers: { 'x-tenant-id': document.getElementById('tenant')?.value || 'tenant-acme' } }),
-    fetch('/api/ui/integration-health', { headers: { 'x-tenant-id': document.getElementById('tenant')?.value || 'tenant-acme' } }),
-    fetch('/api/ui/worker-health', { headers: { 'x-tenant-id': document.getElementById('tenant')?.value || 'tenant-acme' } })
+  const [overview, trend, integrations, workers] = await Promise.all([
+    getOverview(),
+    getRevenueTrend(),
+    getIntegrationHealth(),
+    getWorkerHealth()
   ]);
-
-  const overview = overviewRes.ok ? await overviewRes.json() : null;
-  const trend = trendRes.ok ? await trendRes.json() : { points: [] };
-  const integrations = integrationsRes.ok ? await integrationsRes.json() : { integrations: [] };
-  const workers = workersRes.ok ? await workersRes.json() : { workers: [] };
-
-  return { overview, trend, integrations, workers };
+  return {
+    overview: overview.ok ? overview.body : null,
+    trend: trend.ok ? trend.body : { points: [] },
+    integrations: integrations.ok ? integrations.body : { integrations: [] },
+    workers: workers.ok ? workers.body : { workers: [] },
+    authRequired: [overview, trend, integrations, workers].some((r) => r.status === 401)
+  };
 }
 
 function StatCard({ label, value, sub }) {
@@ -27,7 +28,11 @@ function StatCard({ label, value, sub }) {
 }
 
 export default function Dashboard() {
-  const { overview, trend, integrations, workers } = useLoaderData();
+  const { overview, trend, integrations, workers, authRequired } = useLoaderData();
+
+  if (authRequired) {
+    return <p className="error">Session required. <a href="/login">Sign in</a> to access the control plane.</p>;
+  }
 
   if (!overview) {
     return <p className="error">Dashboard data unavailable.</p>;

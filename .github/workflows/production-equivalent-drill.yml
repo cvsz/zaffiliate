@@ -1,0 +1,88 @@
+name: Production-equivalent DR and rollback
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'compose.selfhost.yaml'
+      - 'db/migrations/**'
+      - 'packages/db/**'
+      - 'apps/api/**'
+      - 'scripts/production-equivalent-drill.sh'
+      - 'scripts/restore-rehearsal.mjs'
+      - '.github/workflows/production-equivalent-drill.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  restore-and-rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install deterministic dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Create non-secret ephemeral environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "REDIS_PASSWORD=$(openssl rand -hex 24)"
+            echo "SESSION_SECRET=$(openssl rand -hex 48)"
+            echo "ENCRYPTION_KEY=$(openssl rand -hex 32)"
+            echo "VISITOR_SALT=$(openssl rand -hex 32)"
+          } > .env.selfhost
+      - name: Build candidate and known-good images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --pull -t zaffiliate:candidate .
+          base_ref="${{ github.base_ref }}"
+          if [[ -n "$base_ref" ]]; then
+            git fetch origin "$base_ref" --depth=1
+            git worktree add /tmp/zaff-known-good "origin/$base_ref"
+          else
+            git worktree add /tmp/zaff-known-good HEAD^
+          fi
+          docker build --pull -t zaffiliate:known-good /tmp/zaff-known-good
+      - name: Start PostgreSQL Redis and apply candidate migrations
+        run: |
+          docker compose --env-file .env.selfhost -f compose.selfhost.yaml up -d postgres redis
+          for i in {1..60}; do
+            docker compose --env-file .env.selfhost -f compose.selfhost.yaml exec -T postgres pg_isready -U zaffiliate -d zaffiliate && break
+            sleep 1
+          done
+          docker compose --env-file .env.selfhost -f compose.selfhost.yaml run --rm migrate
+      - name: Execute snapshot restore migration replay and candidate-to-known-good rollback
+        shell: bash
+        env:
+          CI: 'true'
+          CANDIDATE_IMAGE: zaffiliate:candidate
+          KNOWN_GOOD_IMAGE: zaffiliate:known-good
+        run: |
+          set -a
+          source .env.selfhost
+          set +a
+          bash scripts/production-equivalent-drill.sh
+      - name: Upload DR evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-equivalent-dr-${{ github.sha }}
+          path: |
+            dist/release-evidence/production-equivalent-drill.json
+            dist/restore-rehearsal-evidence.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Cleanup
+        if: always()
+        run: docker compose --env-file .env.selfhost -f compose.selfhost.yaml down -v --remove-orphans || true

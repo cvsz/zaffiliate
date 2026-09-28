@@ -5,6 +5,7 @@ on:
     paths:
       - 'db/migrations/009_oauth_identity_persistence.sql'
       - 'db/migrations/010_oidc_login_bootstrap.sql'
+      - 'db/migrations/020_tenants_rls_enable.sql'
       - 'db/tests/oauth-persistence.sql'
       - 'db/tests/oauth-login-bootstrap.sql'
       - 'db/tests/bootstrap-role.sql'
@@ -130,6 +131,8 @@ jobs:
             END IF;
           END $$;
           SQL
+      - name: Apply tenant catalog RLS hardening
+        run: psql -v ON_ERROR_STOP=1 -f db/migrations/020_tenants_rls_enable.sql
       - name: Create application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Verify OAuth persistence RLS and single-use state

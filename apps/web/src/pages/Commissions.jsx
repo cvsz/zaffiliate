@@ -14,7 +14,7 @@ export default function Commissions() {
   }
 
   const totals = funnel.totals;
-  const netMinor = totals.gmvMinor - totals.commissionMinor;
+  const netMinor = totals.trueMarginMinor ?? 0;
   const effectiveMargin = totals.gmvMinor === 0 ? 0 : (netMinor / totals.gmvMinor) * 100;
 
   return (
