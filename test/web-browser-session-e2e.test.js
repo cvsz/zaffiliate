@@ -11,6 +11,9 @@ async function listen(server) {
 
 function sessionBridge(role = 'owner', { active = true } = {}) {
   return {
+    peekTenant(req) {
+      return String(req.headers.cookie ?? '').includes('session=ok') ? TENANT : null;
+    },
     async resolve(req) {
       if (!active || !String(req.headers.cookie ?? '').includes('session=ok')) return null;
       return {
