@@ -151,7 +151,18 @@ export function createProductionDataProviders({ databaseUrl = process.env.DATABA
       );
       return {
         source: 'ledger',
-        currencies: posted.rows,
+        period: new Date().toISOString().slice(0, 7),
+        plan: null,
+        mrrMinor: null,
+        currency: posted.rows.length === 1 ? posted.rows[0].currency : null,
+        ledgerRef: 'postgres:ledger_transactions',
+        invoiceRef: null,
+        usage: {
+          ai_input_tokens: Number(ai.rows[0]?.input_tokens || 0),
+          ai_output_tokens: Number(ai.rows[0]?.output_tokens || 0)
+        },
+        quotas: {},
+        ledger: { currencies: posted.rows },
         aiUsage: {
           inputTokens: Number(ai.rows[0]?.input_tokens || 0),
           outputTokens: Number(ai.rows[0]?.output_tokens || 0),
@@ -208,13 +219,52 @@ export function createProductionDataProviders({ databaseUrl = process.env.DATABA
 
   async function funnel(tenantId) {
     return tenantTx(tenantId, async (tx) => {
-      const r = await tx.query(
+      const events = await tx.query(
         `SELECT event_type AS stage, count(*)::int AS events
            FROM analytics_events WHERE tenant_id=$1 AND occurred_at >= now()-interval '30 days'
-          GROUP BY event_type ORDER BY event_type`,
+          GROUP BY event_type ORDER BY min(occurred_at)`,
         [tenantId]
       );
-      return { window: '30d', source: 'analytics_events', stages: r.rows };
+      const stages = [];
+      let previous = null;
+      for (const row of events.rows) {
+        const count = Number(row.events || 0);
+        stages.push({
+          stage: row.stage,
+          events: count,
+          conversionPct: previous == null || previous === 0 ? (previous == null ? 100 : 0) : (count / previous) * 100
+        });
+        previous = count;
+      }
+      const totalsResult = await tx.query(
+        `SELECT currency, count(*)::int AS orders,
+                COALESCE(sum(gross_revenue),0) AS gmv,
+                COALESCE(sum(commission),0) AS commission,
+                COALESCE(sum(true_margin),0) AS true_margin
+           FROM conversions
+          WHERE tenant_id=$1 AND status='confirmed' AND occurred_at >= now()-interval '30 days'
+          GROUP BY currency`,
+        [tenantId]
+      );
+      if (totalsResult.rows.length > 1) throw new Error('mixed_currency_funnel_requires_filter');
+      const total = totalsResult.rows[0] ?? { currency: 'THB', orders: 0, gmv: 0, commission: 0, true_margin: 0 };
+      const gmvMinor = minor(total.gmv);
+      const trueMarginMinor = minor(total.true_margin);
+      return {
+        window: '30d',
+        attributionModel: 'provider-reconciled confirmed conversions',
+        currency: total.currency,
+        stages,
+        totals: {
+          orders: Number(total.orders || 0),
+          gmvMinor,
+          commissionMinor: minor(total.commission),
+          trueMarginMinor,
+          marginPct: gmvMinor === 0 ? 0 : (trueMarginMinor / gmvMinor) * 100,
+          settlementRef: null,
+          payoutsQueued: null
+        }
+      };
     });
   }
 
