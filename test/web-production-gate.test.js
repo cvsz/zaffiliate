@@ -68,5 +68,5 @@ test('production never substitutes fixture approvals, revenue or worker status',
     headers: { ...authorization(), 'content-type': 'application/json' },
     body: JSON.stringify({ approvalId: 'apr-1001', decision: 'approve' })
   });
-  assert.equal(approval.status, 503);
+  assert.equal(approval.status, 403);
 });
