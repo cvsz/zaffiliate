@@ -302,9 +302,10 @@ async function authorizeControlPlane(req, tenant, state) {
   if (!state.isProduction) return { tenant, role: 'development', userId: 'development' };
   if (!TENANT_UUID.test(tenant)) return null;
   if (typeof state.authenticate === 'function') {
-    const session = await state.authenticate({ tenantId: tenant, req });
+    const bearer = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization ?? ''))?.[1] ?? null;
+    const session = await state.authenticate({ tenantId: tenant, req, token: bearer });
     if (!session?.user || String(session.user.tenantId).toLowerCase() !== tenant.toLowerCase()) return null;
-    return { tenant, userId: session.user.userId, role: String(session.user.role ?? '').toLowerCase(), tokenHash: session.tokenHash ?? null };
+    return { tenant, userId: session.user.userId, role: String(session.user.role ?? '').toLowerCase(), tokenHash: session.tokenHash ?? (bearer ? createHash('sha256').update(bearer).digest('hex') : null) };
   }
   const resolved = await state.sessionBridge.resolve(req);
   if (!resolved || resolved.tenantId !== tenant) return null;
@@ -338,7 +339,7 @@ async function handleApi(req, res, pathname, state = {}) {
     return sendJson(res, 200, { user: resolved.session.user, expiresAt: resolved.session.expiresAt }, headOnly);
   }
 
-  const resolvedSession = state.isProduction ? await state.sessionBridge.resolve(req).catch(() => null) : null;
+  const resolvedSession = state.isProduction && state.sessionBridge ? await state.sessionBridge.resolve(req).catch(() => null) : null;
   const tenantHeader = req.headers['x-tenant-id'];
   const tenant = String(tenantHeader ?? resolvedSession?.tenantId ?? '').trim().toLowerCase();
   if (!isValidTenant(tenant)) return sendJson(res, 400, { error: 'tenant_header_required' }, headOnly);
@@ -473,7 +474,7 @@ async function handleStatic(req, res, pathname) {
 
   // Allow only declared client-side routes to receive the SPA document.
   const spaRoutes = new Set([
-    '', 'overview', 'dashboard', 'autopilot-review', 'connections', 'products',
+    '', 'login', 'overview', 'dashboard', 'autopilot-review', 'connections', 'products',
     'campaigns', 'creators', 'links', 'content', 'publishing', 'outreach',
     'workflows', 'analytics', 'commissions', 'billing', 'audit', 'security',
     'admin', 'publications', 'conversions', 'settings'
