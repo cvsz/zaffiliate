@@ -1,6 +1,6 @@
 import { useActionState } from 'react';
 import { useLoaderData, useNavigation } from 'react-router-dom';
-import { getPendingApprovals } from '../api';
+import { getPendingApprovals, getCsrfToken } from '../api';
 
 export async function loader() {
   const outcome = await getPendingApprovals();
@@ -11,29 +11,23 @@ export async function action({ request }) {
   const formData = await request.formData();
   const approvalId = String(formData.get('approvalId') || '');
   const decision = String(formData.get('decision') || '');
-  const tenant = document.getElementById('tenant')?.value || 'tenant-acme';
 
-  const csrfResponse = await fetch('/api/csrf-token', {
-    headers: { 'x-tenant-id': tenant }
-  });
-  const csrfBody = await csrfResponse.json();
-  if (!csrfResponse.ok || typeof csrfBody.token !== 'string' || csrfBody.token.length === 0) {
-    return { error: csrfBody.error || 'CSRF token request failed', status: csrfResponse.status };
+  const csrf = await getCsrfToken();
+  if (!csrf.ok || typeof csrf.body?.token !== 'string') {
+    return { error: csrf.body?.error || 'CSRF token request failed', status: csrf.status };
   }
 
   const result = await fetch('/api/workflow/approve', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
-      'x-csrf-token': csrfBody.token,
-      'x-tenant-id': tenant
+      'x-csrf-token': csrf.body.token
     },
     body: JSON.stringify({ approvalId, decision })
   });
   const body = await result.json();
-  if (!result.ok) {
-    return { error: body.error || 'Decision failed', status: result.status };
-  }
+  if (!result.ok) return { error: body.error || 'Decision failed', status: result.status };
   return body;
 }
 
