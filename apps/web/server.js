@@ -300,10 +300,11 @@ async function approveWorkflow(req, res, tokenScope, actorId = null) {
 }
 
 async function authorizeControlPlane(req, tenant, state) {
-  if (!state.isProduction) return { tenant, role: 'development', userId: 'development' };
+  if (!state.isProduction) return { tenant, role: 'development', userId: null };
   if (!TENANT_UUID.test(tenant)) return null;
   if (typeof state.authenticate === 'function') {
     const bearer = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization ?? ''))?.[1] ?? null;
+    if (!bearer) return null;
     const session = await state.authenticate({ tenantId: tenant, req, token: bearer });
     if (!session?.user || String(session.user.tenantId).toLowerCase() !== tenant.toLowerCase()) return null;
     return { tenant, userId: session.user.userId, role: String(session.user.role ?? '').toLowerCase(), tokenHash: session.tokenHash ?? (bearer ? createHash('sha256').update(bearer).digest('hex') : null) };
