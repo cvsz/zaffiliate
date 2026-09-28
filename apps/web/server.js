@@ -322,6 +322,10 @@ async function handleApi(req, res, pathname, state = {}) {
 
   if (pathname === '/api/session/login' && req.method === 'POST') {
     if (!state.isProduction) return sendJson(res, 404, { error: 'not_found' });
+    if (req.headers.origin) {
+      try { if (new URL(req.headers.origin).host !== req.headers.host) return sendJson(res, 403, { error: 'origin_check_failed' }); }
+      catch { return sendJson(res, 403, { error: 'origin_check_failed' }); }
+    }
     try {
       const result = await state.sessionBridge.login(req);
       return sendJson(res, result.status, result.body, false, result.headers ?? {});
@@ -330,6 +334,10 @@ async function handleApi(req, res, pathname, state = {}) {
     }
   }
   if (pathname === '/api/session/logout' && req.method === 'POST') {
+    if (req.headers.origin) {
+      try { if (new URL(req.headers.origin).host !== req.headers.host) return sendJson(res, 403, { error: 'origin_check_failed' }); }
+      catch { return sendJson(res, 403, { error: 'origin_check_failed' }); }
+    }
     const result = await state.sessionBridge.logout(req);
     return sendJson(res, result.status, result.body, false, result.headers ?? {});
   }
@@ -494,8 +502,8 @@ async function handleStatic(req, res, pathname) {
 
 export function buildWebServer({ dataProviders = null, appEnv = process.env.APP_ENV, authenticate = null, sessionBridge = null } = {}) {
   const production = String(appEnv ?? 'development').toLowerCase() === 'production';
-  const resolvedProviders = dataProviders ?? (production ? createProductionDataProviders() : {});
-  const resolvedBridge = sessionBridge ?? (production ? createSessionBridge({ authOrigin: process.env.CONTROL_PLANE_AUTH_ORIGIN }) : null);
+  const resolvedProviders = dataProviders ?? (production && !authenticate ? createProductionDataProviders() : {});
+  const resolvedBridge = sessionBridge ?? (production && !authenticate ? createSessionBridge({ authOrigin: process.env.CONTROL_PLANE_AUTH_ORIGIN }) : null);
   const state = { dataProviders: resolvedProviders, isProduction: production, authenticate, sessionBridge: resolvedBridge };
   return http.createServer(async (req, res) => {
     applySecurityHeaders(res);
