@@ -68,14 +68,14 @@ export default function Workflows() {
                     <span className={`badge ${approval.status}`}>{approval.status}</span>
                   </td>
                   <td>
-                    <form method="post" action={formAction} style={{ display: 'inline' }}>
+                    <form method="post" action={formAction} className="inline-form">
                       <input type="hidden" name="approvalId" value={approval.id} />
                       <input type="hidden" name="decision" value="approve" />
                       <button className="btn approve" type="submit" disabled={isPending}>
                         {isPending ? 'Working…' : 'Approve'}
                       </button>
                     </form>{' '}
-                    <form method="post" action={formAction} style={{ display: 'inline' }}>
+                    <form method="post" action={formAction} className="inline-form">
                       <input type="hidden" name="approvalId" value={approval.id} />
                       <input type="hidden" name="decision" value="reject" />
                       <button className="btn reject" type="submit" disabled={isPending}>
