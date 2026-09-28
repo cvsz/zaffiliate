@@ -1,3 +1,5 @@
+> **Current-document note (2026-09-28):** The checked boxes below are historical repository/test evidence from 2026-09-22, **not current production deployment approval**. Browser operator session, live API data providers, Code Scanning Alert #2 triage, provider entitlements, isolated restore and live-site validation remain gated. For the current release decision use [Production Release Gate](release/PRODUCTION-RELEASE-GATE.md) and [Live Site Status](LIVE-SITE-STATUS.md). Do not use this historical checklist as a customer-ready claim.
+
 # Production Readiness Contract
 
 Updated: 2026-09-22
