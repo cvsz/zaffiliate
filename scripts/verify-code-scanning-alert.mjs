@@ -30,6 +30,9 @@ const evidence = {
   rule: alert.rule?.id ?? null,
   severity: alert.rule?.security_severity_level ?? alert.rule?.severity ?? null,
   location: alert.most_recent_instance?.location?.path ?? null,
+  startLine: alert.most_recent_instance?.location?.start_line ?? null,
+  startColumn: alert.most_recent_instance?.location?.start_column ?? null,
+  message: alert.most_recent_instance?.message?.text ?? null,
   fixedAt: alert.fixed_at ?? null,
   dismissedAt: alert.dismissed_at ?? null,
   dismissalReason: alert.dismissed_reason ?? null,
@@ -39,4 +42,4 @@ const evidence = {
 await mkdir('dist/release-evidence', { recursive: true });
 await writeFile('dist/release-evidence/code-scanning-alert.json', JSON.stringify(evidence, null, 2) + '\n');
 console.log(JSON.stringify(evidence, null, 2));
-if (!accepted) process.exit(1);
+if (!accepted && !process.argv.includes('--report-only')) process.exit(1);
