@@ -46,7 +46,7 @@ PGPASSWORD="$db_password" pg_restore -h 127.0.0.1 -p 55432 -U zaffiliate -d zaff
 RESTORED_DATABASE_URL="postgresql://zaffiliate:$db_password@127.0.0.1:55432/zaffiliate_restore"   node scripts/restore-rehearsal.mjs
 restore_ms="$(( $(date +%s%3N) - restore_start ))"
 
-restored_marker="$(PGPASSWORD="$db_password" psql -h 127.0.0.1 -p 55432 -U zaffiliate -d zaffiliate_restore -Atqc "SELECT created_at::text FROM release_recovery_markers WHERE id='$marker'")"
+restored_marker="$(docker exec zaff-dr-restore psql -U zaffiliate -d zaffiliate_restore -Atqc "SELECT created_at::text FROM release_recovery_markers WHERE id='$marker'")"
 test -n "$restored_marker"
 synthetic_rpo_seconds=0
 
