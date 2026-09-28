@@ -18,7 +18,7 @@ export default function Login() {
     window.location.assign('/dashboard');
   }
   return (
-    <main className="main" style={{ maxWidth: 560, margin: '4rem auto' }}>
+    <main className="main login-shell">
       <section className="panel">
         <p className="eyebrow">ZEAZ Affiliate Control Plane</p>
         <h1>Operator sign in</h1>
