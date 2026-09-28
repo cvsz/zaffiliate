@@ -36,7 +36,6 @@ function Install-WithWinget([string]$id) {
 }
 Push-Location $root
 try {
-    if (-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') { throw 'This bootstrap must run on Windows, not WSL/Linux.' }
     if ($env:OS -ne 'Windows_NT') { throw 'This bootstrap requires Windows.' }
     Write-Step "Repository: $root"
     if ($InstallPrerequisites) {
