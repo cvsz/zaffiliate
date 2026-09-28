@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+<title id="title">ZEAZ Affiliate — Affiliate Commerce OS</title>
+<desc id="desc">ZEAZ Affiliate brand artwork: campaigns, content, approvals and attribution; illustrative interface, not live metrics.</desc>
+<defs>
+<linearGradient id="background" x2="1" y2="1"><stop stop-color="#0A1423"/><stop offset="1" stop-color="#11172C"/></linearGradient>
+<linearGradient id="aqua" x2="1" y2="1"><stop stop-color="#68FFE3"/><stop offset="1" stop-color="#78B1FF"/></linearGradient>
+<pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0V42" stroke="#8DA8C1" stroke-opacity=".07" fill="none"/></pattern>
+<radialGradient id="glow"><stop stop-color="#54FFE4" stop-opacity=".13"/><stop offset="1" stop-color="#54FFE4" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1280" height="640" fill="url(#background)"/><rect width="1280" height="640" fill="url(#grid)"/>
+<ellipse cx="210" cy="150" rx="480" ry="390" fill="url(#glow)"/>
+<path d="M0 0h1280v5H0z" fill="url(#aqua)"/>
+<g transform="translate(69 70)"><rect width="77" height="77" rx="19" fill="#192E43" stroke="#6CF4E2" stroke-width="2"/><path d="M19 24H56L20 53H58" fill="none" stroke="url(#aqua)" stroke-width="9" stroke-linejoin="round"/><circle cx="61" cy="16" r="5" fill="#AFA0FF"/></g>
+<g font-family="DejaVu Sans,Arial,sans-serif">
+<text x="164" y="116" font-size="27" font-weight="700" letter-spacing="2" fill="#F5FDFF">ZEAZDEV</text>
+<rect x="69" y="184" width="232" height="32" rx="16" fill="#173B47" stroke="#48C2B8"/>
+<text x="86" y="205" font-size="14" letter-spacing="1.5" font-weight="700" fill="#89FFF0">AFFILIATE COMMERCE</text>
+<text x="64" y="296" font-size="72" font-weight="800" letter-spacing="-3" fill="#F7FDFF">ZEAZ</text>
+<text x="64" y="377" font-size="69" font-weight="800" letter-spacing="-3" fill="url(#aqua)">AFFILIATE</text>
+<text x="68" y="424" font-size="22" fill="#C5D5E7">Campaigns. Content. Commerce.</text>
+<text x="68" y="455" font-size="22" fill="#C5D5E7">One governed control plane.</text>
+<rect x="68" y="491" width="143" height="42" rx="12" fill="#1F3C4B" stroke="#4F8890"/><text x="89" y="517" font-size="15" fill="#DBFFFF">AI Content</text>
+<rect x="222" y="491" width="145" height="42" rx="12" fill="#1F3C4B" stroke="#4F8890"/><text x="245" y="517" font-size="15" fill="#DBFFFF">Approvals</text>
+<rect x="378" y="491" width="142" height="42" rx="12" fill="#1F3C4B" stroke="#4F8890"/><text x="399" y="517" font-size="15" fill="#DBFFFF">Analytics</text>
+<rect x="690" y="101" width="535" height="431" rx="20" fill="#17273A" stroke="#45667C" stroke-width="2"/>
+<path d="M710 160h495" stroke="#526B82" stroke-opacity=".7"/>
+<circle cx="724" cy="132" r="6" fill="#71FCE7"/><circle cx="744" cy="132" r="6" fill="#859EB7"/><circle cx="764" cy="132" r="6" fill="#859EB7"/>
+<text x="791" y="139" font-size="17" font-weight="700" fill="#EEF7FF">AUTOPILOT CONTROL</text>
+<rect x="1119" y="119" width="79" height="25" rx="13" fill="#24464D"/><text x="1130" y="136" font-size="11" fill="#91F5E5">CONCEPT</text>
+<g fill="#22384D" stroke="#3E5C72"><rect x="713" y="181" width="145" height="88" rx="12"/><rect x="868" y="181" width="145" height="88" rx="12"/><rect x="1023" y="181" width="177" height="88" rx="12"/></g>
+<text x="729" y="208" font-size="13" fill="#A8BDD0">CAMPAIGNS</text><text x="729" y="247" font-size="22" font-weight="700" fill="#8FF9E8">Manage</text>
+<text x="885" y="208" font-size="13" fill="#A8BDD0">CONTENT</text><text x="885" y="247" font-size="22" font-weight="700" fill="#F0FBFF">AI Studio</text>
+<text x="1040" y="208" font-size="13" fill="#A8BDD0">WORKFLOW</text><text x="1040" y="247" font-size="22" font-weight="700" fill="#BFAFFF">Approval</text>
+<rect x="713" y="282" width="325" height="223" rx="12" fill="#112235" stroke="#3D596E"/>
+<text x="733" y="314" font-size="16" font-weight="700" fill="#F1FCFF">Attribution &amp; insights</text>
+<g stroke="#526D84" stroke-opacity=".3"><path d="M736 355H1014M736 392H1014M736 429H1014M736 466H1014"/></g>
+<path d="M739 442C770 436 777 428 804 404S851 420 875 380S916 407 945 354S983 366 1009 336" stroke="#78FFE7" stroke-width="4" stroke-linecap="round" fill="none"/>
+<path d="M739 470C770 462 787 450 807 455S845 451 879 426S925 440 946 403S987 410 1008 390" stroke="#A58BFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+<rect x="1050" y="282" width="151" height="223" rx="12" fill="#112235" stroke="#3D596E"/>
+<text x="1067" y="313" font-size="15" font-weight="700" fill="#F1FCFF">Publish flow</text>
+<path d="M1078 344V476" stroke="#6589A0" stroke-width="2" stroke-dasharray="5 7"/>
+<circle cx="1078" cy="344" r="6" fill="#78FFE7"/><text x="1093" y="349" font-size="13" fill="#CDE1F1">Prepare</text>
+<circle cx="1078" cy="386" r="6" fill="#78FFE7"/><text x="1093" y="391" font-size="13" fill="#CDE1F1">Review</text>
+<circle cx="1078" cy="428" r="6" fill="#BFAFFF"/><text x="1093" y="433" font-size="13" fill="#CDE1F1">Approve</text>
+<circle cx="1078" cy="470" r="6" fill="#93AAC1"/><text x="1093" y="475" font-size="13" fill="#CDE1F1">Schedule</text>
+<path d="M68 566h1142" stroke="#63809A" stroke-opacity=".45"/>
+<text x="68" y="603" font-size="18" font-weight="700" fill="#E8F8FF">zaff.zeaz.dev</text>
+<text x="1210" y="603" text-anchor="end" font-size="15" fill="#A7BDD1">Node.js · React · PostgreSQL · Tauri</text>
+</g>
+</svg>
