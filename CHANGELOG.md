@@ -4,6 +4,12 @@ All notable changes to zaffiliate. Format: Keep a Changelog. Versions are attest
 
 ## [Unreleased]
 
+### Documentation and branding (2026-09-28)
+- Replace the root README with a source-qualified overview of all Control Plane feature surfaces, dynamic GitHub Actions badges and an SVG banner. Badges never imply production/provider approval.
+- Add a complete feature catalog, documentation index, live-site verification boundary and Social Preview upload guide; provide an upload-ready 1280×640 PNG separately for manual GitHub repository Settings upload.
+- Clarify historical readiness documents and Windows Tauri scaffold limitations; no runtime/provider/deployment changes in this documentation slice.
+
+
 ## [1.0.1] - 2026-09-22
 
 ### Added
