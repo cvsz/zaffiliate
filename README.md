@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/cvsz/zaffiliate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cvsz/zaffiliate/actions/workflows/ci.yml?query=branch%3Amain)
 [![CodeQL](https://github.com/cvsz/zaffiliate/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/cvsz/zaffiliate/actions/workflows/codeql.yml?query=branch%3Amain)
-[![Dependency Review](https://github.com/cvsz/zaffiliate/actions/workflows/dependency-review.yml/badge.svg?branch=main)](https://github.com/cvsz/zaffiliate/actions/workflows/dependency-review.yml)
+[![Dependency Review](https://github.com/cvsz/zaffiliate/actions/workflows/dependency-review.yml/badge.svg?event=pull_request)](https://github.com/cvsz/zaffiliate/actions/workflows/dependency-review.yml)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-3c873a?logo=nodedotjs)](package.json)
 [![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release: evidence gated](https://img.shields.io/badge/Production-Release%20Gated-orange)](docs/release/PRODUCTION-RELEASE-GATE.md)
@@ -99,10 +99,13 @@ git clone https://github.com/cvsz/zaffiliate.git
 cd zaffiliate
 pwsh -NoProfile -File .\scripts\bootstrap-windows.ps1 -InstallPrerequisites
 cd apps/desktop
-npm run dev
+npm install
+# The current Tauri scaffold still needs a root dev:web script.
+# Use this step after AUTO-WIN-01 development configuration is fixed:
+# npm run dev
 ```
 
-`-BuildDesktop` ใช้ทดลอง Build **Unsigned Installer Candidate** หลังมี Toolchain ครบ; ไม่ใช่การ Deploy Production. ดู [Desktop Setup](apps/desktop/README.md) และ [Development](docs/DEVELOPMENT.md).
+`-BuildDesktop` ใช้ทดลอง Build **Unsigned Installer Candidate** หลังมี Toolchain ครบ; ไม่ใช่การ Deploy Production. **Known blocker:** Tauri `beforeDevCommand` อ้างถึง Root Script `dev:web` ซึ่งยังไม่มีใน `package.json`; ต้องแก้และตรวจบน Windows ก่อนถือว่า `npm run dev` ใช้งานได้. ดู [Desktop Setup](apps/desktop/README.md) และ [Development](docs/DEVELOPMENT.md).
 
 ## API & operations
 
