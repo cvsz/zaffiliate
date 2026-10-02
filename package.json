@@ -20,7 +20,7 @@
     "preflight:production": "node scripts/production-preflight.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.116.0",
+    "@supabase/supabase-js": "^2.117.2",
     "pg": "8.23.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
