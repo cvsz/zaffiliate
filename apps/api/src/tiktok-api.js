@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import {
   generatePkceBundle,
   generateOAuthState,
@@ -31,8 +31,10 @@ function bearerToken(headers = {}) {
   return m ? m[1].trim() : '';
 }
 
-function sha256Hex(value) {
-  return createHash('sha256').update(String(value), 'utf8').digest('hex');
+function oauthStateDigest(value, key) {
+  const secret = String(key ?? '');
+  if (secret.length < 32) throw new Error('ENCRYPTION_KEY must be at least 32 characters');
+  return createHmac('sha256', secret).update(String(value), 'utf8').digest('hex');
 }
 
 function pendingAad(tenant, hash) {
@@ -184,7 +186,7 @@ export function createTikTokApi({
         const pkce = generatePkceBundle();
         const rawState = generateOAuthState();
         const boundState = `${scopedTenant}.${rawState}`;
-        const hash = sha256Hex(boundState);
+        const hash = oauthStateDigest(boundState, key);
 
         const verifierCiphertext = encryptSecret(pkce.codeVerifier, {
           key,
@@ -246,7 +248,7 @@ export function createTikTokApi({
         const throttled = await limited(rateLimiter, `tiktok:callback:${scopedTenant}:${ip}`);
         if (throttled) return throttled;
 
-        const hash = sha256Hex(stateParam);
+        const hash = oauthStateDigest(stateParam, key);
         const pending = await oauthRepo.consumePendingAuthorization({
           tenantId: scopedTenant,
           provider: 'tiktok',

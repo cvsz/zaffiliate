@@ -169,11 +169,14 @@ export function createOAuthLoginRepo({ db } = {}) {
     const userId = required(newUserId, 'newUserId');
     try {
       return await db.transaction(async (tx) => {
+        // Set tenant context before creating the root tenant row. Migration 020
+        // enables + forces RLS on tenants, so bootstrap writes must satisfy the
+        // same WITH CHECK policy as every other tenant-owned operation.
+        await setTenant(tx, tenantId);
         await tx.query(
           'INSERT INTO tenants (id, slug, name) VALUES ($1,$2,$3)',
           [tenantId, required(newTenantSlug, 'newTenantSlug'), required(newTenantName, 'newTenantName')]
         );
-        await setTenant(tx, tenantId);
         await tx.query(
           "INSERT INTO tenant_memberships (tenant_id, user_id, role) VALUES ($1,$2,'owner')",
           [tenantId, userId]

@@ -27,15 +27,15 @@ export default function Billing() {
               </tr>
               <tr>
                 <td>Plan</td>
-                <td>{billing.plan}</td>
+                <td>{billing.plan ?? '—'}</td>
               </tr>
               <tr>
                 <td>Period</td>
-                <td>{billing.period}</td>
+                <td>{billing.period ?? '—'}</td>
               </tr>
               <tr>
                 <td>MRR</td>
-                <td>{`$${(billing.mrrMinor / 100).toLocaleString()} ${billing.currency ?? 'USD'}`}</td>
+                <td>{billing.mrrMinor == null ? '—' : `${(billing.mrrMinor / 100).toLocaleString()} ${billing.currency ?? ''}`.trim()}</td>
               </tr>
               <tr>
                 <td>Ledger reference</td>
@@ -43,7 +43,7 @@ export default function Billing() {
               </tr>
               <tr>
                 <td>Invoice reference</td>
-                <td>{billing.invoiceRef}</td>
+                <td>{billing.invoiceRef ?? '—'}</td>
               </tr>
             </tbody>
           </table>
@@ -62,7 +62,7 @@ export default function Billing() {
               </tr>
             </thead>
             <tbody>
-              {Object.keys(billing.quotas).map((metric) => {
+              {Object.keys(billing.quotas ?? {}).map((metric) => {
                 const used = billing.usage[metric] ?? 0;
                 const quota = billing.quotas[metric] ?? 0;
                 const utilization = quota === 0 ? 0 : ((used / quota) * 100).toFixed(2);
