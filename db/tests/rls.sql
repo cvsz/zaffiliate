@@ -9,7 +9,7 @@ INSERT INTO tenants (id, slug, name) VALUES
 SET LOCAL ROLE zaffiliate_app_test;
 SET LOCAL app.tenant_id = '00000000-0000-0000-0000-000000000001';
 
-DO $
+DO $$
 DECLARE
   visible_tenants integer;
 BEGIN
@@ -17,7 +17,7 @@ BEGIN
   IF visible_tenants <> 1 THEN
     RAISE EXCEPTION 'tenant A expected exactly its own tenant catalog row, got %', visible_tenants;
   END IF;
-END $;
+END $$;
 
 INSERT INTO products (tenant_id, id, platform, external_product_id, title, currency)
 VALUES ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'tiktok', 'ext-a', 'A', 'THB');
@@ -45,7 +45,7 @@ END $$;
 
 SET LOCAL app.tenant_id = '00000000-0000-0000-0000-000000000002';
 
-DO $
+DO $$
 DECLARE
   visible_tenants integer;
 BEGIN
@@ -53,7 +53,7 @@ BEGIN
   IF visible_tenants <> 1 THEN
     RAISE EXCEPTION 'tenant B expected exactly its own tenant catalog row, got %', visible_tenants;
   END IF;
-END $;
+END $$;
 
 DO $$
 DECLARE
