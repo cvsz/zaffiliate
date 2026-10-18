@@ -66,7 +66,7 @@ run_api() {
   docker rm -f zaff-dr-api >/dev/null 2>&1 || true
   docker run -d --name zaff-dr-api --network "$network" -p 127.0.0.1:18080:8080     -e APP_ENV=production -e NODE_ENV=production -e PORT=8080     -e DATABASE_URL="postgresql://zaffiliate:$db_password@postgres:5432/zaffiliate"     -e REDIS_URL="redis://:$redis_password@redis:6379/0"     -e SESSION_SECRET="$session_secret" -e ENCRYPTION_KEY="$encryption_key" -e VISITOR_SALT="$visitor_salt"     "$image" >/dev/null
   for _ in $(seq 1 60); do
-    if curl -fsS http://127.0.0.1:18080/healthz >/dev/null 2>&1; then return 0; fi
+    if docker exec zaff-dr-api node -e "fetch('http://127.0.0.1:8080/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))" >/dev/null 2>&1; then return 0; fi
     sleep 1
   done
   docker logs zaff-dr-api >&2 || true
