@@ -100,12 +100,10 @@ cd zaffiliate
 pwsh -NoProfile -File .\scripts\bootstrap-windows.ps1 -InstallPrerequisites
 cd apps/desktop
 npm install
-# The current Tauri scaffold still needs a root dev:web script.
-# Use this step after AUTO-WIN-01 development configuration is fixed:
-# npm run dev
+npm run dev
 ```
 
-`-BuildDesktop` ใช้ทดลอง Build **Unsigned Installer Candidate** หลังมี Toolchain ครบ; ไม่ใช่การ Deploy Production. **Known blocker:** Tauri `beforeDevCommand` อ้างถึง Root Script `dev:web` ซึ่งยังไม่มีใน `package.json`; ต้องแก้และตรวจบน Windows ก่อนถือว่า `npm run dev` ใช้งานได้. ดู [Desktop Setup](apps/desktop/README.md) และ [Development](docs/DEVELOPMENT.md).
+`-BuildDesktop` ใช้ทดลอง Build **Unsigned Installer Candidate** หลังมี Toolchain ครบ; ไม่ใช่การ Deploy Production. Tauri `beforeDevCommand` เรียก Root Script `dev:web`; ยังต้องตรวจ `npm run dev` และ installer candidate บน Windows จริงก่อนยกระดับสถานะ Desktop. ดู [Desktop Setup](apps/desktop/README.md) และ [Development](docs/DEVELOPMENT.md).
 
 ## API & operations
 
