@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node apps/api/src/production-server.js",
     "start:web": "node apps/web/server.js",
+    "dev:web": "vite",
     "build:web": "vite build",
     "preview:web": "vite preview",
     "test": "node --test",
