@@ -16,7 +16,7 @@ npm run dev
 npm run build
 ```
 
-**Known bootstrap blocker:** the current Tauri beforeDevCommand calls the missing root `dev:web` npm script; `npm run dev` may fail until that root command is implemented and validated in Windows CI. The desktop package lockfile must be committed after dependency resolution on a trusted development machine. CI should use `npm ci` in both locations once that lockfile exists.
+The Tauri `beforeDevCommand` starts the root `dev:web` Vite script. This path is now configured but still requires validation on a Windows host. The desktop package lockfile must be committed after dependency resolution on a trusted development machine. CI should use `npm ci` in both locations once that lockfile exists.
 
 The development shell uses Vite on http://127.0.0.1:3000. Vite proxies /api to http://127.0.0.1:8080; start the API separately with `npm start` or the documented Compose stack. **Do not point this shell at production accounts until security review.**
 
