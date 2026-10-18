@@ -72,3 +72,19 @@ export async function approveWorkflow(approvalId, decision) {
     body: JSON.stringify({ approvalId, decision })
   });
 }
+
+export function loginSession({ tenantId, email, password }) {
+  return api('/session/login', { method: 'POST', body: JSON.stringify({ tenantId, email, password }) });
+}
+
+export function getSession() {
+  return api('/session/me', { method: 'GET' });
+}
+
+export function logoutSession() {
+  return api('/session/logout', { method: 'POST', body: '{}' });
+}
+
+export async function getCsrfToken() {
+  return api('/csrf-token', { method: 'GET' });
+}

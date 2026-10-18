@@ -154,6 +154,8 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f db/migrations/001_core_tenant_rls.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/002_workflow_outreach.sql
           psql -v ON_ERROR_STOP=1 -f db/migrations/003_billing_ai_analytics.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/006_tenants_rls_force.sql
+          psql -v ON_ERROR_STOP=1 -f db/migrations/020_tenants_rls_enable.sql
       - name: Create non-superuser application test role
         run: psql -v ON_ERROR_STOP=1 -f db/tests/bootstrap-role.sql
       - name: Execute core cross-tenant RLS assertions
@@ -323,3 +325,34 @@ jobs:
             fi
             echo 'Manual IaC validation: no violations'
           fi
+
+  code-scanning-alert-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Record Code Scanning Alert #2 and enforce closure on main
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CODE_SCANNING_ALERT_NUMBER: '2'
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            node scripts/verify-code-scanning-alert.mjs --report-only
+          else
+            node scripts/verify-code-scanning-alert.mjs
+          fi
+      - name: Upload code scanning gate evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: code-scanning-alert-gate-${{ github.sha }}
+          path: dist/release-evidence/code-scanning-alert.json
+          if-no-files-found: warn
+          retention-days: 30

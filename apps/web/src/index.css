@@ -238,3 +238,9 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+.inline-form { display: inline; }
+.login-shell { max-width: 35rem; margin: 4rem auto; }
+.login-shell form { display: grid; gap: 1rem; }
+.login-shell label { display: grid; gap: 0.35rem; }
+.login-shell input { width: 100%; padding: 0.65rem; }
